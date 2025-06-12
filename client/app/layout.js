@@ -1,7 +1,12 @@
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { ReduxProvider } from "@/components/ReduxProvider";
-import Header from "@/components/home/Header";
-import Sidebar from "@/components/home/Sidebar";
+import { SidebarProvider } from "@/contexts/SidebarContext.js";
+import Header from "@/components/Header";
+import SidebarWrapper from "@/components/SidebarWrapper";
+import ContentWrapper from "@/components/ContentWrapper";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   title: "BetApp - Sports Betting Platform",
@@ -14,17 +19,23 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className="antialiased">
         <ReduxProvider>
-          <div className="min-h-screen bg-gray-100 overflow-x-hidden">
-            <Header />
-            <div className="flex overflow-hidden">
-              <div className="hidden lg:block">
-                <Sidebar />
+          <SidebarProvider>
+            <div className=" bg-gray-100">
+              {/* Header - Not Fixed */}
+              <div>
+                <Header />
               </div>
-              <main className="flex-1 w-full lg:w-auto">
-                {children}
-              </main>
+
+              {/* Main Content Area */}
+              <div className="flex">
+                {/* Fixed Sidebar */}
+                <SidebarWrapper />
+
+                {/* Main Content Area with Secondary Navigation */}
+                <ContentWrapper>{children}</ContentWrapper>
+              </div>
             </div>
-          </div>
+          </SidebarProvider>
         </ReduxProvider>
       </body>
     </html>

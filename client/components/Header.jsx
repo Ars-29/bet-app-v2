@@ -29,11 +29,11 @@ const Header = () => {
                 <div className="flex justify-between items-center">
                     <div className="flex items-center space-x-4 lg:space-x-8">
                         <div className="text-xl lg:text-2xl font-bold">
-                            UNIBET
+                            BETTING
                             <div className="text-xs text-green-200">KINDRED</div>
                         </div>
 
-                        <nav className="hidden md:flex items-center space-x-2 lg:space-x-6">
+                        {/* <nav className="hidden md:flex items-center space-x-2 lg:space-x-6">
                             <div className="flex items-center space-x-1 cursor-pointer hover:bg-green-500 px-2 lg:px-3 py-2 rounded text-sm lg:text-base">
                                 <span>Sports</span>
                                 <span className="text-xs">▼</span>
@@ -53,7 +53,7 @@ const Header = () => {
                                 <span className="text-xs">▼</span>
                             </div>
                             <span className="cursor-pointer hover:bg-green-500 px-2 lg:px-3 py-2 rounded text-sm lg:text-base hidden xl:inline">Promotions</span>
-                        </nav>
+                        </nav> */}
 
                         {/* Mobile menu button */}
                         <button className="md:hidden p-2 hover:bg-green-500 rounded">

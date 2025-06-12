@@ -120,3 +120,82 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom utilities for scrollbar hiding */
+@layer utilities {
+  .scrollbar-hide {
+    /* IE and Edge */
+    -ms-overflow-style: none;
+
+    /* Firefox */
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    /* Safari and Chrome */
+    display: none;
+  }
+}
+
+/* Custom utilities */
+@layer utilities {
+  .scrollbar-hide {
+    /* IE and Edge */
+    -ms-overflow-style: none;
+
+    /* Firefox */
+    scrollbar-width: none;
+
+    /* Safari and Chrome */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  /* Smooth transition animations */
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Custom Dropdown Scrollbar */
+  .dropdown-scrollbar {
+    /* Firefox */
+    scrollbar-width: thin;
+
+    scrollbar-color: #9ca3af #1f2937;
+  }
+
+  .dropdown-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  /* .dropdown-scrollbar::-webkit-scrollbar-track {
+    background: #9ca3af;
+    border-radius: 3px;
+  } */
+
+  /* .dropdown-scrollbar::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+  }
+
+  .dropdown-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }
+
+  .dropdown-scrollbar::-webkit-scrollbar-thumb:active {
+    background: #d1d5db;
+  } */
+}

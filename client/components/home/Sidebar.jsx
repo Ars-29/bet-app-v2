@@ -3,11 +3,12 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useSidebar } from '@/contexts/SidebarContext.js';
 
 const Sidebar = () => {
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const { isCollapsed, setIsCollapsed } = useSidebar();
 
     const popularSports = [
         { name: 'Odds Boost', icon: '💫', count: null },
@@ -18,19 +19,19 @@ const Sidebar = () => {
         { name: 'La Liga', icon: '⚽', count: null },
     ];
 
-    const allSports = [
-        { name: 'American Football', count: 666 },
-        { name: 'Athletics', count: 1 },
-        { name: 'Australian Rules', count: '999+' },
-        { name: 'Baseball', count: '999+' },
-        { name: 'Basketball', count: '999+' },
-        { name: 'Boxing', count: 66 },
-        { name: 'Cricket', count: 219 },
-        { name: 'Cycling', count: 5 },
-    ];
+    // const allSports = [
+    //     { name: 'American Football', count: 666 },
+    //     { name: 'Athletics', count: 1 },
+    //     { name: 'Australian Rules', count: '999+' },
+    //     { name: 'Baseball', count: '999+' },
+    //     { name: 'Basketball', count: '999+' },
+    //     { name: 'Boxing', count: 66 },
+    //     { name: 'Cricket', count: 219 },
+    //     { name: 'Cycling', count: 5 },
+    // ];
 
     return (
-        <div className={`${isCollapsed ? 'w-16' : 'w-56'} bg-gray-800 text-white min-h-screen transition-all duration-300 flex-shrink-0`}>
+        <div className={`${isCollapsed ? 'w-16' : 'w-56'} bg-gray-800 text-white h-full transition-all duration-300 flex-shrink-0 overflow-y-auto`}>
             {/* Collapse/Expand Button */}
             <div className="p-3 border-b border-gray-700 flex items-center justify-between">
                 {!isCollapsed && (
@@ -51,7 +52,7 @@ const Sidebar = () => {
                 <>
                     {/* Popular section */}
                     <div className="p-4">
-                        <h3 className="text-sm font-semibold mb-3">POPULAR</h3>
+                        <h3 className="text-sm font-semibold mb-3">POPULAR LEAGUES</h3>
                         <div className="space-y-1">
                             {popularSports.map((sport, index) => (
                                 <div key={index} className="flex items-center py-2 px-3 hover:bg-gray-700 rounded cursor-pointer">
@@ -63,7 +64,7 @@ const Sidebar = () => {
                     </div>
 
                     {/* All Sports section */}
-                    <div className="px-4 pb-4">
+                    {/* <div className="px-4 pb-4">
                         <div className="flex justify-between items-center mb-3">
                             <h3 className="text-sm font-semibold">ALL SPORTS</h3>
                             <span className="text-xs text-gray-400">NUMBER OF BETS</span>
@@ -79,7 +80,7 @@ const Sidebar = () => {
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </div> */}
                 </>
             )}
 

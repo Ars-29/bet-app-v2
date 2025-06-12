@@ -1,46 +1,78 @@
-'use client';
-
-import React from 'react';
+"use client"
+import { useRef, useState } from "react"
+import { ChevronLeft, ChevronDown, Clock } from "lucide-react"
+import MatchDropdown from "./MatchDropdown"
+import { allMatches } from "@/data/dummyMatches"
 
 const MatchHeader = ({ matchId }) => {
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+    const triggetRef = useRef(null)
+    const currentMatch = allMatches.find(match => match.id === matchId)
+    const match = currentMatch || allMatches[0]
+
+    const toggleDropdown = () => {
+        setIsDropdownOpen(!isDropdownOpen)
+    }
+
+    const closeDropdown = () => {
+        setIsDropdownOpen(false)
+    }
+
     return (
-        <div className="mb-6">
+        <div className="mb-4 bg-white p-3">
             {/* Breadcrumb */}
-            <div className="flex items-center text-sm text-gray-500 mb-4">
-                <span>←</span>
-                <span className="ml-2">Football | World Cup Qualifying - Europe</span>
+            <div className="flex items-center text-xs text-slate-500 mb-3">
+                <ChevronLeft className="h-4 w-4" />
+                <span className="ml-1 truncate">Football | {match.competition}</span>
             </div>
 
             {/* Match Header */}
-            <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
-                                <span className="text-white text-sm">🇫🇮</span>
+            <div className="relative">
+                <div className="p-4 pl-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div
+                            className="flex items-center cursor-pointer hover:bg-gray-50 py-2 px-3 rounded-2xl transition-colors"
+                            onClick={toggleDropdown}
+                            ref={triggetRef}
+                        >
+                            <div className="flex items-center space-x-3">
+                                <TeamBadge
+                                    country={match.homeTeam.shortName}
+                                    color={match.homeTeam.jerseyColor}
+                                />
+                                <span className="text-base font-medium">{match.homeTeam.name}</span>
+                                <span className="text-base text-slate-400">vs</span>
+                                <span className="text-base font-medium">{match.awayTeam.name}</span>
+                                <TeamBadge
+                                    country={match.awayTeam.shortName}
+                                    color={match.awayTeam.jerseyColor}
+                                />
                             </div>
-                            <span className="text-lg font-semibold">Finland</span>
-                            <span className="text-lg text-gray-400">-</span>
-                            <span className="text-lg font-semibold">Poland</span>
-                            <div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center">
-                                <span className="text-white text-sm">🇵🇱</span>
-                            </div>
+                            <ChevronDown className={`ml-2 h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                         </div>
-                        <div className="ml-4">
-                            <span className="text-sm text-gray-500">▼</span>
+                        <div className="flex items-center text-xs text-slate-500">
+                            <Clock className="h-3.5 w-3.5 mr-1.5" />
+                            <span className="whitespace-nowrap">{match.date} {match.time}</span>
                         </div>
                     </div>
-
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                        <div className="flex items-center space-x-1">
-                            <span>⏰</span>
-                            <span>10 June 2025 23:45</span>
-                        </div>
-                    </div>
-                </div>
+                </div>                <MatchDropdown
+                    matches={allMatches}
+                    isOpen={isDropdownOpen}
+                    onClose={closeDropdown}
+                    triggerRef={triggetRef}
+                    currentMatchId={matchId}
+                />
             </div>
         </div>
-    );
-};
+    )
+}
 
-export default MatchHeader;
+const TeamBadge = ({ country, color }) => {
+    return (
+        <div className={`w-6 h-6 ${color} rounded-full flex items-center justify-center shadow-sm`}>
+            <span className="text-white text-[8px] font-medium">{country}</span>
+        </div>
+    )
+}
+
+export default MatchHeader
