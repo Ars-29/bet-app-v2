@@ -1,244 +1,186 @@
-import User from "../models/User.js";
-import UserService from "../services/UserService.js";
+import UserService from '../services/UserService.js';
+import { CustomError } from '../utils/customErrors.js';
 
-// @desc    Get user profile by ID (Admin only)
-// @route   GET /api/users/:id
-// @access  Private/Admin
-export const getUserById = async (req, res) => {
-  try {
-    // Use UserService to get user by ID
-    const user = await UserService.getUserById(req.params.id);
-
-    res.json({
-      success: true,
-      user: user.toJSON(),
-    });
-  } catch (error) {
-    console.error("Get user by ID error:", error);
-    
-    // Handle custom errors from UserService
-    if (error.isOperational) {
-      return res.status(error.statusCode).json({
-        success: false,
-        message: error.message,
-        errorCode: error.errorCode
-      });
+// Get user profile
+const getUserProfile = async (req, res) => {
+    try {
+        const user = await UserService.getUserById(req.user.id);
+        res.json(user);
+    } catch (error) {
+        console.error('Error in getUserProfile:', error);
+        res.status(error.status || 500).json({
+            message: error.message || 'Error fetching user profile'
+        });
     }
-
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
 };
 
-// @desc    Update user profile
-// @route   PUT /api/users/profile
-// @access  Private
-export const updateProfile = async (req, res) => {
-  try {
-    // Use UserService to update user profile
-    const user = await UserService.updateUserProfile(req.user._id, req.body);
-
-    res.json({
-      success: true,
-      message: "Profile updated successfully",
-      user: user.toJSON(),
-    });
-  } catch (error) {
-    console.error("Update profile error:", error);
-
-    // Handle custom errors from UserService
-    if (error.isOperational) {
-      return res.status(error.statusCode).json({
-        success: false,
-        message: error.message,
-        errorCode: error.errorCode
-      });
+// Update user profile
+const updateProfile = async (req, res) => {
+    try {
+        const updatedUser = await UserService.updateUserById(req.user.id, req.body);
+        res.json(updatedUser);
+    } catch (error) {
+        console.error('Error in updateProfile:', error);
+        res.status(error.status || 500).json({
+            message: error.message || 'Error updating user profile'
+        });
     }
-
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
 };
 
-// @desc    Change password
-// @route   PUT /api/users/change-password
-// @access  Private
-export const changePassword = async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-
-    // Use UserService to change password
-    await UserService.changeUserPassword(req.user._id, currentPassword, newPassword);
-
-    res.json({
-      success: true,
-      message: "Password changed successfully",
-    });
-  } catch (error) {
-    console.error("Change password error:", error);
-
-    // Handle custom errors from UserService
-    if (error.isOperational) {
-      return res.status(error.statusCode).json({
-        success: false,
-        message: error.message,
-        errorCode: error.errorCode
-      });
+// Get all users (admin only)
+const getAllUsers = async (req, res) => {
+    try {
+        console.log('�� getAllUsers called');
+        console.log('🔍 User making request:', req.user);
+        
+        const result = await UserService.getAllUsers();
+        console.log('✅ Successfully fetched users:', result);
+        
+        res.json(result);
+    } catch (error) {
+        console.error('❌ Error in getAllUsers controller:', error);
+        console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+        
+        res.status(error.status || 500).json({
+            message: error.message || 'Error fetching users',
+            error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
-
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
 };
 
-// @desc    Deactivate user account
-// @route   PUT /api/users/deactivate
-// @access  Private
-export const deactivateAccount = async (req, res) => {
-  try {
-    // Use UserService to deactivate user
-    await UserService.deactivateUser(req.user._id);
-
-    // Clear cookies
-    res.clearCookie("accessToken");
-    res.clearCookie("refreshToken");
-
-    res.json({
-      success: true,
-      message: "Account deactivated successfully",
-    });
-  } catch (error) {
-    console.error("Deactivate account error:", error);
-    
-    // Handle custom errors from UserService
-    if (error.isOperational) {
-      return res.status(error.statusCode).json({
-        success: false,
-        message: error.message,
-        errorCode: error.errorCode
-      });
+// Search users (admin only)
+const searchUsers = async (req, res) => {
+    try {
+        const { query } = req.query;
+        const users = await UserService.searchUsers(query);
+        res.json(users);
+    } catch (error) {
+        console.error('Error in searchUsers:', error);
+        res.status(error.status || 500).json({
+            message: error.message || 'Error searching users'
+        });
     }
-
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
 };
 
-// @desc    Get all users (Admin only)
-// @route   GET /api/users
-// @access  Private/Admin
-export const getAllUsers = async (req, res) => {
-  try {
-    // Use UserService to get all users with pagination
-    const result = await UserService.getAllUsers({
-      page: req.query.page,
-      limit: req.query.limit
-    });
-
-    res.json({
-      success: true,
-      ...result,
-    });
-  } catch (error) {
-    console.error("Get all users error:", error);
-    
-    // Handle custom errors from UserService
-    if (error.isOperational) {
-      return res.status(error.statusCode).json({
-        success: false,
-        message: error.message,
-        errorCode: error.errorCode
-      });
+// Get user stats (admin only)
+const getUserStats = async (req, res) => {
+    try {
+        const stats = await UserService.getUserStats();
+        res.json({ stats });
+    } catch (error) {
+        console.error('Error in getUserStats:', error);
+        res.status(error.status || 500).json({
+            message: error.message || 'Error fetching user stats'
+        });
     }
-
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
 };
 
-// @desc    Search users (Admin only)
-// @route   GET /api/users/search
-// @access  Private/Admin
-export const searchUsers = async (req, res) => {
-  try {
-    const { email, name, isActive } = req.query;
-    
-    const searchCriteria = {};
-    if (email) searchCriteria.email = email;
-    if (name) searchCriteria.name = name;
-    if (isActive !== undefined) searchCriteria.isActive = isActive === 'true';
-
-    // Use UserService to search users
-    const users = await UserService.searchUsers(searchCriteria);
-
-    res.json({
-      success: true,
-      users,
-      count: users.length
-    });
-  } catch (error) {
-    console.error("Search users error:", error);
-    
-    // Handle custom errors from UserService
-    if (error.isOperational) {
-      return res.status(error.statusCode).json({
-        success: false,
-        message: error.message,
-        errorCode: error.errorCode
-      });
+// Get user by ID (admin only)
+const getUserById = async (req, res) => {
+    try {
+        const user = await UserService.getUserById(req.params.id, true);
+        res.json(user);
+    } catch (error) {
+        console.error('Error in getUserById:', error);
+        res.status(error.status || 500).json({
+            message: error.message || 'Error fetching user'
+        });
     }
-
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
 };
 
-// @desc    Get user statistics (Admin only)
-// @route   GET /api/users/stats
-// @access  Private/Admin
-export const getUserStats = async (req, res) => {
-  try {
-    // Use UserService to get user statistics
-    const stats = await UserService.getUserStats();
-
-    res.json({
-      success: true,
-      stats
-    });
-  } catch (error) {
-    console.error("Get user stats error:", error);
-    
-    // Handle custom errors from UserService
-    if (error.isOperational) {
-      return res.status(error.statusCode).json({
-        success: false,
-        message: error.message,
-        errorCode: error.errorCode
-      });
+// Update user by ID (admin only)
+const updateUserById = async (req, res) => {
+    try {
+        const updatedUser = await UserService.updateUserById(req.params.id, req.body);
+        res.json(updatedUser);
+    } catch (error) {
+        console.error('Error in updateUserById:', error);
+        res.status(error.status || 500).json({
+            message: error.message || 'Error updating user'
+        });
     }
+};
 
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
+// Delete user by ID (admin only)
+const deleteUserById = async (req, res) => {
+    try {
+        await UserService.deleteUserById(req.params.id);
+        res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error('Error in deleteUserById:', error);
+        res.status(error.status || 500).json({
+            message: error.message || 'Error deleting user'
+        });
+    }
+};
+
+// Get user bets (admin only)
+const getUserBets = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, status, dateRange, search } = req.query;
+        const result = await UserService.getUserBets(req.params.id, {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            status,
+            dateRange,
+            search
+        });
+        res.json(result);
+    } catch (error) {
+        console.error('Error in getUserBets:', error);
+        res.status(error.status || 500).json({
+            message: error.message || 'Error fetching user betting history'
+        });
+    }
+};
+
+// Change password
+const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        await UserService.changePassword(req.user.id, currentPassword, newPassword);
+        res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+        console.error('Error in changePassword:', error);
+        res.status(error.status || 500).json({
+            message: error.message || 'Error changing password'
+        });
+    }
+};
+
+// Deactivate account
+const deactivateAccount = async (req, res) => {
+    try {
+        await UserService.deactivateAccount(req.user.id);
+        
+        // Clear cookies
+        res.clearCookie('accessToken');
+        res.clearCookie('refreshToken');
+        
+        res.json({ message: 'Account deactivated successfully' });
+    } catch (error) {
+        console.error('Error in deactivateAccount:', error);
+        res.status(error.status || 500).json({
+            message: error.message || 'Error deactivating account'
+        });
+    }
+};
+
+// Export all controller functions
+export {
+    getUserProfile,
+    updateProfile,
+    getAllUsers,
+    searchUsers,
+    getUserStats,
+    getUserById,
+    updateUserById,
+    deleteUserById,
+    getUserBets,
+    changePassword,
+    deactivateAccount
 };

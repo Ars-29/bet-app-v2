@@ -275,6 +275,11 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.message = action.payload.message;
         state.error = null;
+        
+        // If user is admin, redirect to admin dashboard
+        if (action.payload.user.role === 'admin') {
+          window.location.href = '/admin';
+        }
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;

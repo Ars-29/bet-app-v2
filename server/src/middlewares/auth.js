@@ -16,10 +16,18 @@ export const authenticateToken = async (req, res, next) => {
     const decoded = verifyToken(token);
     const user = await User.findById(decoded.userId).select("-password");
 
-    if (!user || !user.isActive) {
+    if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid token or user not active.",
+        message: "Invalid token or user not found.",
+      });
+    }
+
+    // Only check isActive for non-admin users
+    if (!user.isActive && user.role !== 'admin') {
+      return res.status(401).json({
+        success: false,
+        message: "Account is not active.",
       });
     }
 
@@ -36,12 +44,12 @@ export const authenticateToken = async (req, res, next) => {
 
 // Middleware to check if user is admin
 export const requireAdmin = (req, res, next) => {
-  if (req.user && req.user.role === "admin") {
+  if (req.user && req.user.role === 'admin') {
     next();
   } else {
-    return res.status(403).json({
+    res.status(403).json({
       success: false,
-      message: "Access denied. Admin privileges required.",
+      message: "Access denied. Admin role required.",
     });
   }
 };

@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import { CustomError } from "../utils/customErrors.js";
+import Bet from "../models/Bet.js";
 
 class UserService {
   constructor() {
@@ -158,9 +159,10 @@ class UserService {
   /**
    * Get user by ID
    * @param {string} userId - User ID
+   * @param {boolean} isAdmin - Whether the request is from an admin
    * @returns {Promise<Object>} User object
    */
-  async getUserById(userId) {
+  async getUserById(userId, isAdmin = false) {
     try {
       const user = await User.findById(userId).select("-password");
 
@@ -172,7 +174,8 @@ class UserService {
         );
       }
 
-      if (!user.isActive) {
+      // Only check isActive for non-admin requests
+      if (!isAdmin && !user.isActive) {
         throw new CustomError(
           "User Data: User account is not active",
           401,
@@ -401,40 +404,51 @@ class UserService {
   }
 
   /**
-   * Get all users with pagination (Admin only)
+   * Get all users with pagination
    * @param {Object} options - Pagination options
-   * @returns {Promise<Object>} Users list with pagination info
+   * @param {number} options.page - Page number
+   * @param {number} options.limit - Items per page
+   * @returns {Promise<Object>} Paginated users and pagination info
    */
-  async getAllUsers(options = {}) {
+  async getAllUsers() {
     try {
-      const page = parseInt(options.page) || 1;
-      const limit = parseInt(options.limit) || 10;
-      const skip = (page - 1) * limit;
-
-      const users = await User.find({})
-        .select("-password")
-        .skip(skip)
-        .limit(limit)
-        .sort({ createdAt: -1 });
-
+      console.log("🔍 UserService.getAllUsers called");
+      
+      // Get total count of users
+      console.log("📊 Fetching total users count...");
       const totalUsers = await User.countDocuments();
+      console.log("📊 Total users count:", totalUsers);
+
+      // Get all users
+      console.log("📊 Fetching all users...");
+      const users = await User.find()
+        .select("-password")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      console.log("✅ Users fetched successfully:", users.length);
 
       const result = {
         users,
-        pagination: {
-          currentPage: page,
-          totalPages: Math.ceil(totalUsers / limit),
-          totalUsers,
-          hasNextPage: page < Math.ceil(totalUsers / limit),
-          hasPrevPage: page > 1,
-        },
+        totalUsers
       };
-      console.log(`✅ Retrieved ${users.length} users (page ${page})`);
+
+      console.log("✅ Returning result with", users.length, "users");
       return result;
     } catch (error) {
-      console.error("❌ Error fetching all users:", error.message);
+      console.error("❌ Error in UserService.getAllUsers:", error);
+      console.error("Error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+
+      if (error instanceof CustomError) {
+        throw error;
+      }
+
       throw new CustomError(
-        "User Management: Failed to fetch users",
+        "User Data: Failed to fetch users",
         500,
         "INTERNAL_ERROR"
       );
@@ -442,39 +456,40 @@ class UserService {
   }
 
   /**
-   * Search users by criteria
-   * @param {Object} searchCriteria - Search parameters
+   * Search users by name
+   * @param {string} query - Search query
    * @returns {Promise<Array>} Array of matching users
    */
-  async searchUsers(searchCriteria) {
+  async searchUsers(query) {
     try {
-      const { email, name, isActive } = searchCriteria;
-      const query = {};
-
-      if (email) {
-        query.email = { $regex: email, $options: "i" };
+      if (!query || typeof query !== 'string') {
+        throw new CustomError(
+          "User Search: Search query is required",
+          400,
+          "VALIDATION_ERROR"
+        );
       }
 
-      if (name) {
-        query.$or = [
-          { firstName: { $regex: name, $options: "i" } },
-          { lastName: { $regex: name, $options: "i" } },
-        ];
-      }
-
-      if (typeof isActive === "boolean") {
-        query.isActive = isActive;
-      }
-
-      const users = await User.find(query)
+      const users = await User.find({
+        $or: [
+          { firstName: { $regex: query, $options: 'i' } },
+          { lastName: { $regex: query, $options: 'i' } },
+          { email: { $regex: query, $options: 'i' } }
+        ]
+      })
         .select("-password")
-        .sort({ createdAt: -1 })
-        .limit(50); // Limit search results      console.log(`✅ Found ${users.length} users matching search criteria`);
+        .sort({ createdAt: -1 });
+
       return users;
     } catch (error) {
       console.error("❌ Error searching users:", error.message);
+
+      if (error instanceof CustomError) {
+        throw error;
+      }
+
       throw new CustomError(
-        "User Search: Failed to search users",
+        "User Data: Failed to search users",
         500,
         "INTERNAL_ERROR"
       );
@@ -517,6 +532,283 @@ class UserService {
         500,
         "INTERNAL_ERROR"
       );
+    }
+  }
+
+  /**
+   * Update user by ID (Admin only)
+   * @param {string} userId - User ID
+   * @param {Object} updateData - Data to update
+   * @returns {Promise<Object>} Updated user object
+   */
+  async updateUserById(userId, updateData) {
+    try {
+      if (!userId) {
+        throw new CustomError(
+          "User Update: User ID is required",
+          400,
+          "VALIDATION_ERROR"
+        );
+      }
+
+      const allowedUpdates = [
+        "firstName",
+        "lastName",
+        "email",
+        "phoneNumber",
+        "isActive",
+        "role",
+        "dateOfBirth",
+        "gender",
+      ];
+      const updates = {};
+
+      // Filter only allowed updates
+      Object.keys(updateData).forEach((key) => {
+        if (allowedUpdates.includes(key)) {
+          if (typeof updateData[key] === "string") {
+            updates[key] = updateData[key].trim();
+          } else {
+            updates[key] = updateData[key];
+          }
+        }
+      });
+
+      // Validate date of birth if provided
+      if (updates.dateOfBirth) {
+        const user = await User.findById(userId);
+        if (!user) {
+          throw new CustomError(
+            "User Update: User not found",
+            404,
+            "USER_NOT_FOUND"
+          );
+        }
+
+        const tempUser = new User({
+          ...user.toObject(),
+          dateOfBirth: updates.dateOfBirth,
+        });
+
+        if (!tempUser.isOfLegalAge()) {
+          throw new CustomError(
+            "User Update: User must be at least 18 years old",
+            400,
+            "VALIDATION_ERROR"
+          );
+        }
+      }
+
+      // Check if email is being updated and if it's already in use
+      if (updates.email) {
+        const existingUser = await User.findOne({ 
+          email: updates.email.toLowerCase(),
+          _id: { $ne: userId }
+        });
+        if (existingUser) {
+          throw new CustomError(
+            "User Update: Email already in use",
+            409,
+            "DUPLICATE_EMAIL"
+          );
+        }
+        updates.email = updates.email.toLowerCase();
+      }
+
+      // Validate role if being updated
+      if (updates.role && !['user', 'admin'].includes(updates.role)) {
+        throw new CustomError(
+          "User Update: Invalid role specified",
+          400,
+          "VALIDATION_ERROR"
+        );
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(userId, updates, {
+        new: true,
+        runValidators: true,
+      }).select("-password");
+
+      if (!updatedUser) {
+        throw new CustomError(
+          "User Update: User not found",
+          404,
+          "USER_NOT_FOUND"
+        );
+      }
+
+      console.log(`✅ User updated by admin: ${updatedUser.email}`);
+      return updatedUser;
+    } catch (error) {
+      console.error("❌ Error updating user:", error.message);
+
+      if (error instanceof CustomError) {
+        throw error;
+      }
+
+      if (error.name === "ValidationError") {
+        const errors = Object.values(error.errors).map((err) => err.message);
+        throw new CustomError(
+          `User Update: Validation failed - ${errors.join(", ")}`,
+          400,
+          "VALIDATION_ERROR"
+        );
+      }
+
+      throw new CustomError(
+        "User Update: Failed to update user",
+        500,
+        "INTERNAL_ERROR"
+      );
+    }
+  }
+
+  async getUserBets(userId, options) {
+    try {
+      const { page, limit, status, dateRange, search } = options;
+      const skip = (page - 1) * limit;
+
+      // Build query
+      const query = { userId };
+      
+      if (status && status !== 'all') {
+        query.status = status;
+      }
+
+      if (dateRange && dateRange !== 'all') {
+        const now = new Date();
+        switch (dateRange) {
+          case 'today':
+            query.createdAt = {
+              $gte: new Date(now.setHours(0, 0, 0, 0))
+            };
+            break;
+          case 'week':
+            query.createdAt = {
+              $gte: new Date(now.setDate(now.getDate() - 7))
+            };
+            break;
+          case 'month':
+            query.createdAt = {
+              $gte: new Date(now.setMonth(now.getMonth() - 1))
+            };
+            break;
+        }
+      }
+
+      if (search) {
+        query.$or = [
+          { event: { $regex: search, $options: 'i' } },
+          { selection: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      // Get total count for pagination
+      const total = await Bet.countDocuments(query);
+
+      // Get bets with pagination
+      const bets = await Bet.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+      return {
+        bets,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      };
+    } catch (error) {
+      console.error('Error in getUserBets:', error);
+      throw new Error('Error fetching user betting history');
+    }
+  }
+
+  async deleteUserById(userId) {
+    try {
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new CustomError('User not found', 404);
+      }
+
+      // Check if user has any active bets
+      const activeBets = await Bet.find({ 
+        userId, 
+        status: 'pending' 
+      });
+
+      if (activeBets.length > 0) {
+        throw new CustomError('Cannot delete user with active bets', 400);
+      }
+
+      // Soft delete by updating status
+      user.status = 'deleted';
+      user.deletedAt = new Date();
+      await user.save();
+
+      return { message: 'User deleted successfully' };
+    } catch (error) {
+      console.error('Error in deleteUserById:', error);
+      throw error;
+    }
+  }
+
+  async changePassword(userId, currentPassword, newPassword) {
+    try {
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new CustomError('User not found', 404);
+      }
+
+      // Verify current password
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        throw new CustomError('Current password is incorrect', 400);
+      }
+
+      // Hash new password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+      // Update password
+      user.password = hashedPassword;
+      await user.save();
+
+      return { message: 'Password changed successfully' };
+    } catch (error) {
+      console.error('Error in changePassword:', error);
+      throw error;
+    }
+  }
+
+  async deactivateAccount(userId) {
+    try {
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new CustomError('User not found', 404);
+      }
+
+      // Check if user has any active bets
+      const activeBets = await Bet.find({ 
+        userId, 
+        status: 'pending' 
+      });
+
+      if (activeBets.length > 0) {
+        throw new CustomError('Cannot deactivate account with active bets', 400);
+      }
+
+      // Update user status
+      user.status = 'inactive';
+      user.deactivatedAt = new Date();
+      await user.save();
+
+      return { message: 'Account deactivated successfully' };
+    } catch (error) {
+      console.error('Error in deactivateAccount:', error);
+      throw error;
     }
   }
 }

@@ -3,18 +3,13 @@ import "./globals.css";
 import { ReduxProvider } from "@/components/ReduxProvider";
 import { SidebarProvider } from "@/contexts/SidebarContext.js";
 import AuthProvider from "@/components/auth/AuthProvider";
-import Header from "@/components/Header";
-import SidebarWrapper from "@/components/SidebarWrapper";
-import ContentWrapper from "@/components/ContentWrapper";
+import LayoutWrapper from "@/components/LayoutWrapper";
 import { Toaster } from "@/components/ui/sonner";
+import { metadata } from "./metadata";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
-  title: "BetApp - Sports Betting Platform",
-  description:
-    "Professional sports betting platform with live odds and markets",
-};
+export { metadata };
 
 export default function RootLayout({ children }) {
   return (
@@ -23,21 +18,7 @@ export default function RootLayout({ children }) {
         <ReduxProvider>
           <AuthProvider>
             <SidebarProvider>
-              <div className="bg-gray-100 h-screen flex flex-col">
-                {/* Header */}
-                <div className="flex-shrink-0">
-                  <Header />
-                </div>
-
-                {/* Main Content Area */}
-                <div className="flex flex-1 overflow-hidden">
-                  {/* Fixed Sidebar */}
-                  <SidebarWrapper />
-
-                  {/* Main Content Area with Secondary Navigation */}
-                  <ContentWrapper>{children}</ContentWrapper>
-                </div>
-              </div>
+              <LayoutWrapper>{children}</LayoutWrapper>
             </SidebarProvider>
           </AuthProvider>
         </ReduxProvider>
