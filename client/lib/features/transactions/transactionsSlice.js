@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-
-// API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+import apiClient from "@/config/axios";
 
 // Mock transaction data
 const mockTransactions = [
@@ -128,43 +126,48 @@ export const fetchTransactions = createAsyncThunk(
   "transactions/fetchTransactions",
   async (filters = {}, { rejectWithValue }) => {
     try {
-      // For now, return mock data
-      // TODO: Replace with actual API call when backend is ready
-      const { type, dateFrom, dateTo } = filters;
-      
-      let filteredTransactions = [...mockTransactions];
-      
-      if (type && type !== 'all') {
-        filteredTransactions = filteredTransactions.filter(t => t.type === type);
-      }
-  
-      
-      if (dateFrom) {
-        filteredTransactions = filteredTransactions.filter(t => 
-          new Date(t.dateTime) >= new Date(dateFrom)
-        );
-      }
-      
-      if (dateTo) {
-        filteredTransactions = filteredTransactions.filter(t => 
-          new Date(t.dateTime) <= new Date(dateTo)
-        );
-      }
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      return {
-        success: true,
-        data: filteredTransactions,
-        total: filteredTransactions.length
-      };
+      const response = await apiClient.get("/transactions", { params: filters });
+      return response.data;
     } catch (error) {
-      return rejectWithValue({
-        success: false,
-        message: "Failed to fetch transactions",
-        error: error.message,
-      });
+      // If API endpoint doesn't exist yet, fall back to mock data
+      if (error.response?.status === 404) {
+        const { type, dateFrom, dateTo } = filters;
+        
+        let filteredTransactions = [...mockTransactions];
+        
+        if (type && type !== 'all') {
+          filteredTransactions = filteredTransactions.filter(t => t.type === type);
+        }
+    
+        if (dateFrom) {
+          filteredTransactions = filteredTransactions.filter(t => 
+            new Date(t.dateTime) >= new Date(dateFrom)
+          );
+        }
+        
+        if (dateTo) {
+          filteredTransactions = filteredTransactions.filter(t => 
+            new Date(t.dateTime) <= new Date(dateTo)
+          );
+        }
+        
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        return {
+          success: true,
+          data: filteredTransactions,
+          total: filteredTransactions.length
+        };
+      }
+
+      return rejectWithValue(
+        error.response?.data || {
+          success: false,
+          message: "Failed to fetch transactions",
+          error: error.message,
+        }
+      );
     }
   }
 );
@@ -172,42 +175,49 @@ export const fetchTransactions = createAsyncThunk(
 export const fetchBettingHistory = createAsyncThunk(
   "transactions/fetchBettingHistory",
   async (filters = {}, { rejectWithValue }) => {
-    try {      // For now, return mock data
-      // TODO: Replace with actual API call when backend is ready
-      const { type, dateFrom, dateTo } = filters;
-      
-      let filteredBets = [...mockBettingHistory];
-      
-      if (type && type !== 'all') {
-        filteredBets = filteredBets.filter(b => b.type === type);
-      }
-      
-      if (dateFrom) {
-        filteredBets = filteredBets.filter(b => 
-          new Date(b.dateTime) >= new Date(dateFrom)
-        );
-      }
-      
-      if (dateTo) {
-        filteredBets = filteredBets.filter(b => 
-          new Date(b.dateTime) <= new Date(dateTo)
-        );
-      }
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      return {
-        success: true,
-        data: filteredBets,
-        total: filteredBets.length
-      };
+    try {
+      const response = await apiClient.get("/betting-history", { params: filters });
+      return response.data;
     } catch (error) {
-      return rejectWithValue({
-        success: false,
-        message: "Failed to fetch betting history",
-        error: error.message,
-      });
+      // If API endpoint doesn't exist yet, fall back to mock data
+      if (error.response?.status === 404) {
+        const { type, dateFrom, dateTo } = filters;
+        
+        let filteredBets = [...mockBettingHistory];
+        
+        if (type && type !== 'all') {
+          filteredBets = filteredBets.filter(b => b.type === type);
+        }
+        
+        if (dateFrom) {
+          filteredBets = filteredBets.filter(b => 
+            new Date(b.dateTime) >= new Date(dateFrom)
+          );
+        }
+        
+        if (dateTo) {
+          filteredBets = filteredBets.filter(b => 
+            new Date(b.dateTime) <= new Date(dateTo)
+          );
+        }
+        
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        return {
+          success: true,
+          data: filteredBets,
+          total: filteredBets.length
+        };
+      }
+
+      return rejectWithValue(
+        error.response?.data || {
+          success: false,
+          message: "Failed to fetch betting history",
+          error: error.message,
+        }
+      );
     }
   }
 );
