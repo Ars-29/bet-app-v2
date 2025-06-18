@@ -375,25 +375,42 @@ class UserService {
    * @param {number} options.page - Page number
    * @param {number} options.limit - Items per page
    * @returns {Promise<Object>} Paginated users and pagination info
-   */
-  async getAllUsers() {
+   */  async getAllUsers(options = {}) {
     try {
-      console.log("🔍 UserService.getAllUsers called");
+      console.log("🔍 UserService.getAllUsers called with options:", options);
+      
+      const { page = 1, limit = 10 } = options;
+      const skip = (page - 1) * limit;
       
       // Get total count of users
       console.log("📊 Fetching total users count...");
       const totalUsers = await User.countDocuments();
-      console.log("📊 Total users count:", totalUsers);      // Get all users including passwords for admin
-      console.log("📊 Fetching all users...");
+      console.log("📊 Total users count:", totalUsers);
+      
+      // Calculate pagination info
+      const totalPages = Math.ceil(totalUsers / limit);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+      
+      // Get paginated users
+      console.log("📊 Fetching users with pagination...");
       const users = await User.find()
         .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
         .lean();
 
       console.log("✅ Users fetched successfully:", users.length);
 
       const result = {
         users,
-        totalUsers
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages,
+          totalUsers,
+          hasNextPage,
+          hasPrevPage
+        }
       };
 
       console.log("✅ Returning result with", users.length, "users");
@@ -440,7 +457,7 @@ class UserService {
       })
         .sort({ createdAt: -1 });
 
-      return users;
+      return { users };
     } catch (error) {
       console.error("❌ Error searching users:", error.message);
 

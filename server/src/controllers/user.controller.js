@@ -35,10 +35,12 @@ const updateProfile = async (req, res) => {
 // Get all users (admin only)
 const getAllUsers = async (req, res) => {
     try {
-        console.log('�� getAllUsers called');
+        console.log('📋 getAllUsers called');
         console.log('🔍 User making request:', req.user);
+        console.log('📊 Query parameters:', req.query);
         
-        const result = await UserService.getAllUsers();
+        const { page, limit } = req.query;
+        const result = await UserService.getAllUsers({ page, limit });
         console.log('✅ Successfully fetched users:', result);
         
         res.json(result);
