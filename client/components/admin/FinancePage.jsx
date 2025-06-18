@@ -1,12 +1,51 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar as CalendarIcon, Filter, Download, Loader2, ArrowUpDown, TrendingUp, TrendingDown, User, Users, Search, Sliders, X, Clock, ChevronLeft, ChevronRight, Wallet, DollarSign, BarChart4 } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Calendar as CalendarIcon,
+  Filter,
+  Download,
+  Loader2,
+  ArrowUpDown,
+  TrendingUp,
+  TrendingDown,
+  User,
+  Users,
+  Search,
+  Sliders,
+  X,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  Wallet,
+  DollarSign,
+  BarChart4,
+} from "lucide-react";
 import {
   Drawer,
   DrawerClose,
@@ -24,7 +63,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { Badge } from '@/components/ui/badge';
+import { Badge } from "@/components/ui/badge";
 import {
   Command,
   CommandEmpty,
@@ -35,194 +74,125 @@ import {
 } from "@/components/ui/command";
 import { Check } from "lucide-react";
 
-// Generate more mock data for better demonstration
-const generateMockTransactions = (count) => {
-  const types = ['deposit', 'withdrawal', 'bet', 'win'];
-  const users = ['John Doe', 'Jane Smith', 'Bob Lee', 'Alice Kim', 'Tom Clark', 'Sarah Johnson', 'Mike Wilson'];
-  const descriptions = [
-    'Monthly deposit', 'Withdrawal to bank account', 'Bet on Match A vs B', 'Win from horse racing',
-    'Weekly deposit', 'Withdrawal to PayPal', 'Bet on Championship', 'Win from football match',
-    'Bonus credit', 'Emergency withdrawal', 'Bet on Tournament', 'Win from lottery'
-  ];
-  
-  const transactions = [];
-  for (let i = 1; i <= count; i++) {
-    const id = `T${1000 + i}`;
-    const type = types[Math.floor(Math.random() * types.length)];
-    const userName = users[Math.floor(Math.random() * users.length)];
-    const description = descriptions[Math.floor(Math.random() * descriptions.length)];
-    
-    // Set amount based on transaction type
-    let amount;
-    switch (type) {
-      case 'deposit':
-        amount = Math.floor(Math.random() * 500) + 20;
-        break;
-      case 'withdrawal':
-        amount = -(Math.floor(Math.random() * 300) + 10);
-        break;
-      case 'bet':
-        amount = -(Math.floor(Math.random() * 100) + 5);
-        break;
-      case 'win':
-        amount = Math.floor(Math.random() * 1000) + 50;
-        break;
-      default:
-        amount = 0;
-    }
-    
-    const date = new Date();
-    date.setDate(date.getDate() - Math.floor(Math.random() * 30));
-    const dateTime = date.toISOString();
-    
-    transactions.push({ id, type, amount, userName, dateTime, description });
-  }
-  return transactions;
-};
-
-const mockTransactions = generateMockTransactions(50);
-
-// Get unique user names for the filter
-const uniqueUsers = [...new Set(mockTransactions.map(t => t.userName))];
-
-// Sum up the transaction amounts by type
-const mockStats = {
-  deposits: mockTransactions
-    .filter(t => t.type === 'deposit')
-    .reduce((sum, t) => sum + t.amount, 0),
-  withdrawals: Math.abs(mockTransactions
-    .filter(t => t.type === 'withdrawal')
-    .reduce((sum, t) => sum + t.amount, 0)),
-  bets: Math.abs(mockTransactions
-    .filter(t => t.type === 'bet')
-    .reduce((sum, t) => sum + t.amount, 0)),
-  wins: mockTransactions
-    .filter(t => t.type === 'win')
-    .reduce((sum, t) => sum + t.amount, 0),
-  totalTransactions: mockTransactions.length,
-  depositsCount: mockTransactions.filter(t => t.type === 'deposit').length,
-  withdrawalsCount: mockTransactions.filter(t => t.type === 'withdrawal').length,
-  betsCount: mockTransactions.filter(t => t.type === 'bet').length,
-  winsCount: mockTransactions.filter(t => t.type === 'win').length,
-  // Calculate profits: wins - bets
-  profits: mockTransactions
-    .filter(t => t.type === 'win')
-    .reduce((sum, t) => sum + t.amount, 0) - 
-    Math.abs(mockTransactions
-    .filter(t => t.type === 'bet')
-    .reduce((sum, t) => sum + t.amount, 0)),
-  // Calculate current balance: deposits - withdrawals + (wins - bets)
-  currentBalance: mockTransactions
-    .filter(t => t.type === 'deposit')
-    .reduce((sum, t) => sum + t.amount, 0) - 
-    Math.abs(mockTransactions
-    .filter(t => t.type === 'withdrawal')
-    .reduce((sum, t) => sum + t.amount, 0)) +
-    (mockTransactions
-    .filter(t => t.type === 'win')
-    .reduce((sum, t) => sum + t.amount, 0) - 
-    Math.abs(mockTransactions
-    .filter(t => t.type === 'bet')
-    .reduce((sum, t) => sum + t.amount, 0)))
-};
+// Redux imports
+import {
+  fetchFinanceTransactions,
+  fetchFinancialSummary,
+  setFilters,
+  clearError,
+  resetFilters,
+} from "@/lib/features/finance/financeSlice";
 
 const FinancePage = () => {
-  // State for search, filter and pagination
-  const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
+  const dispatch = useDispatch();
+
+  // Redux state
+  const { transactions, summary, pagination, loading, error, filters } =
+    useSelector((state) => state.finance);
+  // Local state for UI components
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [dateRange, setDateRange] = useState({ from: null, to: null });
-  const [selectedUser, setSelectedUser] = useState('all');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [selectedUser, setSelectedUser] = useState("all");
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState(0);
-  const [sortColumn, setSortColumn] = useState('dateTime');
-  const [sortDirection, setSortDirection] = useState('desc');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  
-  // Filter transactions based on filters
+  const [sortColumn, setSortColumn] = useState("createdAt");
+  const [sortDirection, setSortDirection] = useState("desc");
+
+  // Get unique user names for the filter
+  const uniqueUsers = useMemo(() => {
+    const users = transactions.map((t) =>
+      t.user?.firstName && t.user?.lastName
+        ? `${t.user.firstName} ${t.user.lastName}`
+        : t.user?.email || "Unknown User"
+    );
+    return [...new Set(users)];
+  }, [transactions]);
+
+  // Load data on component mount
+  useEffect(() => {
+    dispatch(fetchFinancialSummary());
+    dispatch(fetchFinanceTransactions(filters));
+  }, [dispatch]);
+
+  // Refetch transactions when filters change
+  useEffect(() => {
+    const apiFilters = {
+      ...filters,
+      type: typeFilter !== "all" ? typeFilter : "",
+      search: searchQuery,
+      dateFrom: dateRange.from ? dateRange.from.toISOString() : "",
+      dateTo: dateRange.to ? dateRange.to.toISOString() : "",
+      sortBy: sortColumn,
+      sortOrder: sortDirection,
+    };
+
+    dispatch(setFilters(apiFilters));
+    dispatch(fetchFinanceTransactions(apiFilters));
+  }, [
+    dispatch,
+    typeFilter,
+    searchQuery,
+    dateRange,
+    sortColumn,
+    sortDirection,
+    pagination.currentPage,
+  ]);
+
+  // Count active filters
+  useEffect(() => {
+    let count = 0;
+    if (typeFilter !== "all") count++;
+    if (selectedUser !== "all") count++;
+    if (dateRange.from || dateRange.to) count++;
+    if (searchQuery) count++;
+    setActiveFilters(count);
+  }, [typeFilter, selectedUser, dateRange, searchQuery]);
+  // Filter transactions locally for user selection (since API doesn't support user filtering yet)
   const filteredTransactions = useMemo(() => {
-    return mockTransactions.filter(transaction => {
-      // Filter by search query
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        return transaction.id.toLowerCase().includes(query) || 
-              transaction.userName.toLowerCase().includes(query) || 
-              transaction.description.toLowerCase().includes(query);
-      }
-      
-      // Filter by type
-      if (typeFilter !== 'all' && transaction.type !== typeFilter) {
-        return false;
-      }
-      
-      // Filter by user
-      if (selectedUser !== 'all' && transaction.userName !== selectedUser) {
-        return false;
-      }
-      
-      // Filter by date range
-      if (dateRange.from) {
-        const fromDate = new Date(dateRange.from);
-        const transactionDate = new Date(transaction.dateTime);
-        if (transactionDate < fromDate) return false;
-      }
-      
-      if (dateRange.to) {
-        const toDate = new Date(dateRange.to);
-        toDate.setHours(23, 59, 59);
-        const transactionDate = new Date(transaction.dateTime);
-        if (transactionDate > toDate) return false;
-      }
-      
-      return true;
+    if (selectedUser === "all") {
+      return transactions;
+    }
+
+    return transactions.filter((transaction) => {
+      const userName =
+        transaction.user?.firstName && transaction.user?.lastName
+          ? `${transaction.user.firstName} ${transaction.user.lastName}`
+          : transaction.user?.email || "Unknown User";
+      return userName === selectedUser;
     });
-  }, [searchQuery, typeFilter, selectedUser, dateRange]);
+  }, [transactions, selectedUser]);
 
-  // Sort transactions
-  const sortedTransactions = useMemo(() => {
-    return [...filteredTransactions].sort((a, b) => {
-      const factor = sortDirection === 'asc' ? 1 : -1;
-      
-      if (sortColumn === 'amount') {
-        return (a.amount - b.amount) * factor;
-      }
-      
-      if (sortColumn === 'dateTime') {
-        return (new Date(a.dateTime) - new Date(b.dateTime)) * factor;
-      }
-
-      const aVal = a[sortColumn]?.toString().toLowerCase() || '';
-      const bVal = b[sortColumn]?.toString().toLowerCase() || '';
-      
-      return aVal.localeCompare(bVal) * factor;
-    });
-  }, [filteredTransactions, sortColumn, sortDirection]);
-
-  // Paginate transactions
-  const paginatedTransactions = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    const end = start + pageSize;
-    return sortedTransactions.slice(start, end);
-  }, [sortedTransactions, page, pageSize]);
-
-  const totalPages = Math.ceil(sortedTransactions.length / pageSize);
+  // No need for manual sorting as it's handled by the API
+  const sortedTransactions = filteredTransactions;
+  // No need for local pagination since it's handled by the API
+  const paginatedTransactions = sortedTransactions;
 
   // Handle page change
   const handlePageChange = (newPage) => {
-    if (newPage > 0 && newPage <= totalPages) {
-      setPage(newPage);
+    if (newPage > 0 && newPage <= pagination.totalPages) {
+      const apiFilters = {
+        ...filters,
+        page: newPage,
+        type: typeFilter !== "all" ? typeFilter : "",
+        search: searchQuery,
+        dateFrom: dateRange.from ? dateRange.from.toISOString() : "",
+        dateTo: dateRange.to ? dateRange.to.toISOString() : "",
+        sortBy: sortColumn,
+        sortOrder: sortDirection,
+      };
+      dispatch(setFilters(apiFilters));
+      dispatch(fetchFinanceTransactions(apiFilters));
     }
   };
 
   // Handle sort
   const handleSort = (column) => {
     if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortColumn(column);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
   };
 
@@ -230,76 +200,60 @@ const FinancePage = () => {
   const formatAmount = (amount) => {
     const isPositive = amount >= 0;
     return (
-      <span className={`font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-        {isPositive ? '+' : ''}${Math.abs(amount).toFixed(2)}
+      <span
+        className={`font-medium ${isPositive ? "text-green-600" : "text-red-600"
+          }`}
+      >
+        {isPositive ? "+" : ""}${Math.abs(amount).toFixed(2)}
       </span>
     );
   };
-
   const formatDateTime = (dateTime) => {
     const date = new Date(dateTime);
     return {
-      date: date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
+      date: date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
       }),
-      time: date.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      })
+      time: date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
   };
 
   const getTypeIcon = (type) => {
     switch (type) {
-      case 'deposit':
+      case "deposit":
         return <TrendingUp className="h-4 w-4 text-green-600" />;
-      case 'withdrawal':
+      case "withdraw":
         return <TrendingDown className="h-4 w-4 text-red-600" />;
-      case 'bet':
-        return <TrendingDown className="h-4 w-4 text-orange-600" />;
-      case 'win':
-        return <TrendingUp className="h-4 w-4 text-green-600" />;
       default:
         return <ArrowUpDown className="h-4 w-4 text-gray-600" />;
     }
   };
 
   // Reset filters
-  const resetFilters = () => {
-    setTypeFilter('all');
+  const handleResetFilters = () => {
+    setTypeFilter("all");
     setDateRange({ from: null, to: null });
-    setSelectedUser('all');
+    setSelectedUser("all");
+    setSearchQuery("");
     setActiveFilters(0);
+    dispatch(resetFilters());
+    dispatch(fetchFinanceTransactions());
   };
 
   // Apply filters
   const applyFilters = () => {
     let count = 0;
-    if (typeFilter !== 'all') count++;
+    if (typeFilter !== "all") count++;
     if (dateRange.from || dateRange.to) count++;
-    if (selectedUser !== 'all') count++;
+    if (selectedUser !== "all") count++;
     setActiveFilters(count);
     setFilterDrawerOpen(false);
   };
-
-  if (error) {
-    return (
-      <div className="flex-1 bg-gray-100 p-6">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-red-600 mb-4">{error}</p>
-              <Button onClick={() => setError(null)} variant="outline">
-                Try Again
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -307,7 +261,9 @@ const FinancePage = () => {
         {/* Header with search and filter */}
         <header className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-4 md:mb-0">Finance Dashboard</h1>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-4 md:mb-0">
+              Finance Dashboard
+            </h1>
             <div className="flex gap-3 items-center">
               <div className="relative w-full md:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -318,12 +274,16 @@ const FinancePage = () => {
                   className="pl-10 pr-4 py-2 h-10 rounded-none border-gray-200 bg-white"
                 />
               </div>
-              
-              <Drawer open={filterDrawerOpen} onOpenChange={setFilterDrawerOpen} direction="right">
+
+              <Drawer
+                open={filterDrawerOpen}
+                onOpenChange={setFilterDrawerOpen}
+                direction="right"
+              >
                 <DrawerTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
+                  <Button
+                    variant="outline"
+                    size="icon"
                     className="h-10 w-10 rounded-none relative"
                   >
                     <Sliders className="h-4 w-4" />
@@ -339,19 +299,25 @@ const FinancePage = () => {
                     <DrawerHeader className="border-b border-gray-100 px-6 py-5">
                       <div className="flex items-center justify-between">
                         <div>
-                          <DrawerTitle className="text-xl font-semibold text-gray-900">Filters</DrawerTitle>
+                          <DrawerTitle className="text-xl font-semibold text-gray-900">
+                            Filters
+                          </DrawerTitle>
                           <DrawerDescription className="text-sm text-gray-500 mt-1">
                             Refine your transaction list
                           </DrawerDescription>
                         </div>
                         <DrawerClose asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full"
+                          >
                             <X className="h-4 w-4" />
                           </Button>
                         </DrawerClose>
                       </div>
                     </DrawerHeader>
-                    
+
                     <div className="flex-1 overflow-y-auto">
                       <div className="px-6 py-4 space-y-6">
                         {/* Transaction Type Filter */}
@@ -361,60 +327,60 @@ const FinancePage = () => {
                               <Filter className="h-4 w-4 text-gray-500" />
                               Transaction Type
                             </label>
-                            {typeFilter !== 'all' && (
+                            {typeFilter !== "all" && (
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors"
-                                onClick={() => setTypeFilter('all')}
+                                onClick={() => setTypeFilter("all")}
                               >
                                 <X className="h-3 w-3 mr-1" />
                                 Clear
                               </Button>
                             )}
                           </div>
-                          
-                          <Select value={typeFilter} onValueChange={setTypeFilter}>
-                            <SelectTrigger 
-                              className={`w-full h-10 px-3 hover:bg-transparent cursor-pointer rounded-none ${typeFilter !== 'all' ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50' : ''}`}
+
+                          <Select
+                            value={typeFilter}
+                            onValueChange={setTypeFilter}
+                          >
+                            <SelectTrigger
+                              className={`w-full h-10 px-3 hover:bg-transparent cursor-pointer rounded-none ${typeFilter !== "all"
+                                ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50"
+                                : ""
+                                }`}
                             >
                               <SelectValue placeholder="Select type" />
                             </SelectTrigger>
                             <SelectContent className="border border-gray-200 shadow-lg rounded-lg">
                               <SelectItem value="all" className="py-2 px-3">
-                                All Transactions
+                                All Transactions{" "}
                                 <span className="ml-2 text-xs bg-gray-100 px-2 py-0.5 rounded-full">
-                                  {mockStats.totalTransactions}
+                                  {summary.totalTransactions}
                                 </span>
                               </SelectItem>
-                              <SelectItem value="deposit" className="py-2 px-3 text-green-600">
-                                Deposits
+                              <SelectItem
+                                value="deposit"
+                                className="py-2 px-3 text-green-600"
+                              >
+                                Deposits{" "}
                                 <span className="ml-2 text-xs bg-green-50 px-2 py-0.5 rounded-full text-green-600">
-                                  {mockStats.depositsCount}
+                                  {summary.depositsCount}
                                 </span>
-                              </SelectItem>
-                              <SelectItem value="withdrawal" className="py-2 px-3 text-red-600">
+                              </SelectItem>{" "}
+                              <SelectItem
+                                value="withdraw"
+                                className="py-2 px-3 text-red-600"
+                              >
                                 Withdrawals
                                 <span className="ml-2 text-xs bg-red-50 px-2 py-0.5 rounded-full text-red-600">
-                                  {mockStats.withdrawalsCount}
-                                </span>
-                              </SelectItem>
-                              <SelectItem value="bet" className="py-2 px-3 text-orange-600">
-                                Bets
-                                <span className="ml-2 text-xs bg-orange-50 px-2 py-0.5 rounded-full text-orange-600">
-                                  {mockStats.betsCount}
-                                </span>
-                              </SelectItem>
-                              <SelectItem value="win" className="py-2 px-3 text-green-600">
-                                Wins
-                                <span className="ml-2 text-xs bg-green-50 px-2 py-0.5 rounded-full text-green-600">
-                                  {mockStats.winsCount}
+                                  {summary.withdrawalsCount}
                                 </span>
                               </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                        
+
                         {/* Date Range Filter */}
                         <div className="space-y-3 pt-2 border-t border-gray-100">
                           <div className="flex items-center justify-between">
@@ -427,26 +393,33 @@ const FinancePage = () => {
                                 variant="ghost"
                                 size="sm"
                                 className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors"
-                                onClick={() => setDateRange({ from: null, to: null })}
+                                onClick={() =>
+                                  setDateRange({ from: null, to: null })
+                                }
                               >
                                 <X className="h-3 w-3 mr-1" />
                                 Clear
                               </Button>
                             )}
                           </div>
-                          
+
                           <div className="grid grid-cols-2 gap-3">
                             <Popover>
                               <PopoverTrigger asChild>
                                 <Button
                                   variant="outline"
-                                  className={`w-full justify-start text-left font-normal h-10 pl-3 hover:bg-transparent ${dateRange.from ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50' : ''}`}
+                                  className={`w-full justify-start text-left font-normal h-10 pl-3 hover:bg-transparent ${dateRange.from
+                                    ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50"
+                                    : ""
+                                    }`}
                                 >
                                   <CalendarIcon className="mr-2 h-4 w-4" />
                                   {dateRange.from ? (
                                     format(dateRange.from, "PPP")
                                   ) : (
-                                    <span className="text-gray-500">From date</span>
+                                    <span className="text-gray-500">
+                                      From date
+                                    </span>
                                   )}
                                 </Button>
                               </PopoverTrigger>
@@ -454,24 +427,34 @@ const FinancePage = () => {
                                 <Calendar
                                   mode="single"
                                   selected={dateRange.from}
-                                  onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
+                                  onSelect={(date) =>
+                                    setDateRange((prev) => ({
+                                      ...prev,
+                                      from: date,
+                                    }))
+                                  }
                                   initialFocus
                                   className="rounded-md"
                                 />
                               </PopoverContent>
                             </Popover>
-                            
+
                             <Popover>
                               <PopoverTrigger asChild>
                                 <Button
                                   variant="outline"
-                                  className={`w-full justify-start text-left font-normal h-10 pl-3 hover:bg-transparent ${dateRange.to ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50' : ''}`}
+                                  className={`w-full justify-start text-left font-normal h-10 pl-3 hover:bg-transparent ${dateRange.to
+                                    ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50"
+                                    : ""
+                                    }`}
                                 >
                                   <CalendarIcon className="mr-2 h-4 w-4" />
                                   {dateRange.to ? (
                                     format(dateRange.to, "PPP")
                                   ) : (
-                                    <span className="text-gray-500">To date</span>
+                                    <span className="text-gray-500">
+                                      To date
+                                    </span>
                                   )}
                                 </Button>
                               </PopoverTrigger>
@@ -479,7 +462,12 @@ const FinancePage = () => {
                                 <Calendar
                                   mode="single"
                                   selected={dateRange.to}
-                                  onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
+                                  onSelect={(date) =>
+                                    setDateRange((prev) => ({
+                                      ...prev,
+                                      to: date,
+                                    }))
+                                  }
                                   initialFocus
                                   className="rounded-md"
                                 />
@@ -487,7 +475,7 @@ const FinancePage = () => {
                             </Popover>
                           </div>
                         </div>
-                        
+
                         {/* User Filter */}
                         <div className="space-y-3 pt-2 border-t border-gray-100">
                           <div className="flex items-center justify-between">
@@ -495,44 +483,60 @@ const FinancePage = () => {
                               <User className="h-4 w-4 text-gray-500" />
                               User
                             </label>
-                            {selectedUser !== 'all' && (
+                            {selectedUser !== "all" && (
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors"
-                                onClick={() => setSelectedUser('all')}
+                                onClick={() => setSelectedUser("all")}
                               >
                                 <X className="h-3 w-3 mr-1" />
                                 Clear
                               </Button>
                             )}
                           </div>
-                          
+
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button 
-                                variant="outline" 
-                                className={`w-full justify-between h-10 px-3 hover:bg-transparent ${selectedUser !== 'all' ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50' : ''}`}
+                              <Button
+                                variant="outline"
+                                className={`w-full justify-between h-10 px-3 hover:bg-transparent ${selectedUser !== "all"
+                                  ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50"
+                                  : ""
+                                  }`}
                               >
-                                {selectedUser !== 'all' 
-                                  ? selectedUser 
-                                  : <span className="text-gray-500">Select user...</span>}
+                                {selectedUser !== "all" ? (
+                                  selectedUser
+                                ) : (
+                                  <span className="text-gray-500">
+                                    Select user...
+                                  </span>
+                                )}
                                 <User className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-full p-0 border border-gray-200 shadow-lg rounded-lg" align="start">
+                            <PopoverContent
+                              className="w-full p-0 border border-gray-200 shadow-lg rounded-lg"
+                              align="start"
+                            >
                               <Command>
-                                <CommandInput placeholder="Search user..." className="h-9 px-3" />
+                                <CommandInput
+                                  placeholder="Search user..."
+                                  className="h-9 px-3"
+                                />
                                 <CommandList>
                                   <CommandEmpty>No user found.</CommandEmpty>
                                   <CommandGroup>
                                     <CommandItem
                                       value="all"
-                                      onSelect={() => setSelectedUser('all')}
+                                      onSelect={() => setSelectedUser("all")}
                                       className="py-2 px-3"
                                     >
                                       <Check
-                                        className={`mr-2 h-4 w-4 ${selectedUser === 'all' ? "opacity-100 text-blue-600" : "opacity-0"}`}
+                                        className={`mr-2 h-4 w-4 ${selectedUser === "all"
+                                          ? "opacity-100 text-blue-600"
+                                          : "opacity-0"
+                                          }`}
                                       />
                                       All Users
                                     </CommandItem>
@@ -540,11 +544,16 @@ const FinancePage = () => {
                                       <CommandItem
                                         key={user}
                                         value={user}
-                                        onSelect={(currentValue) => setSelectedUser(currentValue)}
+                                        onSelect={(currentValue) =>
+                                          setSelectedUser(currentValue)
+                                        }
                                         className="py-2 px-3"
                                       >
                                         <Check
-                                          className={`mr-2 h-4 w-4 ${selectedUser === user ? "opacity-100 text-blue-600" : "opacity-0"}`}
+                                          className={`mr-2 h-4 w-4 ${selectedUser === user
+                                            ? "opacity-100 text-blue-600"
+                                            : "opacity-0"
+                                            }`}
                                         />
                                         {user}
                                       </CommandItem>
@@ -557,10 +566,10 @@ const FinancePage = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="border-t border-gray-100 p-6 bg-gray-50">
                       <div className="flex flex-col gap-3">
-                        <Button 
+                        <Button
                           onClick={applyFilters}
                           className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 text-white"
                         >
@@ -571,9 +580,9 @@ const FinancePage = () => {
                             </span>
                           )}
                         </Button>
-                        
-                        <Button 
-                          variant="ghost" 
+
+                        <Button
+                          variant="ghost"
                           onClick={resetFilters}
                           className="w-full h-10 text-gray-700 hover:bg-gray-200 transition-colors"
                         >
@@ -587,21 +596,26 @@ const FinancePage = () => {
             </div>
           </div>
         </header>
-
         {/* Active Filters Display */}
         {activeFilters > 0 && (
           <div className="mb-6 flex flex-wrap gap-2">
-            {typeFilter !== 'all' && (
-              <Badge variant="secondary" className="flex items-center gap-1 py-1 px-3">
-                <span>Type: {typeFilter.charAt(0).toUpperCase() + typeFilter.slice(1)}</span>
-                <button 
+            {typeFilter !== "all" && (
+              <Badge
+                variant="secondary"
+                className="flex items-center gap-1 py-1 px-3"
+              >
+                <span>
+                  Type:{" "}
+                  {typeFilter.charAt(0).toUpperCase() + typeFilter.slice(1)}
+                </span>
+                <button
                   className="ml-1 cursor-pointer"
                   onClick={() => {
-                    setTypeFilter('all');
+                    setTypeFilter("all");
                     // Recalculate active filters
                     let count = 0;
                     if (dateRange.from || dateRange.to) count++;
-                    if (selectedUser !== 'all') count++;
+                    if (selectedUser !== "all") count++;
                     setActiveFilters(count);
                   }}
                 >
@@ -609,18 +623,28 @@ const FinancePage = () => {
                 </button>
               </Badge>
             )}
-            
+
             {(dateRange.from || dateRange.to) && (
-              <Badge variant="secondary" className="flex items-center gap-1 py-1 px-3">
-                <span>Date: {dateRange.from ? format(dateRange.from, "MMM d, yyyy") : 'Any'} to {dateRange.to ? format(dateRange.to, "MMM d, yyyy") : 'Any'}</span>
-                <button 
+              <Badge
+                variant="secondary"
+                className="flex items-center gap-1 py-1 px-3"
+              >
+                <span>
+                  Date:{" "}
+                  {dateRange.from
+                    ? format(dateRange.from, "MMM d, yyyy")
+                    : "Any"}{" "}
+                  to{" "}
+                  {dateRange.to ? format(dateRange.to, "MMM d, yyyy") : "Any"}
+                </span>
+                <button
                   className="ml-1 cursor-pointer"
                   onClick={() => {
                     setDateRange({ from: null, to: null });
                     // Recalculate active filters
                     let count = 0;
-                    if (typeFilter !== 'all') count++;
-                    if (selectedUser !== 'all') count++;
+                    if (typeFilter !== "all") count++;
+                    if (selectedUser !== "all") count++;
                     setActiveFilters(count);
                   }}
                 >
@@ -628,17 +652,20 @@ const FinancePage = () => {
                 </button>
               </Badge>
             )}
-            
-            {selectedUser !== 'all' && (
-              <Badge variant="secondary" className="flex items-center gap-1 py-1 px-3">
+
+            {selectedUser !== "all" && (
+              <Badge
+                variant="secondary"
+                className="flex items-center gap-1 py-1 px-3"
+              >
                 <span>User: {selectedUser}</span>
-                <button 
+                <button
                   className="ml-1 cursor-pointer"
                   onClick={() => {
-                    setSelectedUser('all');
+                    setSelectedUser("all");
                     // Recalculate active filters
                     let count = 0;
-                    if (typeFilter !== 'all') count++;
+                    if (typeFilter !== "all") count++;
                     if (dateRange.from || dateRange.to) count++;
                     setActiveFilters(count);
                   }}
@@ -647,127 +674,180 @@ const FinancePage = () => {
                 </button>
               </Badge>
             )}
-            
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="text-xs h-7"
-              onClick={resetFilters}
+              onClick={handleResetFilters}
             >
               Clear all
             </Button>
           </div>
         )}
-
+        {/* Error state */}
+        {error.summary && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600 text-sm">
+              Error loading financial summary: {error.summary}
+            </p>
+          </div>
+        )}
+        {error.transactions && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600 text-sm">
+              Error loading transactions: {error.transactions}
+            </p>
+          </div>
+        )}{" "}
         {/* Stats Cards - Updated to match Bet Management styling */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
-          <Card className="bg-white rounded-none shadow-sm border-0 overflow-hidden hover:shadow-md transition-shadow">
-            <CardContent className="px-5 py-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-green-600 mb-1">Deposits</p>
-                  <p className="text-2xl font-bold text-gray-900">${mockStats.deposits.toFixed(2)}</p>
-                  <p className="text-xs text-gray-500 mt-1">{mockStats.depositsCount} transactions</p>
+        {loading.summary ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <Card
+                key={i}
+                className="bg-white rounded-none shadow-sm border-0 overflow-hidden"
+              >
+                <CardContent className="px-5 py-3">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+                    <div className="h-8 bg-gray-200 rounded w-24 mb-1"></div>
+                    <div className="h-3 bg-gray-200 rounded w-16"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
+            <Card className="bg-white rounded-none shadow-sm border-0 overflow-hidden hover:shadow-md transition-shadow">
+              <CardContent className="px-5 py-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-green-600 mb-1">
+                      Deposits
+                    </p>{" "}
+                    <p className="text-2xl font-bold text-gray-900">
+                      ${summary.totalDeposits.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {summary.depositsCount} transactions
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-green-50 flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-green-600" />
+                  </div>
                 </div>
-                <div className="h-12 w-12 rounded-full bg-green-50 flex items-center justify-center">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white rounded-none shadow-sm border-0 overflow-hidden hover:shadow-md transition-shadow">
+              <CardContent className="px-5 py-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-red-600 mb-1">
+                      Withdrawals
+                    </p>{" "}
+                    <p className="text-2xl font-bold text-gray-900">
+                      ${summary.totalWithdrawals.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {summary.withdrawalsCount} transactions
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center">
+                    <TrendingDown className="h-5 w-5 text-red-600" />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-white rounded-none shadow-sm border-0 overflow-hidden hover:shadow-md transition-shadow">
-            <CardContent className="px-5 py-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-red-600 mb-1">Withdrawals</p>
-                  <p className="text-2xl font-bold text-gray-900">${mockStats.withdrawals.toFixed(2)}</p>
-                  <p className="text-xs text-gray-500 mt-1">{mockStats.withdrawalsCount} transactions</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white rounded-none shadow-sm border-0 overflow-hidden hover:shadow-md transition-shadow">
+              <CardContent className="px-5 py-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-blue-600 mb-1">
+                      Profits
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      ${summary.profits.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center">
+                    <DollarSign className="h-5 w-5 text-blue-600" />
+                  </div>
                 </div>
-                <div className="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center">
-                  <TrendingDown className="h-5 w-5 text-red-600" />
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white rounded-none shadow-sm border-0 overflow-hidden hover:shadow-md transition-shadow">
+              <CardContent className="px-5 py-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-purple-600 mb-1">
+                      Current Balance
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      ${summary.currentBalance.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Total system balance
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-purple-50 flex items-center justify-center">
+                    <Wallet className="h-5 w-5 text-purple-600" />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-white rounded-none shadow-sm border-0 overflow-hidden hover:shadow-md transition-shadow">
-            <CardContent className="px-5 py-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-blue-600 mb-1">Profits</p>
-                  <p className="text-2xl font-bold text-gray-900">${mockStats.profits.toFixed(2)}</p>
-                  <p className="text-xs text-gray-500 mt-1">From {mockStats.betsCount} bets and {mockStats.winsCount} wins</p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center">
-                  <DollarSign className="h-5 w-5 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-white rounded-none shadow-sm border-0 overflow-hidden hover:shadow-md transition-shadow">
-            <CardContent className="px-5 py-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-purple-600 mb-1">Current Balance</p>
-                  <p className="text-2xl font-bold text-gray-900">${mockStats.currentBalance.toFixed(2)}</p>
-                  <p className="text-xs text-gray-500 mt-1">Total system balance</p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-purple-50 flex items-center justify-center">
-                  <Wallet className="h-5 w-5 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
+              </CardContent>{" "}
+            </Card>
+          </div>
+        )}
         {/* Data Table */}
         <Card className="rounded-none shadow-none px-2 py-2">
           <CardContent className="p-1">
+            {" "}
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50 text-[13px]">
-                    <TableHead 
+                    <TableHead
                       className="cursor-pointer select-none"
-                      onClick={() => handleSort('id')}
+                      onClick={() => handleSort("id")}
                     >
                       <div className="flex items-center gap-2">
                         ID
                         <ArrowUpDown className="h-4 w-4" />
                       </div>
                     </TableHead>
-                    <TableHead 
+                    <TableHead
                       className="cursor-pointer select-none"
-                      onClick={() => handleSort('userName')}
+                      onClick={() => handleSort("userName")}
                     >
                       <div className="flex items-center gap-2">
                         User
                         <ArrowUpDown className="h-4 w-4" />
                       </div>
                     </TableHead>
-                    <TableHead 
+                    <TableHead
                       className="cursor-pointer select-none"
-                      onClick={() => handleSort('type')}
+                      onClick={() => handleSort("type")}
                     >
                       <div className="flex items-center gap-2">
                         Type
                         <ArrowUpDown className="h-4 w-4" />
                       </div>
                     </TableHead>
-                    <TableHead 
+                    <TableHead
                       className="cursor-pointer select-none"
-                      onClick={() => handleSort('amount')}
+                      onClick={() => handleSort("amount")}
                     >
                       <div className="flex items-center gap-2">
                         Amount
                         <ArrowUpDown className="h-4 w-4" />
                       </div>
                     </TableHead>
-                    <TableHead 
+                    <TableHead
                       className="cursor-pointer select-none"
-                      onClick={() => handleSort('dateTime')}
+                      onClick={() => handleSort("dateTime")}
                     >
                       <div className="flex items-center gap-2">
                         Date & Time
@@ -778,26 +858,52 @@ const FinancePage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedTransactions.length === 0 ? (
+                  {loading.transactions ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                      <TableCell colSpan={6} className="text-center py-12">
+                        <div className="flex flex-col items-center justify-center">
+                          <Loader2 className="h-8 w-8 text-gray-400 animate-spin mb-2" />
+                          <p className="text-gray-500">
+                            Loading transactions...
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : paginatedTransactions.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="text-center py-12 text-gray-500"
+                      >
                         <div className="flex flex-col items-center justify-center">
                           <Search className="h-8 w-8 text-gray-300 mb-2" />
                           <p>No transactions found</p>
-                          <p className="text-sm text-gray-400 mt-1">Try adjusting your search or filter</p>
+                          <p className="text-sm text-gray-400 mt-1">
+                            Try adjusting your search or filter
+                          </p>
                         </div>
                       </TableCell>
                     </TableRow>
                   ) : (
                     paginatedTransactions.map((item) => {
-                      const { date, time } = formatDateTime(item.dateTime);
+                      const { date, time } = formatDateTime(item.createdAt);
+                      const userName =
+                        item.user?.firstName && item.user?.lastName
+                          ? `${item.user.firstName} ${item.user.lastName}`
+                          : item.user?.email || "Unknown User";
+
                       return (
-                        <TableRow key={item.id} className="hover:bg-gray-50 text-[13px]">
-                          <TableCell className="font-mono">{item.id}</TableCell>
+                        <TableRow
+                          key={item._id}
+                          className="hover:bg-gray-50 text-[13px]"
+                        >
+                          <TableCell className="font-mono">
+                            {item._id.slice(-8)}
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <User className="h-4 w-4 text-gray-500" />
-                              <span>{item.userName}</span>
+                              <span>{userName}</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -826,20 +932,38 @@ const FinancePage = () => {
               </Table>
             </div>
           </CardContent>
-          
+
           {/* Pagination with Entries Per Page Selector */}
           {sortedTransactions.length > 0 && (
             <div className="flex flex-col sm:flex-row justify-between items-center mt-4 pt-4 border-t gap-4">
               <div className="flex items-center gap-4">
                 <div className="text-sm text-gray-600">
-                  Showing {paginatedTransactions.length} of {sortedTransactions.length} transactions
+                  Showing {pagination.itemsPerPage} of {pagination.totalItems}{" "}
+                  transactions
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">Show</span>
-                  <Select value={String(pageSize)} onValueChange={(value) => {
-                    setPageSize(Number(value));
-                    setPage(1);
-                  }}>
+                  <Select
+                    value={String(pagination.itemsPerPage)}
+                    onValueChange={(value) => {
+                      const newLimit = Number(value);
+                      const apiFilters = {
+                        ...filters,
+                        limit: newLimit,
+                        page: 1,
+                        type: typeFilter !== "all" ? typeFilter : "",
+                        search: searchQuery,
+                        dateFrom: dateRange.from
+                          ? dateRange.from.toISOString()
+                          : "",
+                        dateTo: dateRange.to ? dateRange.to.toISOString() : "",
+                        sortBy: sortColumn,
+                        sortOrder: sortDirection,
+                      };
+                      dispatch(setFilters(apiFilters));
+                      dispatch(fetchFinanceTransactions(apiFilters));
+                    }}
+                  >
                     <SelectTrigger className="h-8 w-20">
                       <SelectValue placeholder="10" />
                     </SelectTrigger>
@@ -859,29 +983,39 @@ const FinancePage = () => {
                   variant="outline"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => handlePageChange(page - 1)}
-                  disabled={page === 1}
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                
+
                 <div className="flex items-center">
-                  {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
+                  {" "}
+                  {Array.from({
+                    length: Math.min(pagination.totalPages, 5),
+                  }).map((_, i) => {
                     let pageNum;
-                    if (totalPages <= 5) {
+                    if (pagination.totalPages <= 5) {
                       pageNum = i + 1;
-                    } else if (page <= 3) {
+                    } else if (pagination.currentPage <= 3) {
                       pageNum = i + 1;
-                    } else if (page >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
+                    } else if (
+                      pagination.currentPage >=
+                      pagination.totalPages - 2
+                    ) {
+                      pageNum = pagination.totalPages - 4 + i;
                     } else {
-                      pageNum = page - 2 + i;
+                      pageNum = pagination.currentPage - 2 + i;
                     }
-                    
+
                     return (
                       <Button
                         key={i}
-                        variant={page === pageNum ? "default" : "outline"}
+                        variant={
+                          pagination.currentPage === pageNum
+                            ? "default"
+                            : "outline"
+                        }
                         size="icon"
                         className="h-8 w-8 mx-0.5"
                         onClick={() => handlePageChange(pageNum)}
@@ -891,13 +1025,13 @@ const FinancePage = () => {
                     );
                   })}
                 </div>
-                
+
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => handlePageChange(page + 1)}
-                  disabled={page === totalPages}
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage === pagination.totalPages}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -910,4 +1044,4 @@ const FinancePage = () => {
   );
 };
 
-export default FinancePage; 
+export default FinancePage;

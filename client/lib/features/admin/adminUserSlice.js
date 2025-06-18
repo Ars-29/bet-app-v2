@@ -368,7 +368,6 @@ const adminUserSlice = createSlice({
       .addCase(fetchUsers.pending, (state) => {
         state.isLoading = true;
         state.error = null; // Clear error on pending
-        console.log("fetchUsers.pending - cleared error state");
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         console.log("Fetch users fulfilled:", action.payload);
@@ -407,7 +406,6 @@ const adminUserSlice = createSlice({
         console.log("searchUsers.fulfilled - cleared error state");
       })
       .addCase(searchUsers.rejected, (state, action) => {
-        console.error("Search users rejected:", action.payload || action.error);
         state.isLoading = false;
         state.error =
           action.payload?.message ||
@@ -421,7 +419,6 @@ const adminUserSlice = createSlice({
         state.error = null;
       })
       .addCase(updateUserStatus.fulfilled, (state, action) => {
-        console.log("Update status fulfilled:", action.payload);
         state.isLoading = false;
         state.message = action.payload.message;
         state.error = null;

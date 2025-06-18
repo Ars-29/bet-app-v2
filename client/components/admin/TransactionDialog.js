@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Dialog,
   DialogContent,
@@ -15,18 +15,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { DollarSign, ArrowDown, ArrowUp, X, Loader2, CheckCircle, PlusCircle, MinusCircle } from "lucide-react";
+import {
+  DollarSign,
+  ArrowDown,
+  ArrowUp,
+  X,
+  Loader2,
+  CheckCircle,
+  PlusCircle,
+  MinusCircle,
+} from "lucide-react";
+import {
+  createTransaction,
+  resetTransactionState,
+  fetchFinancialSummary,
+} from "@/lib/features/finance/financeSlice";
 
 export default function TransactionDialog({ isOpen, onClose, user }) {
   const dispatch = useDispatch();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Get loading and error states from Redux
+  const { loading, error } = useSelector((state) => state.finance);
+  const isSubmitting = loading.createTransaction;
+  const submitError = error.createTransaction;
+
   const [formData, setFormData] = useState({
     type: "deposit",
     amount: "",
     description: "",
   });
   const [errors, setErrors] = useState({});
-
+  const [successMessage, setSuccessMessage] = useState("");
   useEffect(() => {
     if (isOpen) {
       // Reset form when modal opens
@@ -36,13 +55,16 @@ export default function TransactionDialog({ isOpen, onClose, user }) {
         description: "",
       });
       setErrors({});
+      setSuccessMessage("");
+      // Reset transaction state
+      dispatch(resetTransactionState());
     }
-  }, [isOpen]);
+  }, [isOpen, dispatch]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    
+
     // Clear error when field is edited
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: null }));
@@ -55,40 +77,58 @@ export default function TransactionDialog({ isOpen, onClose, user }) {
 
   const validateForm = () => {
     const newErrors = {};
-    
-    if (!formData.amount || isNaN(formData.amount) || parseFloat(formData.amount) <= 0) {
+
+    if (
+      !formData.amount ||
+      isNaN(formData.amount) ||
+      parseFloat(formData.amount) <= 0
+    ) {
       newErrors.amount = "Please enter a valid amount greater than 0";
     }
-    
+
     if (!formData.description.trim()) {
       newErrors.description = "Please enter a description";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
-    
-    setIsSubmitting(true);
-    
+
+    if (!validateForm() || !user) return;
+
     try {
-      // Here you would dispatch an action to handle the transaction
-      // For example: await dispatch(processTransaction({ userId: user._id, ...formData })).unwrap();
-      
-      // For now, we'll just simulate a successful transaction
+      const transactionData = {
+        userId: user._id,
+        type: formData.type,
+        amount: parseFloat(formData.amount),
+        description: formData.description.trim(),
+      };
+
+      await dispatch(createTransaction(transactionData)).unwrap();
+
+      // Show success message
+      setSuccessMessage(
+        `${formData.type === "deposit" ? "Deposit" : "Withdrawal"} of $${
+          formData.amount
+        } completed successfully!`
+      );
+
+      // Refresh financial summary
+      dispatch(fetchFinancialSummary());
+
+      // Close dialog after a short delay to show success message
       setTimeout(() => {
         onClose();
-        // You might want to show a success message or refresh user data
-      }, 1000);
+        setSuccessMessage("");
+      }, 1500);
     } catch (error) {
       console.error("Transaction failed:", error);
-      setErrors((prev) => ({ ...prev, submit: "Transaction failed. Please try again." }));
-    } finally {
-      setIsSubmitting(false);
+      setErrors((prev) => ({
+        ...prev,
+        submit: error.message || "Transaction failed. Please try again.",
+      }));
     }
   };
 
@@ -102,13 +142,39 @@ export default function TransactionDialog({ isOpen, onClose, user }) {
           <DialogDescription>
             {user && (
               <span className="text-sm">
-                User: <span className="font-medium">{user.firstName} {user.lastName}</span>
+                User:{" "}
+                <span className="font-medium">
+                  {user.firstName} {user.lastName}
+                </span>
               </span>
             )}
-          </DialogDescription>
+          </DialogDescription>{" "}
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-6 py-4 transaction-form">
+
+        {/* Success Message */}
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+            <div className="flex items-center">
+              <CheckCircle className="h-5 w-5 mr-2 text-green-600" />
+              {successMessage}
+            </div>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {(submitError || errors.submit) && (
+          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+            <div className="flex items-center">
+              <X className="h-5 w-5 mr-2 text-red-600" />
+              {submitError || errors.submit}
+            </div>
+          </div>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6 py-4 transaction-form"
+        >
           {/* Transaction Type */}
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">
@@ -121,25 +187,34 @@ export default function TransactionDialog({ isOpen, onClose, user }) {
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="deposit" id="deposit" />
-                <Label htmlFor="deposit" className="flex items-center cursor-pointer">
+                <Label
+                  htmlFor="deposit"
+                  className="flex items-center cursor-pointer"
+                >
                   <ArrowDown className="h-4 w-4 text-emerald-500 mr-2" />
                   Deposit
                 </Label>
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="withdraw" id="withdraw" />
-                <Label htmlFor="withdraw" className="flex items-center cursor-pointer">
+                <Label
+                  htmlFor="withdraw"
+                  className="flex items-center cursor-pointer"
+                >
                   <ArrowUp className="h-4 w-4 text-rose-500 mr-2" />
                   Withdraw
                 </Label>
               </div>
             </RadioGroup>
           </div>
-          
+
           {/* Amount */}
           <div className="space-y-2">
-            <Label htmlFor="amount" className="text-sm font-medium text-gray-700">
+            <Label
+              htmlFor="amount"
+              className="text-sm font-medium text-gray-700"
+            >
               Amount <span className="text-red-500">*</span>
             </Label>
             <div className="relative">
@@ -151,7 +226,9 @@ export default function TransactionDialog({ isOpen, onClose, user }) {
                 inputMode="decimal"
                 pattern="[0-9]*\.?[0-9]*"
                 placeholder="0.00"
-                className={`pl-10 border border-gray-200 rounded-none w-full ${errors.amount ? 'border-red-500' : ''}`}
+                className={`pl-10 border border-gray-200 rounded-none w-full ${
+                  errors.amount ? "border-red-500" : ""
+                }`}
                 value={formData.amount}
                 onChange={handleChange}
               />
@@ -160,10 +237,13 @@ export default function TransactionDialog({ isOpen, onClose, user }) {
               <p className="text-xs text-red-500">{errors.amount}</p>
             )}
           </div>
-          
+
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium text-gray-700">
+            <Label
+              htmlFor="description"
+              className="text-sm font-medium text-gray-700"
+            >
               Description <span className="text-red-500">*</span>
             </Label>
             <div className="border border-gray-200 rounded-none">
@@ -171,7 +251,9 @@ export default function TransactionDialog({ isOpen, onClose, user }) {
                 id="description"
                 name="description"
                 placeholder="Enter transaction details..."
-                className={`border-0 focus:outline-none focus:ring-0 rounded-none w-full ${errors.description ? 'border-red-500' : ''}`}
+                className={`border-0 focus:outline-none focus:ring-0 rounded-none w-full ${
+                  errors.description ? "border-red-500" : ""
+                }`}
                 value={formData.description}
                 onChange={handleChange}
                 rows={3}
@@ -181,14 +263,14 @@ export default function TransactionDialog({ isOpen, onClose, user }) {
               <p className="text-xs text-red-500">{errors.description}</p>
             )}
           </div>
-          
+
           {/* Submit Error */}
           {errors.submit && (
             <div className="rounded-md bg-red-50 p-3">
               <p className="text-sm text-red-800">{errors.submit}</p>
             </div>
           )}
-          
+
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 pt-4">
             <Button
@@ -201,12 +283,14 @@ export default function TransactionDialog({ isOpen, onClose, user }) {
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
-            <Button 
+            <Button
               type="submit"
               disabled={isSubmitting}
-              className={`h-10 ${formData.type === "deposit" 
-                ? "bg-emerald-600 hover:bg-emerald-700" 
-                : "bg-rose-600 hover:bg-rose-700"} text-white rounded-none px-4`}
+              className={`h-10 ${
+                formData.type === "deposit"
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "bg-rose-600 hover:bg-rose-700"
+              } text-white rounded-none px-4`}
             >
               {isSubmitting ? (
                 <>
@@ -215,33 +299,36 @@ export default function TransactionDialog({ isOpen, onClose, user }) {
                 </>
               ) : (
                 <>
-                  {formData.type === "deposit" 
-                    ? <PlusCircle className="h-4 w-4 mr-2" />
-                    : <MinusCircle className="h-4 w-4 mr-2" />
-                  }
-                  {formData.type === "deposit" ? "Deposit Funds" : "Withdraw Funds"}
+                  {formData.type === "deposit" ? (
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                  ) : (
+                    <MinusCircle className="h-4 w-4 mr-2" />
+                  )}
+                  {formData.type === "deposit"
+                    ? "Deposit Funds"
+                    : "Withdraw Funds"}
                 </>
               )}
             </Button>
           </div>
-          
+
           {/* Add global styles for this component */}
           <style jsx global>{`
             /* Remove focus outline from all inputs in this form */
-            .transaction-form input:focus, 
+            .transaction-form input:focus,
             .transaction-form textarea:focus {
               outline: none !important;
               box-shadow: none !important;
               border-color: #e5e7eb !important;
             }
-            
+
             /* Remove number input arrows */
-            input[type=number]::-webkit-inner-spin-button, 
-            input[type=number]::-webkit-outer-spin-button { 
-              -webkit-appearance: none; 
-              margin: 0; 
+            input[type="number"]::-webkit-inner-spin-button,
+            input[type="number"]::-webkit-outer-spin-button {
+              -webkit-appearance: none;
+              margin: 0;
             }
-            input[type=number] {
+            input[type="number"] {
               -moz-appearance: textfield;
             }
           `}</style>
@@ -249,4 +336,4 @@ export default function TransactionDialog({ isOpen, onClose, user }) {
       </DialogContent>
     </Dialog>
   );
-} 
+}

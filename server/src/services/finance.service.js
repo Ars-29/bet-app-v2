@@ -1,19 +1,15 @@
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
-import mongoose from "mongoose";
 
 class FinanceService {
   // Create a new transaction
   async createTransaction(transactionData) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
       const { userId, type, amount, description, processedBy } =
         transactionData;
 
       // Get user
-      const user = await User.findById(userId).session(session);
+      const user = await User.findById(userId);
       if (!user) {
         throw new Error("User not found");
       }
@@ -29,7 +25,9 @@ class FinanceService {
         newBalance = user.balance - amount;
       } else {
         throw new Error("Invalid transaction type");
-      } // Create transaction
+      }
+
+      // Create transaction record
       const transaction = new Transaction({
         userId,
         type,
@@ -39,13 +37,12 @@ class FinanceService {
         balanceAfterTransaction: newBalance,
       });
 
+      // Save transaction first
+      await transaction.save();
+
+      // Update user balance
       user.balance = newBalance;
-
-      // Save both in transaction
-      await transaction.save({ session });
-      await user.save({ session });
-
-      await session.commitTransaction();
+      await user.save();
 
       // Populate user data for response
       await transaction.populate([
@@ -55,10 +52,7 @@ class FinanceService {
 
       return transaction;
     } catch (error) {
-      await session.abortTransaction();
       throw error;
-    } finally {
-      session.endSession();
     }
   }
   async getTransactions(filters = {}) {

@@ -6,6 +6,7 @@ import authReducer from "./features/auth/authSlice";
 import adminUserReducer from "./features/admin/adminUserSlice";
 import betSlipReducer from "./features/betSlip/betSlipSlice";
 import transactionsReducer from "./features/transactions/transactionsSlice";
+import financeReducer from "./features/finance/financeSlice";
 
 export const store = configureStore({
   reducer: {
@@ -15,6 +16,7 @@ export const store = configureStore({
     markets: marketsReducer,
     betSlip: betSlipReducer,
     transactions: transactionsReducer,
+    finance: financeReducer,
     adminUsers: adminUserReducer,
   },
 });

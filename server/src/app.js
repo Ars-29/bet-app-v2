@@ -4,7 +4,12 @@ import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import connectDB from "./config/database.js";
-import { notFound, errorHandler, requireAdmin } from "./middlewares/index.js";
+import {
+  notFound,
+  errorHandler,
+  requireAdmin,
+  authenticateToken,
+} from "./middlewares/index.js";
 import sportsMonkRouter from "./routes/sportsMonk.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
@@ -47,7 +52,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/sportsmonk", sportsMonkRouter);
-app.use("/api/finance", requireAdmin, financeRoutes);
+app.use("/api/finance", authenticateToken, requireAdmin, financeRoutes);
 
 // 404 handler - must be after all routes
 app.use(notFound);

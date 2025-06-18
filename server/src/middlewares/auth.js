@@ -24,7 +24,7 @@ export const authenticateToken = async (req, res, next) => {
     }
 
     // Only check isActive for non-admin users
-    if (!user.isActive && user.role !== 'admin') {
+    if (!user.isActive && user.role !== "admin") {
       return res.status(401).json({
         success: false,
         message: "Account is not active.",
@@ -44,7 +44,7 @@ export const authenticateToken = async (req, res, next) => {
 
 // Middleware to check if user is admin
 export const requireAdmin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && req.user.role === "admin") {
     next();
   } else {
     res.status(403).json({
