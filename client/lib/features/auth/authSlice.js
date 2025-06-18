@@ -91,7 +91,10 @@ export const changePassword = createAsyncThunk(
   "auth/changePassword",
   async (passwordData, { rejectWithValue }) => {
     try {
-      const response = await apiClient.put("/users/change-password", passwordData);
+      const response = await apiClient.put(
+        "/users/change-password",
+        passwordData
+      );
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -104,8 +107,6 @@ export const changePassword = createAsyncThunk(
     }
   }
 );
-
-
 
 const initialState = {
   user: null,
@@ -135,7 +136,8 @@ const authSlice = createSlice({
     setInitialized: (state) => {
       state.isInitialized = true;
     },
-  },  extraReducers: (builder) => {
+  },
+  extraReducers: (builder) => {
     builder
       // Login cases
       .addCase(login.pending, (state) => {
@@ -149,11 +151,9 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.message = action.payload.message;
         state.error = null;
-        
-        // If user is admin, redirect to admin dashboard
-        if (action.payload.user.role === 'admin') {
-          window.location.href = '/admin';
-        }
+
+        console.log(action.payload);
+        console.log("User logged in:", state.user);
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
@@ -218,7 +218,8 @@ const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
         state.message = null;
-      })      .addCase(updateProfile.fulfilled, (state, action) => {
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
         state.isLoading = false;
         // Merge the updated user data instead of replacing completely
         if (state.user && action.payload.user) {
@@ -255,10 +256,6 @@ const authSlice = createSlice({
 export const { clearError, clearMessage, clearAuth, setInitialized } =
   authSlice.actions;
 
-
-
-
-  
 export const selectAuth = (state) => state.auth;
 export const selectUser = (state) => state.auth.user;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;

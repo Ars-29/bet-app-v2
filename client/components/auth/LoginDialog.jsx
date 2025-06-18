@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useDispatch, useSelector } from "react-redux"
-import { login, clearError, clearMessage, selectIsLoading, selectError, selectMessage, selectIsAuthenticated } from "@/lib/features/auth/authSlice"
+import { login, clearError, clearMessage, selectIsLoading, selectError, selectMessage, selectIsAuthenticated, selectUser } from "@/lib/features/auth/authSlice"
 import { toast } from "sonner"
 // Zod validation schema
 const loginSchema = z.object({
@@ -31,23 +31,16 @@ const LoginDialog = ({ children, ...props }) => {
     const error = useSelector(selectError)
     const message = useSelector(selectMessage)
     const isAuthenticated = useSelector(selectIsAuthenticated)
-
+    const user = useSelector(selectUser);
     const form = useForm({
         resolver: zodResolver(loginSchema),
         defaultValues: {
             email: "",
             password: "",
         },
-    })
+    })    // Handle authentication success (main logic moved to onSubmit to prevent unmounting issues)
 
-    // Handle authentication success
-    useEffect(() => {
-        if (isAuthenticated) {
-            toast.success("Login successful! Welcome back!")
-            setIsOpen(false)
-            form.reset()
-        }
-    }, [isAuthenticated, form])
+
 
     // Handle error messages
     useEffect(() => {
@@ -59,10 +52,20 @@ const LoginDialog = ({ children, ...props }) => {
 
     const onSubmit = async (data) => {
         try {
-            console.log("Login data:", data)
-            dispatch(login(data))
+
+            const result = await dispatch(login(data)); // Check if the login was successful
+            if (login.fulfilled.match(result)) {
+
+                toast.success("Login successful! Welcome back!");
+                // Handle admin redirect immediately
+                if (result.payload.user && result.payload.user.role === 'admin') {
+                    router.push('/admin');
+                }
+                setIsOpen(false);
+                form.reset();
+            }
         } catch (error) {
-            console.error("Login error:", error)
+            console.error("❌ Login error:", error)
             toast.error("An unexpected error occurred")
         }
     }

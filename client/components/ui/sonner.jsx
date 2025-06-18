@@ -6,7 +6,7 @@ import { Toaster as Sonner } from "sonner";
 const Toaster = ({
   ...props
 }) => {
-  const { theme = "system" } = useTheme()
+  const { theme = "light" } = useTheme()
 
   return (
     <Sonner
@@ -19,6 +19,13 @@ const Toaster = ({
           "--normal-border": "var(--border)"
         }
       }
+      toastOptions={{
+        style: {
+          zIndex: 9999,
+        },
+        className: "toast",
+
+      }}
       {...props} />
   );
 }

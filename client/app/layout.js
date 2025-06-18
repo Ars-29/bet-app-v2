@@ -7,7 +7,7 @@ import LayoutWrapper from "@/components/LayoutWrapper";
 import BetSlip from "@/components/BetSlip";
 import { Toaster } from "@/components/ui/sonner";
 import { metadata } from "./metadata";
-import  Header  from "@/components/Header";
+import Header from "@/components/Header";
 import SidebarWrapper from "@/components/SidebarWrapper";
 import ContentWrapper from "@/components/ContentWrapper";
 
@@ -44,7 +44,12 @@ export default function RootLayout({ children }) {
             </SidebarProvider>
           </AuthProvider>
         </ReduxProvider>
-        <Toaster />
+        <Toaster
+          position="bottom-right"
+          richColors
+          closeButton
+          expand={false}
+        />
       </body>
     </html>
   );

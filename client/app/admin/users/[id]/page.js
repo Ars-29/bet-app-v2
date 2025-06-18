@@ -83,7 +83,6 @@ export default function UserDetails({ params }) {
       dispatch(fetchUserDetails(id));
     }
   }, [id, dispatch]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -93,6 +92,7 @@ export default function UserDetails({ params }) {
       const updatedUser = result.user || result;
 
       if (updatedUser && (updatedUser._id || updatedUser.id)) {
+        // Show success toast only here
         toast.success("User updated successfully");
         await dispatch(fetchUserDetails(id)).unwrap();
       } else {
@@ -108,25 +108,22 @@ export default function UserDetails({ params }) {
     }
   };
 
- 
   return (
     <div className="  ">
       <div className="container  px-2 py-3 ">
         <div className="flex items-center gap-4 mb-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push("/admin")}
-              className="text-slate-600 hover:text-slate-900"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/admin")}
+            className="text-slate-600 hover:text-slate-900"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </div>
         {/* Header Section */}{" "}
         <div className="mb-2 sm:w-[93%] w-full mx-auto  ">
-          
-
           <div className="flex flex-col  sm:flex-row sm:items-center sm:justify-between mb-3 ">
             <div className="space-y-2">
               <h1 className="text-3xl font-bold text-gray-900">User Details</h1>
@@ -142,8 +139,6 @@ export default function UserDetails({ params }) {
                 </Badge>
               </div> */}
             </div>
-
-
           </div>
         </div>
         {/* Main Form Card */}
@@ -212,11 +207,14 @@ export default function UserDetails({ params }) {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                     <Mail className="w-4 h-4 text-green-600" />
-                  </div>{" "}                  <h3 className="text-md font-semibold text-gray-900">
+                  </div>{" "}
+                  <h3 className="text-md font-semibold text-gray-900">
                     Contact Information
                   </h3>
                 </div>{" "}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">                  <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {" "}
+                  <div className="space-y-2">
                     <Label
                       htmlFor="email"
                       className="text-sm font-medium text-gray-700"
@@ -234,7 +232,8 @@ export default function UserDetails({ params }) {
                       className="h-10 border-black"
                       placeholder="Enter email address"
                     />
-                  </div>{" "}                  <div className="space-y-2">
+                  </div>{" "}
+                  <div className="space-y-2">
                     <Label
                       htmlFor="phoneNumber"
                       className="text-sm font-medium text-gray-700"
@@ -261,7 +260,8 @@ export default function UserDetails({ params }) {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                     <Shield className="w-4 h-4 text-purple-600" />
-                  </div>{" "}                  <h3 className="text-md font-semibold text-gray-900">
+                  </div>{" "}
+                  <h3 className="text-md font-semibold text-gray-900">
                     Account Settings
                   </h3>
                 </div>{" "}
@@ -278,8 +278,8 @@ export default function UserDetails({ params }) {
                       onValueChange={(value) =>
                         setFormData({ ...formData, role: value })
                       }
-                    >                      
-                    <SelectTrigger className="h-10  rounded-none">
+                    >
+                      <SelectTrigger className="h-10  rounded-none">
                         <SelectValue placeholder="Select user role" />
                       </SelectTrigger>
                       <SelectContent>
@@ -313,8 +313,8 @@ export default function UserDetails({ params }) {
                           isActive: value === "active",
                         })
                       }
-                    >                      
-                    <SelectTrigger className="h-10 rounded-none">
+                    >
+                      <SelectTrigger className="h-10 rounded-none">
                         <SelectValue placeholder="Select account status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -332,7 +332,8 @@ export default function UserDetails({ params }) {
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>{" "}                  <div className="space-y-2">
+                  </div>{" "}
+                  <div className="space-y-2">
                     <Label
                       htmlFor="password"
                       className="text-sm font-medium text-gray-700"
@@ -348,7 +349,8 @@ export default function UserDetails({ params }) {
                       }
                       className="h-10 border-black"
                       placeholder="Enter new password"
-                    />                  </div>
+                    />{" "}
+                  </div>
                   <div className="space-y-2">
                     <Label
                       htmlFor="balance"
