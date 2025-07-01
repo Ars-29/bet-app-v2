@@ -29,7 +29,7 @@ fixturesRouter.get("/leagues/popular", getPopularLeagues);
 fixturesRouter.get("/:matchId", getMatchById);
 
 // Add new route for matches by league
-fixturesRouter.get("/league/:leagueId/matches", getMatchesByLeague);
+fixturesRouter.get("/league/:leagueId", getMatchesByLeague);
 
 // INFO: These are admin routes for monitoring and cache management
 // // Protected routes for monitoring and admin

@@ -38,16 +38,15 @@ const MatchDropdown = ({ isOpen, onClose, currentMatchId, triggerRef, currentLea
 
     // Redux state
     const leagues = useSelector(selectPopularLeagues);
-    const matches = useSelector(state => selectedLeagueId ? selectMatchesByLeague(state, selectedLeagueId) : []);
+    const matchesObj = useSelector(state => selectMatchesByLeague(state, selectedLeagueId));
+    const matches = matchesObj.matches || [];
     const matchesLoading = useSelector(selectMatchesLoading);
     const matchesError = useSelector(selectMatchesError);
 
     // Fetch leagues on open
     useEffect(() => {
-        if (isOpen) {
-            dispatch(fetchPopularLeagues());
-        }
-    }, [isOpen, dispatch]);
+        console.log("THIS IS FROM SLIP", matches);
+    }, [matches])
 
     // Fetch matches for selected league
     useEffect(() => {
@@ -108,8 +107,16 @@ const MatchDropdown = ({ isOpen, onClose, currentMatchId, triggerRef, currentLea
                                 <button
                                     key={league.id}
                                     onClick={() => { setSelectedLeagueId(league.id); setShowLeagues(false); }}
-                                    className={`w-full text-left p-3 text-white hover:bg-gray-700 transition-colors duration-200 border-b border-gray-600 last:border-b-0 cursor-pointer text-sm ${selectedLeagueId === league.id ? 'bg-gray-700' : ''}`}
+                                    className={`w-full flex items-center text-left p-3 text-white hover:bg-gray-700 transition-colors duration-200 border-b border-gray-600 last:border-b-0 cursor-pointer text-sm ${selectedLeagueId === league.id ? 'bg-gray-700' : ''}`}
                                 >
+                                    {league.image_path && (
+                                        <img
+                                            src={league.image_path}
+                                            alt={league.name}
+                                            className="w-8 h-8 rounded-full object-contain mr-3 bg-white"
+                                            onError={e => { e.target.style.display = 'none'; }}
+                                        />
+                                    )}
                                     <span>{league.name}</span>
                                 </button>
                             ))}
@@ -154,10 +161,10 @@ const MatchDropdown = ({ isOpen, onClose, currentMatchId, triggerRef, currentLea
                         {matchesError && (
                             <div className="text-center text-red-400 py-8">{matchesError}</div>
                         )}
-                        {!matchesLoading && !matchesError && matches.length === 0 && (
+                        {!matchesLoading && !matchesError && matches?.length === 0 && (
                             <div className="text-center text-gray-400 py-8">No matches found for this league.</div>
                         )}
-                        {matches.slice(0, 20).map((match) => (
+                        {matches?.slice(0, 20).map((match) => (
                             <Link
                                 key={match.id}
                                 href={`/matches/${match.id}`}

@@ -15,7 +15,7 @@ const MatchCard = ({ match }) => {
                 <div className="p-4">
 
                     <div className='flex align-center gap-2 justify-start mb-2 '>
-                        <img src={`${match.league.imageUrl}`} className='w-4 h-4' alt="" srcset="" />
+                        <img src={`${match.league.imageUrl}`} className='w-4 h-4' alt="" />
                         <div className="text-xs text-gray-500 ">{match.league.name}</div>
                     </div>
 

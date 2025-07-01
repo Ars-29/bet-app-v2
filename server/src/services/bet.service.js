@@ -126,8 +126,8 @@ class BetService {
         : "";
     const selection = `${odds.name} - ${odds.market_description}`;
     const matchDate = new Date(matchData.starting_at);
-    const estimatedMatchEnd = new Date(matchDate.getTime() + 2 * 60 * 1000); // Add 2 hours
-
+    // const estimatedMatchEnd = new Date(matchDate.getTime() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000); // Add 2 hours and 5 minutes
+    const estimatedMatchEnd = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
     const bet = new Bet({
       userId,
       matchId,
@@ -143,7 +143,7 @@ class BetService {
     });
     await bet.save();
 
-    // Schedule outcome check or process immediately if overdue
+    //INFO: Schedule outcome check or process immediately if overdue
     const now = new Date();
     if (estimatedMatchEnd <= now) {
       this.checkBetOutcome(bet._id).catch((error) => {
@@ -171,7 +171,10 @@ class BetService {
 
   //TODO: Check working on a real match
   scheduleBetOutcomeCheck(betId, estimatedMatchEnd, matchId) {
-    const scheduleTime = new Date(estimatedMatchEnd.getTime() + 5 * 60 * 1000); // 5 minutes after
+    console.log("Estimated match end", estimatedMatchEnd.getTime());
+
+    const scheduleTime = estimatedMatchEnd;
+    // new Date(estimatedMatchEnd.getTime() + 5 * 60 * 1000); // 5 minutes after
     const cronTime = `${scheduleTime.getMinutes()} ${scheduleTime.getHours()} ${scheduleTime.getDate()} ${
       scheduleTime.getMonth() + 1
     } *`;
@@ -181,6 +184,8 @@ class BetService {
       async () => {
         try {
           // Check cache first
+          console.log("RUNNING THE JOB AFTER 2 mins ");
+
           const cacheKey = `match_${matchId}`;
           let match = FixtureOptimizationService.fixtureCache.get(cacheKey);
           if (match && match.state?.id === 5) {

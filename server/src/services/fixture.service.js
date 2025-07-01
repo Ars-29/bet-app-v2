@@ -280,8 +280,8 @@ class FixtureOptimizationService {
       // Fallback to hardcoded popular leagues if API fails
       console.log("🔄 Falling back to hardcoded leagues...");
 
-      this.leagueCache.set(cacheKey, fallbackLeagues);
-      return fallbackLeagues;
+      // this.leagueCache.set(cacheKey, fallbackLeagues);
+      return {};
     }
   }
 
@@ -663,7 +663,7 @@ class FixtureOptimizationService {
   transformMatchOdds(match) {
     if (!match) return match;
 
-    const transformedMatch = { ...match };
+    let transformedMatch = { ...match };
 
     // Extract and standardize odds to only include home/draw/away
     if (match.odds && Array.isArray(match.odds)) {
@@ -968,7 +968,7 @@ class FixtureOptimizationService {
       console.log("📦 Returning cached matches for league from cache");
       return cached;
     }
-    // Fetch from SportMonks API
+    // Fetch from SportMonks AP
     this.checkRateLimit();
     try {
       const apiParams = this.buildOptimizedApiParams({
@@ -985,12 +985,18 @@ class FixtureOptimizationService {
       } else if (response.data && Array.isArray(response.data.data)) {
         fixtures = response.data.data;
       }
-      // Cache the result
-      this.fixtureCache.set(cacheKey, fixtures);
+
+      fixtures = fixtures.filter(
+        (fixture) => fixture.league.id === parseInt(leagueId)
+      );
+      let league = fixtures[0].league;
+
+      fixtures = fixtures.map((fixture) => this.transformMatchOdds(fixture));
+      this.fixtureCache.set(cacheKey, { fixtures, league });
       console.log(
         `✅ Fetched and cached ${fixtures.length} matches for league ${leagueId}`
       );
-      return fixtures;
+      return { fixtures, league };
     } catch (error) {
       console.error(
         "❌ Error fetching matches for league from SportMonks API:",

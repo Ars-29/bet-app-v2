@@ -139,12 +139,12 @@ const LeagueCards = ({
 
     // Transform Redux data to match the expected format
     const transformReduxData = (footballDaily) => {
-        console.log('Raw footballDaily data:', footballDaily); // Debug log
+
 
         return footballDaily.map(leagueData => {
             // Transform matches to match the expected format
             const transformedMatches = leagueData.matches.map(match => {
-                console.log('Processing match:', match); // Debug log
+
 
                 const teamNames = match.name?.split(' vs ') || ['Team A', 'Team B'];
 
@@ -172,7 +172,7 @@ const LeagueCards = ({
 
                 // Skip match if no odds are available
                 if (Object.keys(odds).length === 0) {
-                    console.log('Skipping match with no odds:', match.name);
+
                     return null; // Don't include this match
                 }
 
@@ -186,13 +186,6 @@ const LeagueCards = ({
                     });
                 }
 
-                console.log('Transformed match:', {
-                    id: match.id,
-                    team1: teamNames[0],
-                    team2: teamNames[1],
-                    time: displayTime,
-                    odds
-                }); // Debug log
 
                 return {
                     id: match.id,

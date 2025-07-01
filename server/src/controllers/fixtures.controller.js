@@ -243,12 +243,15 @@ export const getMatchById = asyncHandler(async (req, res) => {
 // Get matches by league ID
 export const getMatchesByLeague = asyncHandler(async (req, res) => {
   const { leagueId } = req.params;
-  const matches = await fixtureOptimizationService.getMatchesByLeague(leagueId);
+  const {fixtures,league }= await fixtureOptimizationService.getMatchesByLeague(leagueId);
+
+
   res.status(200).json({
     success: true,
     message: `Matches for league ${leagueId} fetched successfully`,
-    data: matches,
-    count: matches.length,
+    data: fixtures,
+    league:league,
+    count: fixtures.length,
     timestamp: new Date().toISOString(),
   });
 });

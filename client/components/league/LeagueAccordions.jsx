@@ -4,21 +4,22 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useBetting } from '@/hooks/useBetting';
-import leaguesData from '@/data/dummayLeagues';
 
-const LeagueAccordions = ({ leagueId }) => {
+const LeagueAccordions = ({ matches }) => {
     const { createBetHandler } = useBetting();
 
-    // Find the current league
-    const currentLeague = leaguesData.find(league => league.id === parseInt(leagueId));
-    const league = currentLeague || leaguesData[0];// Group matches by day/time periods
+
     const matchGroups = useMemo(() => {
         const groups = {};
+        (matches || []).forEach((match) => {
 
-        league.matches.forEach((match) => {
-            // Group matches by their individual day property
-            const groupKey = match.day || "Today";
-
+            let groupKey = 'Today';
+            if (match.day) {
+                groupKey = match.day;
+            } else if (match.starting_at) {
+                // Format date as e.g. '2025-06-30'
+                groupKey = match.starting_at.split(' ')[0];
+            }
             if (!groups[groupKey]) {
                 groups[groupKey] = {
                     id: groupKey.toLowerCase().replace(/\s+/g, '-'),
@@ -26,12 +27,76 @@ const LeagueAccordions = ({ leagueId }) => {
                     matches: []
                 };
             }
-
             groups[groupKey].matches.push(match);
         });
-
         return Object.values(groups);
-    }, [league]);
+    }, [matches]);
+
+    // Move MatchCard inside LeagueAccordions to access createBetHandler
+    const MatchCard = ({ match, index, totalMatches }) => {
+        const team1 = match.participants && match.participants[0] ? match.participants[0].name : '';
+        const team2 = match.participants && match.participants[1] ? match.participants[1].name : '';
+        const odds1 = match.odds && match.odds.home ? match.odds.home.value : null;
+        const oddsX = match.odds && match.odds.draw ? match.odds.draw.value : null;
+        const odds2 = match.odds && match.odds.away ? match.odds.away.value : null;
+        const matchTime = match.starting_at ? match.starting_at.split(' ')[1]?.slice(0, 5) : '';
+        return (
+            <div key={match.id}>
+                <div className='flex justify-between mt-2'>
+                    <div className="text-xs text-gray-600">{matchTime}</div>
+                    <div className="text-xs text-gray-500">+358</div>
+                </div>
+                <Link href={`/matches/${match.id}`}>
+                    <div className="cursor-pointer hover:bg-gray-50 -mx-4 px-4 py-1 rounded">
+                        <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                                <div className="text-[12px] mb-1" title={team1}>
+                                    {team1.length > 18 ? `${team1.slice(0, 18)}...` : team1}
+                                </div>
+                                <div className="text-[12px]" title={team2}>
+                                    {team2.length > 18 ? `${team2.slice(0, 18)}...` : team2}
+                                </div>
+                            </div>
+                            <div className="flex items-center flex-shrink-0">
+                                <div className="flex gap-1">
+                                    {odds1 && (
+                                        <Button
+                                            size={"sm"}
+                                            className="w-14 h-8 p-0 text-xs font-bold betting-button"
+                                            onClick={createBetHandler(match, '1', odds1)}
+                                        >
+                                            {odds1}
+                                        </Button>
+                                    )}
+                                    {oddsX && (
+                                        <Button
+                                            className="w-14 h-8 p-0 text-xs font-bold betting-button"
+                                            size={"sm"}
+                                            onClick={createBetHandler(match, 'X', oddsX)}
+                                        >
+                                            {oddsX}
+                                        </Button>
+                                    )}
+                                    {odds2 && (
+                                        <Button
+                                            size={"sm"}
+                                            className="w-14 h-8 p-0 text-xs font-bold betting-button"
+                                            onClick={createBetHandler(match, '2', odds2)}
+                                        >
+                                            {odds2}
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </Link>
+                {index < totalMatches - 1 && (
+                    <div className="border-b border-gray-300 mx-0 my-2"></div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <div className="space-y-3 bg-white h-full p-3">
@@ -51,7 +116,8 @@ const LeagueAccordions = ({ leagueId }) => {
                                     </span>
                                 </div>
                             </div>
-                        </AccordionTrigger>                        <AccordionContent className="px-0 py-0 bg-gray-50/30">
+                        </AccordionTrigger>
+                        <AccordionContent className="px-0 py-0 bg-gray-50/30">
                             {/* Odds Header */}
                             <div className="flex items-center px-4 py-2 bg-gray-100 border-b border-gray-200 flex-shrink-0">
                                 <div className="flex-1 text-xs">{group.label.split(' ')[0]}</div>
@@ -61,7 +127,6 @@ const LeagueAccordions = ({ leagueId }) => {
                                     <div className="w-14 text-center text-xs text-gray-600 font-medium">2</div>
                                 </div>
                             </div>
-
                             {/* Matches */}
                             <div className="p-4 py-0 flex-1 overflow-y-auto">
                                 {group.matches.map((match, index) => (
@@ -72,66 +137,6 @@ const LeagueAccordions = ({ leagueId }) => {
                     </AccordionItem>
                 ))}
             </Accordion>
-        </div>
-    );
-};
-
-// Individual Match Card Component - Similar to League Cards but for accordions
-const MatchCard = ({ match, index, totalMatches }) => {
-    return (
-        <div key={match.id}>
-            <div className='flex justify-between mt-2'>
-                <div className="text-xs text-gray-600">{match.time}</div>
-                <div className="text-xs text-gray-500">+358</div>
-            </div>
-            <Link href={`/matches/${match.id}`}>
-                <div className="cursor-pointer hover:bg-gray-50 -mx-4 px-4 py-1 rounded">
-                    <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                            <div className="text-[12px] mb-1" title={match.team1}>
-                                {match.team1.length > 18 ? `${match.team1.slice(0, 18)}...` : match.team1}
-                            </div>
-                            <div className="text-[12px]" title={match.team2}>
-                                {match.team2.length > 18 ? `${match.team2.slice(0, 18)}...` : match.team2}
-                            </div>
-                        </div>
-
-                        <div className="flex items-center flex-shrink-0">                            <div className="flex gap-1">
-                            {match.odds['1'] && (
-                                <Button
-                                    size={"sm"}
-                                    className="w-14 h-8 p-0 text-xs font-bold betting-button"
-                                    onClick={createBetHandler(match, '1', match.odds['1'])}
-                                >
-                                    {match.odds['1']}
-                                </Button>
-                            )}
-                            {match.odds['X'] && (
-                                <Button
-                                    className="w-14 h-8 p-0 text-xs font-bold betting-button"
-                                    size={"sm"}
-                                    onClick={createBetHandler(match, 'X', match.odds['X'])}
-                                >
-                                    {match.odds['X']}
-                                </Button>
-                            )}
-                            {match.odds['2'] && (
-                                <Button
-                                    size={"sm"}
-                                    className="w-14 h-8 p-0 text-xs font-bold betting-button"
-                                    onClick={createBetHandler(match, '2', match.odds['2'])}
-                                >
-                                    {match.odds['2']}
-                                </Button>
-                            )}
-                        </div>
-                        </div>
-                    </div>
-                </div>
-            </Link>
-            {index < totalMatches - 1 && (
-                <div className="border-b border-gray-300 mx-0 my-2"></div>
-            )}
         </div>
     );
 };

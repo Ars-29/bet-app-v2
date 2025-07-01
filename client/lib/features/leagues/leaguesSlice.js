@@ -32,10 +32,10 @@ export const fetchMatchesByLeague = createAsyncThunk(
   "leagues/fetchMatchesByLeague",
   async (leagueId, { rejectWithValue }) => {
     try {
-      const response = await apiClient.get(
-        `/fixtures/league/${leagueId}/matches`
-      );
-      return { leagueId, matches: response.data.data };
+      console.log("HELLLOOOOO");
+      const response = await apiClient.get(`/fixtures/league/${leagueId}`);
+
+      return { league: response.data.league, matches: response.data.data };
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.error?.message ||
@@ -93,8 +93,9 @@ const leaguesSlice = createSlice({
       })
       .addCase(fetchMatchesByLeague.fulfilled, (state, action) => {
         state.matchesLoading = false;
-        const { leagueId, matches } = action.payload;
-        state.matchesByLeague[leagueId] = matches;
+
+        const { league, matches } = action.payload;
+        state.matchesByLeague[league.id] = { matches, league };
       })
       .addCase(fetchMatchesByLeague.rejected, (state, action) => {
         state.matchesLoading = false;
@@ -115,7 +116,9 @@ export const selectSelectedLeague = (state) => state.leagues.selectedLeague;
 export const selectPopularLeagues = (state) => state.leagues.popularLeagues;
 export const selectPopularLeaguesLoading = (state) =>
   state.leagues.popularLoading;
+
 export const selectMatchesByLeague = (state, leagueId) =>
   state.leagues.matchesByLeague[leagueId] || [];
+
 export const selectMatchesLoading = (state) => state.leagues.matchesLoading;
 export const selectMatchesError = (state) => state.leagues.matchesError;
