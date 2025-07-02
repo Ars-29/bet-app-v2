@@ -6,9 +6,6 @@ import {
   getUpcomingFixtures,
   getPopularLeagues,
   getHomepageFixtures,
-  getCacheStats,
-  clearCache,
-  preloadData,
   getMatchById,
   getMatchesByLeague,
 } from "../controllers/fixtures.controller.js";

@@ -2,6 +2,7 @@ import fixtureOptimizationService from "../services/fixture.service.js";
 import { asyncHandler } from "../utils/customErrors.js";
 
 // Get optimized fixtures with pagination and filtering
+
 export const getOptimizedFixtures = asyncHandler(async (req, res) => {
   const {
     page = 1,
@@ -112,42 +113,6 @@ export const getPopularLeagues = asyncHandler(async (req, res) => {
     data: leagues,
     count: leagues.length,
     requested_limit: parsedLimit,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// Get cache statistics (for monitoring)
-export const getCacheStats = asyncHandler(async (req, res) => {
-  const stats = fixtureOptimizationService.getCacheStats();
-
-  res.status(200).json({
-    success: true,
-    message: "Cache statistics retrieved successfully",
-    data: stats,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// Clear cache (admin function)
-export const clearCache = asyncHandler(async (req, res) => {
-  const { type = "all" } = req.body;
-
-  fixtureOptimizationService.clearCache(type);
-
-  res.status(200).json({
-    success: true,
-    message: `Cache cleared successfully (${type})`,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// Preload popular data (can be called via cron job)
-export const preloadData = asyncHandler(async (req, res) => {
-  await fixtureOptimizationService.preloadPopularData();
-
-  res.status(200).json({
-    success: true,
-    message: "Popular data preloaded successfully",
     timestamp: new Date().toISOString(),
   });
 });
