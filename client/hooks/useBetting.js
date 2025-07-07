@@ -5,34 +5,27 @@ import apiClient from "@/config/axios";
 export const useBetting = () => {
   const dispatch = useDispatch();
 
-  const placeBet = async (match, selection, odds, type = "1x2", oddId = null, metadata = {}) => {
+  // Add bet to slip (Redux only, no API call)
+  const addBetToSlip = (match, selection, odds, type = "1x2", oddId = null, metadata = {}) => {
+    dispatch(
+      addBet({
+        match,
+        selection,
+        odds,
+        type,
+        oddId,
+        ...metadata
+      })
+    );
+  };
+
+  // Place bet (API call, to be used in BetSlip only)
+  const placeBet = async (betData) => {
     try {
-      // First add to local bet slip
-      dispatch(
-        addBet({
-          match,
-          selection,
-          odds,
-          type,
-          oddId,
-          ...metadata
-        })
-      );
-
-      // Then send to server with required format
-      const betData = {
-        matchId: match.id,
-        oddId: Number(oddId), // Convert to number
-        stake: 11, // Default stake, can be updated later
-        betOption: selection, // Include bet option
-        isInPlay: match.state_id === 2 || match.isLive // Check if match is live
-      };
-
+      // betData should contain matchId, oddId, stake, betOption, isInPlay
       console.log("Sending bet to server:", betData);
-      
       const response = await apiClient.post("/bet/place-bet", betData);
       console.log("Server response:", response.data);
-
       return response.data;
     } catch (error) {
       console.error("Error placing bet:", error.response?.data || error);
@@ -40,6 +33,7 @@ export const useBetting = () => {
     }
   };
 
+  // Handler for adding to slip only
   const createBetHandler = (
     match,
     selection,
@@ -48,18 +42,15 @@ export const useBetting = () => {
     oddId = null,
     metadata = {}
   ) => {
-    return async (e) => {
+    return (e) => {
       e.preventDefault();
       e.stopPropagation();
-      try {
-        await placeBet(match, selection, odds, type, oddId, metadata);
-      } catch (error) {
-        console.error("Error in bet handler:", error);
-      }
+      addBetToSlip(match, selection, odds, type, oddId, metadata);
     };
   };
 
   return {
+    addBetToSlip,
     placeBet,
     createBetHandler,
   };

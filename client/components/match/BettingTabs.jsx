@@ -538,7 +538,7 @@ const BettingOptionButton = ({
     name,
     ...props 
 }) => {
-    const { placeBet } = useBetting();
+    const { addBetToSlip } = useBetting();
     const dispatch = useDispatch();
     const selectedBets = useSelector(state => state.betSlip.bets);
     const isSelected = selectedBets && selectedBets.some((bet) => bet.oddId === optionId);
@@ -572,9 +572,8 @@ const BettingOptionButton = ({
                 total,
                 name
             };
-            
-            // Use the placeBet function from the hook with complete bet data
-            placeBet(formattedMatch, betOption.label, betOption.value, betOption.type, betOption.oddId, {
+            // Only add to slip, do not call backend
+            addBetToSlip(formattedMatch, betOption.label, betOption.value, betOption.type, betOption.oddId, {
                 marketDescription: betOption.marketDescription,
                 handicapValue: betOption.handicapValue,
                 halfIndicator: betOption.halfIndicator,
