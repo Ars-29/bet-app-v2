@@ -15,7 +15,7 @@ class FixtureOptimizationService {
     this.liveCache = new NodeCache({ stdTTL: 600 });
     this.fixtureCache = new NodeCache({ stdTTL: 87200 }); // 24h + 20min
     this.leagueCache = new NodeCache({ stdTTL: 87200 }); // 24h + 20min
-    this.upcomingMatchesCache = new NodeCache({ stdTTL: 6 * 60 * 60 }); // 6 hours TTL
+   
 
     // INFO: Track API calls for rate limiting
     this.apiCallCount = 0;
@@ -34,11 +34,12 @@ class FixtureOptimizationService {
 
   async getOptimizedFixtures() {
     const today = new Date();
-    const startDate = today.toISOString().split("T")[0];
+    // Include matches from 2 days ago to 7 days in the future to capture live matches
+    const startDate = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const endDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
-    const cacheKey = `fixtures_next7days_${startDate}_${endDate}`;
+    const cacheKey = `fixtures_live_and_future_${startDate}_${endDate}`;
 
     console.log(`🔍 Looking for cache key: ${cacheKey}`);
     console.log(`📅 Date range: ${startDate} to ${endDate}`);
@@ -74,7 +75,7 @@ class FixtureOptimizationService {
 
     let allFixtures = [];
     let pageUrl = `/football/fixtures/between/${startDate}/${endDate}`;
-    let page = 1;
+    let page = 4;
     try {
       while (pageUrl) {
         let params = {
@@ -83,16 +84,44 @@ class FixtureOptimizationService {
           per_page: 50,
           page: page,
         };
-        console.log(`📡 Fetching page ${page}...`);
-        const response = await sportsMonksService.client.get(pageUrl, {
-          params,
-        });
+        
+        // Add retry logic for network errors
+        let retries = 3;
+        let response;
+        
+        while (retries > 0) {
+          try {
+            console.log(`📡 Fetching page ${page}... (attempt ${4 - retries}/3)`);
+            response = await sportsMonksService.client.get(pageUrl, {
+              params,
+              timeout: 30000, // Increase timeout to 30 seconds
+            });
+            break; // Success, exit retry loop
+          } catch (error) {
+            retries--;
+            console.error(`❌ Error fetching page ${page}:`, error.message);
+            
+            if (retries === 0) {
+              console.error(`❌ Failed to fetch page ${page} after 3 attempts`);
+              throw error;
+            }
+            
+            // Wait before retrying (exponential backoff)
+            const waitTime = (4 - retries) * 2000; // 2s, 4s, 6s
+            console.log(`⏳ Retrying in ${waitTime/1000} seconds...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
+        }
+        
         const data = response.data?.data || [];
         console.log(`📊 Page ${page} returned ${data.length} fixtures`);
         allFixtures = allFixtures.concat(data);
         const pagination = response.data?.pagination;
         if (pagination && pagination.has_more && pagination.next_page) {
           page++;
+          if (page ==7) {
+            pageUrl = null;
+          }
          
         } else {
           pageUrl = null;
@@ -147,7 +176,8 @@ class FixtureOptimizationService {
               winning: odd.winning,
               probability: odd.probability,
               handicap: odd.handicap,
-              total:odd.total
+              total:odd.total,
+              suspended:odd.suspended,
             }))
           : [],
       };
@@ -986,6 +1016,9 @@ class FixtureOptimizationService {
       }
     }
 
+    // Attach league object to the match using the league cache
+    cachedMatch.league = this.getLeagueById(parseInt(cachedMatch.league_id));
+
     // Cache the match for future direct access
     this.fixtureCache.set(matchCacheKey, cachedMatch, 3600); // 1 hour TTL
 
@@ -1110,15 +1143,26 @@ class FixtureOptimizationService {
       console.log("[CacheRefresh] Flushing old caches...");
       this.fixtureCache.flushAll();
       this.leagueCache.flushAll();
-      // Fetch and cache leagues
+      
+      // Fetch and cache leagues with retry
+      console.log("[CacheRefresh] Fetching leagues...");
       await this.getPopularLeagues();
-      // Fetch and cache fixtures (this will cache for the next 7 days, but you can adjust as needed)
+      
+      // Fetch and cache fixtures with retry
+      console.log("[CacheRefresh] Fetching fixtures...");
       await this.getOptimizedFixtures();
+      
       // Optionally, preload homepage data
+      console.log("[CacheRefresh] Preloading homepage data...");
       await this.getHomepageData();
+      
       console.log("[CacheRefresh] All data refreshed and cached.");
     } catch (err) {
       console.error("[CacheRefresh] Error refreshing all data:", err);
+      
+      // Don't throw the error - let the system continue with cached data
+      // This prevents the entire refresh from failing due to network issues
+      console.log("[CacheRefresh] Continuing with existing cached data...");
     }
   }
 

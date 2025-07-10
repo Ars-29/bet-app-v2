@@ -19,7 +19,7 @@ const DraggableLeagueCard = ({ league, type, index, onRemove }) => {
             className={`cursor-move transition-all duration-200 opacity-100 scale-100"
                 }`}
         >
-            <Card className="bg-base-light/10 rounded-none hover:bg-base-light/20 border-base-light/30">
+            <Card className="bg-base-light/5 p-0 py-3 shadow-none rounded-none hover:bg-base-light/10 border-base-light/30">
                 <CardContent className="py-0 px-4 " >
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
@@ -34,10 +34,10 @@ const DraggableLeagueCard = ({ league, type, index, onRemove }) => {
                                 />
                             )}
                             <div>
-                                <h3 className="font-medium text-card-foreground">
+                                <h3 className="text-sm text-card-foreground">
                                     {league.name}
                                 </h3>
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-xs text-muted-foreground">
                                     {league.country?.name || "International"}
                                 </p>
                             </div>

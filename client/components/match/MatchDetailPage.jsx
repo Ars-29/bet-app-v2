@@ -7,6 +7,7 @@ import { useSelector, useDispatch } from "react-redux"
 import { 
     fetchMatchById, 
     fetchLiveOdds,
+    silentUpdateLiveOdds,
     clearError,
     selectLiveOdds,
     selectLiveOddsLoading,
@@ -60,13 +61,13 @@ const MatchDetailPage = ({ matchId }) => {
     useEffect(() => {
         if (!matchId || !matchData || !isMatchLive(matchData)) return;
 
-        // Initial fetch
+        // Initial fetch (with loading state)
         dispatch(fetchLiveOdds(matchId));
 
-        // Set up polling every 3 minutes
+        // Set up polling every 2 minutes (silent updates)
         const interval = setInterval(() => {
-            dispatch(fetchLiveOdds(matchId));
-        }, 180000); // 3 minutes
+            dispatch(silentUpdateLiveOdds(matchId));
+        }, 120000); // 2 minutes
 
         return () => clearInterval(interval);
     }, [matchId, matchData, dispatch]);
@@ -246,7 +247,8 @@ const MatchDetailPage = ({ matchId }) => {
                         matchData={{ 
                             ...matchData, 
                             betting_data: bettingData,
-                            odds_classification: oddsClassification 
+                            odds_classification: oddsClassification,
+                            league: matchData.league
                         }} 
                     />
                 </div>

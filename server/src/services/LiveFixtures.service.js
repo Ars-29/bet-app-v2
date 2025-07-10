@@ -272,7 +272,14 @@ class LiveFixturesService {
   async ensureLiveOdds(matchId) {
     // Check if we already have odds in cache
     let odds = this.liveOddsCache.get(matchId);
-    if (odds && odds.length > 0) {
+    console.log(`[ensureLiveOdds] Cache check for match ${matchId}:`, {
+      hasCache: !!odds,
+      cacheType: typeof odds,
+      cacheStructure: odds ? Object.keys(odds) : null
+    });
+    
+    if (odds && (odds.betting_data || odds.length > 0)) {
+      console.log(`[ensureLiveOdds] Returning cached odds for match ${matchId}`);
       return odds;
     }
 
@@ -286,6 +293,9 @@ class LiveFixturesService {
       const url = `https://api.sportmonks.com/v3/football/odds/inplay/fixtures/${matchId}?api_token=${apiToken}&filters=bookmakers:2`;
       const response = await axios.get(url);
       const oddsData = response.data?.data || [];
+      
+      console.log(`[ensureLiveOdds] Fetched ${oddsData.length} raw odds from API for match ${matchId}`);
+      console.log(`[ensureLiveOdds] First 3 raw odds:`, oddsData.slice(0, 3).map(odd => ({ id: odd.id, label: odd.label, value: odd.value })));
 
       // Group odds by market for classification
       const odds_by_market = {};
@@ -342,6 +352,21 @@ class LiveFixturesService {
         betting_data: betting_data,
         odds_classification: classified
       };
+
+      // Debug: Log the final result structure
+      console.log(`[ensureLiveOdds] Final result structure:`, {
+        bettingDataSections: result.betting_data.length,
+        totalOptions: result.betting_data.reduce((sum, section) => sum + (section.options?.length || 0), 0)
+      });
+      
+      // Debug: Log all odd IDs in the final result
+      const allOddIds = [];
+      result.betting_data.forEach(section => {
+        section.options?.forEach(option => {
+          allOddIds.push({ id: option.id, label: option.label, section: section.title });
+        });
+      });
+      console.log(`[ensureLiveOdds] All odd IDs in final result:`, allOddIds.slice(0, 10)); // Show first 10
 
       // Cache the result
       this.liveOddsCache.set(matchId, result);

@@ -44,6 +44,10 @@ const MatchHeader = ({ matchData }) => {
             </div>
         );
     }
+    else{
+        console.log(matchData);
+        
+    }
 
     return (
         <div className="mb-4 bg-white p-3">
@@ -52,7 +56,7 @@ const MatchHeader = ({ matchData }) => {
                 onClick={() => { router.back() }}
                 className="flex cursor-pointer items-center text-xs text-slate-500 mb-3 hover:text-slate-600 transition-all" >
                 <ChevronLeft className="h-4 w-4" />
-                <span className="ml-1 truncate">Football | {matchData.league?.name || 'League'}</span>
+                <span className="ml-1 truncate">Back | {matchData.league.name}</span>
                 {/* <span className="ml-1"> <img src={`${matchData.league.image_path}`} className="h-3 w-3" alt="" /> </span> */}
             </button>
 
@@ -104,12 +108,6 @@ const MatchHeader = ({ matchData }) => {
     )
 }
 
-const TeamBadge = ({ country, color }) => {
-    return (
-        <div className={`w-6 h-6 ${color} rounded-full flex items-center justify-center shadow-sm`}>
-            <span className="text-white text-[8px] font-medium">{country}</span>
-        </div>
-    )
-}
+
 
 export default MatchHeader

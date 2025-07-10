@@ -6,10 +6,62 @@ import FixtureOptimizationService from "./fixture.service.js";
 import { CustomError } from "../utils/customErrors.js";
 import agenda from "../config/agenda.js";
 import NodeCache from "node-cache";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class BetService {
   constructor() {
     this.finalMatchResultCache = new NodeCache({ stdTTL: 24 * 60 * 60 });
+    this.marketsCache = null;
+    this.marketsCacheTime = null;
+    this.MARKETS_FILE_PATH = path.join(__dirname, "../constants/markets.json");
+  }
+
+  // Helper method to get markets data from JSON file
+  getMarketsData() {
+    try {
+      // Check if cache is valid (cache for 1 hour)
+      const now = Date.now();
+      if (this.marketsCache && this.marketsCacheTime && (now - this.marketsCacheTime) < 60 * 60 * 1000) {
+        return this.marketsCache;
+      }
+
+      // Read from file
+      const marketsData = JSON.parse(fs.readFileSync(this.MARKETS_FILE_PATH, 'utf8'));
+      this.marketsCache = marketsData;
+      this.marketsCacheTime = now;
+      return marketsData;
+    } catch (error) {
+      console.error('Error reading markets.json:', error);
+      return { markets: {} };
+    }
+  }
+
+  // Helper method to get market name by market ID
+  getMarketName(marketId) {
+    const marketsData = this.getMarketsData();
+    const market = marketsData.markets[marketId];
+    return market ? market.name : 'Unknown Market';
+  }
+
+  // Helper method to create betDetails object
+  createBetDetails(odds, marketId) {
+    const marketName = this.getMarketName(marketId);
+    
+    return {
+      market_id: marketId,
+      market_name: marketName,
+      label: odds.label || odds.name || '',
+      value: parseFloat(odds.value) || 0,
+      total: parseFloat(odds.total) || null,
+      market_description: odds.market_description || null,
+      handicap: odds.handicap || null,
+      name: odds.name || odds.label || ''
+    };
   }
 
   // Helper method to get current UTC time
@@ -120,6 +172,11 @@ class BetService {
       console.log(
         `[placeBet] Processing inplay bet for match ${matchId}, odd ${oddId}`
       );
+      
+      // Force a fresh fetch for betting to ensure we have the latest odds
+      console.log(`[placeBet] Forcing fresh fetch of live odds for betting...`);
+      FixtureOptimizationService.liveFixturesService.liveOddsCache.del(matchId);
+      
       const liveOddsResult =
         await FixtureOptimizationService.liveFixturesService.ensureLiveOdds(
           matchId
@@ -127,22 +184,58 @@ class BetService {
 
       // Get the betting_data array from the result
       const liveOdds = liveOddsResult.betting_data || [];
+      
+      console.log(`[placeBet] Live odds structure:`, {
+        hasBettingData: !!liveOddsResult.betting_data,
+        bettingDataLength: liveOdds.length,
+        lookingForOddId: oddId,
+        oddIdType: typeof oddId,
+        oddIdAsNumber: parseInt(oddId),
+        oddIdAsString: oddId.toString()
+      });
+      
+
 
       // Find the odd directly in the live odds data
       let foundOdd = null;
       let foundMarket = null;
-      for (const market of liveOdds) {
-        const odd = market.options?.find((o) => o.id === oddId);
+      
+      // Search for the exact odd ID in all sections
+      for (const section of liveOdds) {
+        console.log(`[placeBet] Checking section: ${section.title} with ${section.options?.length || 0} options`);
+        
+        // Log all available odd IDs in this section for debugging
+        if (section.options && section.options.length > 0) {
+          const availableOddIds = section.options.map(o => ({ 
+            id: o.id, 
+            idType: typeof o.id, 
+            label: o.label 
+          }));
+          console.log(`[placeBet] Available odds in ${section.title}:`, availableOddIds);
+        }
+        
+        // Simple exact match - convert both to numbers for comparison
+        const odd = section.options?.find((o) => {
+          const optionId = parseInt(o.id);
+          const requestedId = parseInt(oddId);
+          console.log(`[placeBet] Comparing: ${optionId} === ${requestedId} (${optionId === requestedId})`);
+          return optionId === requestedId;
+        });
+        
         if (odd) {
           foundOdd = odd;
-          foundMarket = market;
+          foundMarket = section;
+          console.log(`[placeBet] ✅ FOUND EXACT MATCH: ${odd.label} with ID: ${odd.id}`);
           break;
         }
       }
 
       if (!foundOdd) {
+        console.log(`[placeBet] ❌ EXACT MATCH NOT FOUND for oddId: ${oddId}`);
+        console.log(`[placeBet] This shouldn't happen if SportsMonks doesn't change odd IDs!`);
+        
         throw new CustomError(
-          "Invalid odd ID for live bet",
+          `Invalid odd ID for live bet. Odd ID ${oddId} not found in current live odds.`,
           400,
           "INVALID_LIVE_ODD_ID"
         );
@@ -161,7 +254,11 @@ class BetService {
         id: foundOdd.id,
         value: foundOdd.value,
         name: foundOdd.name || foundOdd.label,
-        market_id: foundMarket.id || foundMarket.market_id,
+        market_id: foundMarket.marketId || foundMarket.id || foundMarket.market_id,
+        label: foundOdd.label,
+        total: foundOdd.total,
+        market_description: foundMarket.description,
+        handicap: foundOdd.handicap
       };
     }
 
@@ -295,6 +392,9 @@ class BetService {
       matchDate.getTime() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000
     );
 
+    // Create betDetails object
+    const betDetails = this.createBetDetails(odds, odds.market_id);
+
     const bet = new Bet({
       userId,
       matchId,
@@ -309,9 +409,11 @@ class BetService {
       teams,
       selection,
       inplay,
+      betDetails,
     });
 
     console.log(`[placeBet] Creating bet with marketId: ${odds.market_id}`);
+    console.log(`[placeBet] Bet details:`, betDetails);
     await bet.save();
 
     const nowUTC = this.getCurrentUTCTime();
@@ -422,6 +524,17 @@ class BetService {
       throw new CustomError("Bet not found", 404, "BET_NOT_FOUND");
     }
 
+    // Prevent processing bets that have already been finalized
+    if (bet.status !== "pending") {
+      console.log(`[checkBetOutcome] Bet ${betId} already processed with status: ${bet.status}, skipping`);
+      return {
+        betId: bet._id,
+        status: bet.status,
+        payout: bet.payout,
+        message: "Already processed"
+      };
+    }
+
     let matchData = match;
     // Check the final match result cache first
     if (!matchData) {
@@ -490,13 +603,13 @@ class BetService {
       bet.payout = bet.stake; // Refund the stake
     } else {
       // Use the winning field to determine outcome
+      console.log(`[checkBetOutcome] selectedOdd.winning value: ${selectedOdd.winning}`);
       bet.status = selectedOdd.winning ? "won" : "lost";
       bet.payout = selectedOdd.winning ? bet.stake * bet.odds : 0;
       console.log(
         `[checkBetOutcome] Set status based on winning field: ${bet.status}, Payout: ${bet.payout}`
       );
     }
-
     // Update user balance if bet was won or canceled
     if (bet.status === "won" || bet.status === "canceled") {
       const user = bet.userId;
@@ -507,6 +620,7 @@ class BetService {
       );
     }
 
+    console.log(`[checkBetOutcome] Final status before saving: ${bet.status}`);
     console.log(`[checkBetOutcome] Saving bet with status: ${bet.status}`);
     await bet.save();
     console.log(

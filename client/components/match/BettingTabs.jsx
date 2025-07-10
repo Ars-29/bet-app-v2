@@ -64,7 +64,8 @@ const BettingTabs = ({ matchData }) => {
                             probability: odd.probability,
                             winning: odd.winning,
                             handicap: odd.handicap,
-                            total:odd.total
+                            total:odd.total,
+                            suspended:odd.suspended
                         }))
                     }));
 
@@ -101,7 +102,8 @@ const BettingTabs = ({ matchData }) => {
                 probability: odd.probability,
                 winning: odd.winning,
                 handicap: odd.handicap,
-                total:odd.total
+                total:odd.total,
+                suspended:odd.suspended
             }))
         }));
 
@@ -353,6 +355,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                             total={option.total}
                             name={name}
                             marketDescription={section.title}
+                            suspended={option.suspended}
                         />
                     );
                 })}
@@ -482,14 +485,20 @@ const BettingOptionButton = ({
     total,
     marketDescription,
     name,
+    suspended,
     ...props 
 }) => {
     const { addBetToSlip } = useBetting();
     const dispatch = useDispatch();
     const selectedBets = useSelector(state => state.betSlip.bets);
     const isSelected = selectedBets && selectedBets.some((bet) => bet.oddId === optionId);
+    const isSuspended = suspended || false;
 
     const handleBetClick = () => {
+        // Don't allow betting on suspended odds
+        if (isSuspended) {
+            return;
+        }
         if (isSelected) {
             // Find the bet to remove
             const betToRemove = selectedBets.find(bet => bet.oddId === optionId);
@@ -701,6 +710,11 @@ const BettingOptionButton = ({
     const isDrawOption = label === 'Tie' || label === 'tie' || label === 'X' || label.toLowerCase().includes('draw');
 
     const getStyleClasses = () => {
+        // If suspended, use gray styling and disable hover effects
+        if (isSuspended) {
+            return "bg-gray-400 cursor-not-allowed opacity-60";
+        }
+        
         if (isResultOption || isHandicapOption || isHalfTimeOption || sectionType === 'corner-match-bet') {
             if (isTeamName) {
                 return "bg-base hover:bg-base-dark";
@@ -715,15 +729,17 @@ const BettingOptionButton = ({
 
     return (
         <Button
-            className={`group relative px-2 py-1 text-center transition-all duration-200 active:scale-[0.98] betting-button ${getStyleClasses()}`}
+            className={`group relative px-2 py-1 text-center transition-all duration-200 ${!isSuspended ? 'active:scale-[0.98]' : ''} betting-button ${getStyleClasses()}`}
             onClick={handleBetClick}
+            disabled={isSuspended}
         >
             <div className="relative w-full flex justify-between items-center py-1 z-10">
                 <div className="text-[12px] text-white font-medium transition-colors duration-200 leading-tight">
                     {formattedLabel()}
+                    {isSuspended && <span className="ml-1 text-[10px] opacity-80">(Suspended)</span>}
                 </div>
                 <div className="text-[12px] font-bold text-white transition-colors duration-200">
-                    {value}
+                    {isSuspended ? '--' : value}
                 </div>
             </div>
         </Button>

@@ -63,6 +63,40 @@ const betSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    betDetails: {
+      market_id: {
+        type: String,
+        required: true,
+      },
+      market_name: {
+        type: String,
+        required: true,
+      },
+      label: {
+        type: String,
+        required: true,
+      },
+      value: {
+        type: Number,
+        required: true,
+      },
+      total: {
+        type: Number,
+        default: null,
+      },
+      market_description: {
+        type: String,
+        default: null,
+      },
+      handicap: {
+        type: String,
+        default: null,
+      },
+      name: {
+        type: String,
+        required: true,
+      },
+    },
   },
   {
     timestamps: true,

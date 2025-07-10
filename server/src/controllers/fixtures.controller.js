@@ -239,7 +239,7 @@ export const getLiveMatchesFromCache = async (req, res) => {
       match.odds = liveFixturesService.extractMainOdds(odds);
       return match;
     }).filter(match => {
-      // Only keep matches with at least one odds value
+     
       return match.odds && (match.odds.home || match.odds.draw || match.odds.away);
     });
   });
@@ -284,6 +284,9 @@ export const getAllLiveOddsMap = asyncHandler(async (req, res) => {
   const oddsMap = liveFixturesService.getAllLiveOddsMap();
   res.json(oddsMap);
 });
+
+
+
 
 export const getInplayOdds = async (req, res, next) => {
   try {

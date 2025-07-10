@@ -282,15 +282,15 @@ const transformToBettingData = (classifiedOdds, matchData = null) => {
       if (processedMarkets.has(marketId)) return;
       processedMarkets.add(marketId);
 
-      // Filter out suspended odds
-      const activeOdds = market.odds.filter(odd => !odd.suspended);
+      // Don't filter out suspended odds - include all odds for betting
+      const allOdds = market.odds;
 
-      // Only create a section if there are active odds
-      if (activeOdds.length > 0) {
+      // Create a section with all odds
+      if (allOdds.length > 0) {
         const section = {
           category: category.id,
           title: market.market_description || category.label,
-          options: activeOdds.map(odd => ({
+          options: allOdds.map(odd => ({
             id: odd.id,
             label: odd.label,
             value: parseFloat(odd.value),

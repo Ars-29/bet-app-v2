@@ -99,6 +99,26 @@ export const fetchLiveOdds = createAsyncThunk(
   }
 );
 
+// Async thunk for silently updating live odds (no loading state)
+export const silentUpdateLiveOdds = createAsyncThunk(
+  "matches/silentUpdateLiveOdds",
+  async (matchId, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get(`/fixtures/${matchId}/inplay-odds`);
+      return {
+        matchId,
+        liveOdds: response.data.data.betting_data,
+        liveOddsClassification: response.data.data.odds_classification,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.error?.message || "Failed to fetch live odds"
+      );
+    }
+  }
+);
+
 const matchesSlice = createSlice({
   name: "matches",
   initialState: {
@@ -185,8 +205,12 @@ const matchesSlice = createSlice({
         state.matchDetailError = action.payload;
       })
       // Fetch live odds
-      .addCase(fetchLiveOdds.pending, (state) => {
-        state.liveOddsLoading = true;
+      .addCase(fetchLiveOdds.pending, (state, action) => {
+        const matchId = action.meta.arg;
+        // Only show loading if we don't have existing odds (initial load)
+        if (!state.liveOdds[matchId]) {
+          state.liveOddsLoading = true;
+        }
         state.liveOddsError = null;
       })
       .addCase(fetchLiveOdds.fulfilled, (state, action) => {
@@ -200,6 +224,20 @@ const matchesSlice = createSlice({
       .addCase(fetchLiveOdds.rejected, (state, action) => {
         state.liveOddsLoading = false;
         state.liveOddsError = action.payload;
+      })
+      // Silent live odds update (no loading state changes)
+      .addCase(silentUpdateLiveOdds.fulfilled, (state, action) => {
+        state.liveOdds[action.payload.matchId] = action.payload.liveOdds;
+        state.liveOddsTimestamp[action.payload.matchId] =
+          action.payload.timestamp;
+        state.liveOddsClassification[action.payload.matchId] =
+          action.payload.liveOddsClassification;
+        // Clear any existing errors since update was successful
+        state.liveOddsError = null;
+      })
+      .addCase(silentUpdateLiveOdds.rejected, (state, action) => {
+        // Don't update loading state, just log the error silently
+        console.warn('Silent live odds update failed:', action.payload);
       });
   },
 });

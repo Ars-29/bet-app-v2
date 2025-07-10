@@ -18,6 +18,22 @@ export const fetchLiveMatches = createAsyncThunk(
   }
 );
 
+// Async thunk for silently updating live matches (no loading state)
+export const silentUpdateLiveMatches = createAsyncThunk(
+  "liveMatches/silentUpdateLiveMatches",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get("/fixtures/live");
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.error?.message ||
+          "Failed to fetch live matches"
+      );
+    }
+  }
+);
+
 const liveMatchesSlice = createSlice({
   name: "liveMatches",
   initialState: {
@@ -29,7 +45,10 @@ const liveMatchesSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchLiveMatches.pending, (state) => {
-        state.loading = true;
+        // Only show loading if we don't have existing data (initial load)
+        if (state.data.length === 0) {
+          state.loading = true;
+        }
         state.error = null;
       })
       .addCase(fetchLiveMatches.fulfilled, (state, action) => {
@@ -39,6 +58,16 @@ const liveMatchesSlice = createSlice({
       .addCase(fetchLiveMatches.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // Silent live matches update (no loading state changes)
+      .addCase(silentUpdateLiveMatches.fulfilled, (state, action) => {
+        state.data = action.payload;
+        // Clear any existing errors since update was successful
+        state.error = null;
+      })
+      .addCase(silentUpdateLiveMatches.rejected, (state, action) => {
+        // Don't update loading state, just log the error silently
+        console.warn('Silent live matches update failed:', action.payload);
       });
   },
 });

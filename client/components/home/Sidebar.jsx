@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Pin, Users, Settings, DollarSign, X, Search, Globe, TrendingUp } from 'lucide-react';
+import {  ChevronRight, Pin, Users, Settings, DollarSign, X, Search, Globe, TrendingUp, Trophy } from 'lucide-react';
 import { useCustomSidebar } from '../../contexts/SidebarContext.js';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectUser } from '@/lib/features/auth/authSlice';
@@ -100,6 +100,11 @@ const Sidebar = () => {
             title: 'Settings',
             href: '/admin/settings',
             icon: Settings
+        },
+        {
+            title: 'Leagues',
+            href: '/admin/leagues',
+            icon: Trophy
         }
     ];
 
@@ -154,7 +159,7 @@ const Sidebar = () => {
         return popularLeagues.filter(l => l.name.toLowerCase().includes(search.toLowerCase()));
     }, [search, popularLeagues]);
 
-    const [activeTab, setActiveTab] = useState('by-country');
+    const [activeTab, setActiveTab] = useState('popular');
 
     const filteredLeagues = useMemo(() => {
         if (!popularLeagues || !Array.isArray(popularLeagues)) return [];
@@ -226,17 +231,20 @@ const Sidebar = () => {
                         <div className="p-1">
                             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-1">
                                 <TabsList className="mb-1 w-full  text-xs py-0 h-6 !text-white  bg-transparent border-gray-500 border-1 ">
-                                    <TabsTrigger
-                                        value="by-country"
-                                        className="flex-1 text-xs bg-transparent cursor-pointer text-white data-[state=active]:bg-base data-[state=active]:text-white"
-                                    >
-                                        <Globe className="mr-1 h-4 w-4" /> By Country
-                                    </TabsTrigger>
+                                   
                                     <TabsTrigger
                                         value="popular"
                                         className="flex-1 text-xs bg-transparent cursor-pointer text-white data-[state=active]:bg-base data-[state=active]:text-white"
                                     >
                                         <TrendingUp className="mr-1 h-4 w-4" /> Popular
+                                    </TabsTrigger>
+
+
+                                    <TabsTrigger
+                                        value="by-country"
+                                        className="flex-1 text-xs bg-transparent cursor-pointer text-white data-[state=active]:bg-base data-[state=active]:text-white"
+                                    >
+                                        <Globe className="mr-1 h-4 w-4" /> By Country
                                     </TabsTrigger>
                                 </TabsList>
                                 <div className="mb-3 relative">
@@ -292,12 +300,14 @@ const Sidebar = () => {
                                                             >
                                                                 <div className="flex items-center min-w-0">
                                                                     {league.image_path ? (
-                                                                        <img
-                                                                            src={league.image_path}
-                                                                            alt={league.name}
-                                                                            className="w-5 h-5 object-contain mr-2"
-                                                                            onError={e => { e.target.style.display = 'none'; }}
-                                                                        />
+                                                                        <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
+                                                                            <img
+                                                                                src={league.image_path}
+                                                                                alt={league.name}
+                                                                                className="w-5 h-5 object-contain"
+                                                                                onError={e => { e.target.style.display = 'none'; }}
+                                                                            />
+                                                                        </span>
                                                                     ) : league.icon ? (
                                                                         <span className="text-green-400 text-sm mr-2">{league.icon}</span>
                                                                     ) : null}
@@ -345,12 +355,14 @@ const Sidebar = () => {
                                                                             >
                                                                                 <div className="flex items-center min-w-0 py-0 ">
                                                                                     {league.image_path ? (
-                                                                                        <img
-                                                                                            src={league.image_path}
-                                                                                            alt={league.name}
-                                                                                            className="w-5 h-5 object-contain mr-2"
-                                                                                            onError={e => { e.target.style.display = 'none'; }}
-                                                                                        />
+                                                                                        <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
+                                                                                            <img
+                                                                                                src={league.image_path}
+                                                                                                alt={league.name}
+                                                                                                className="w-5 h-5 object-contain"
+                                                                                                onError={e => { e.target.style.display = 'none'; }}
+                                                                                            />
+                                                                                        </span>
                                                                                     ) : league.icon ? (
                                                                                         <span className="text-green-400 text-sm mr-2">{league.icon}</span>
                                                                                     ) : null}
@@ -400,12 +412,14 @@ const Sidebar = () => {
                                                                 >
                                                                     <div className="flex items-center min-w-0">
                                                                         {league.image_path ? (
-                                                                            <img
-                                                                                src={league.image_path}
-                                                                                alt={league.name}
-                                                                                className="w-5 h-5 object-contain mr-2"
-                                                                                onError={e => { e.target.style.display = 'none'; }}
-                                                                            />
+                                                                            <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
+                                                                                <img
+                                                                                    src={league.image_path}
+                                                                                    alt={league.name}
+                                                                                    className="w-5 h-5 object-contain"
+                                                                                    onError={e => { e.target.style.display = 'none'; }}
+                                                                                />
+                                                                            </span>
                                                                         ) : league.icon ? (
                                                                             <span className="text-green-400 text-sm mr-2">{league.icon}</span>
                                                                         ) : null}
@@ -428,12 +442,14 @@ const Sidebar = () => {
                                                         >
                                                             <div className="flex items-center min-w-0">
                                                                 {league.image_path ? (
-                                                                    <img
-                                                                        src={league.image_path}
-                                                                        alt={league.name}
-                                                                        className="w-5 h-5 object-contain mr-2"
-                                                                        onError={e => { e.target.style.display = 'none'; }}
-                                                                    />
+                                                                    <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
+                                                                        <img
+                                                                            src={league.image_path}
+                                                                            alt={league.name}
+                                                                            className="w-5 h-5 object-contain"
+                                                                            onError={e => { e.target.style.display = 'none'; }}
+                                                                        />
+                                                                    </span>
                                                                 ) : league.icon ? (
                                                                     <span className="text-green-400 text-sm mr-2">{league.icon}</span>
                                                                 ) : null}
@@ -464,9 +480,8 @@ const Sidebar = () => {
             )}
 
             {(isCollapsed && !isMobile) && (
-                <div className="p-2 space-y-2">
-                    {/* Collapsed view - show only icons */}
-                    <div className="flex flex-col items-center space-y-3 pt-4">
+                <div className="p-2 space-y-2 mt-4 flex flex-col justify-center">
+                    <div className="flex flex-col items-center space-y-3">
                         {user?.role === 'admin' ? (
                             // Admin icons
                             adminMenuItems.map((item, index) => (
@@ -479,34 +494,39 @@ const Sidebar = () => {
                                 </Link>
                             ))
                         ) : (
-                            // User icons
-                            popularLeagues?.slice(0, 8).map((league, index) => {
-                                const leagueHref = league.id === 'odds-boost'
-                                    ? '/'
-                                    : `/leagues/${league.id}`;
+                            // User icons - show only popular leagues, max 8
+                            popularLeagues
+                                ?.filter(league => league.isPopular === true)
+                                ?.slice(0, 8)
+                                ?.map((league, index) => {
+                                    const leagueHref = league.id === 'odds-boost'
+                                        ? '/'
+                                        : `/leagues/${league.id}`;
 
-                                return (
-                                    <Link
-                                        key={league.id || index}
-                                        href={leagueHref}
-                                        className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-                                        title={league.name}
-                                    >
-                                        {league.image_path ? (
-                                            <img
-                                                src={league.image_path}
-                                                alt={league.name}
-                                                className="w-6 h-6 object-contain"
-                                                onError={(e) => {
-                                                    e.target.style.display = 'none';
-                                                }}
-                                            />
-                                        ) : league.icon ? (
-                                            <span className="text-white text-sm">{league.icon}</span>
-                                        ) : null}
-                                    </Link>
-                                );
-                            })
+                                    return (
+                                        <Link
+                                            key={league.id || index}
+                                            href={leagueHref}
+                                            className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
+                                            title={league.name}
+                                        >
+                                            {league.image_path ? (
+                                                <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6">
+                                                    <img
+                                                        src={league.image_path}
+                                                        alt={league.name}
+                                                        className="w-6 h-6 object-contain"
+                                                        onError={(e) => {
+                                                            e.target.style.display = 'none';
+                                                        }}
+                                                    />
+                                                </span>
+                                            ) : league.icon ? (
+                                                <span className="text-white text-sm flex items-center justify-center w-6 h-6">{league.icon}</span>
+                                            ) : null}
+                                        </Link>
+                                    );
+                                })
                         )}
                     </div>
                 </div>

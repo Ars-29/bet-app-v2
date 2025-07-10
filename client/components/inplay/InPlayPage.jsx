@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { Clock } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchLiveMatches, selectLiveMatches, selectLiveMatchesLoading, selectLiveMatchesError } from '@/lib/features/matches/liveMatchesSlice';
+import { fetchLiveMatches, silentUpdateLiveMatches, selectLiveMatches, selectLiveMatchesLoading, selectLiveMatchesError } from '@/lib/features/matches/liveMatchesSlice';
 import MatchListPage from '@/components/shared/MatchListPage'; // Updated import path
 
 const InPlayPage = () => {
@@ -13,10 +13,12 @@ const InPlayPage = () => {
     const error = useSelector(selectLiveMatchesError);
 
     useEffect(() => {
+        // Initial fetch (with loading state)
         dispatch(fetchLiveMatches());
+        // Set up polling every 2 minutes (silent updates)
         const interval = setInterval(() => {
-            dispatch(fetchLiveMatches());
-        }, 180000); // 3 minutes
+            dispatch(silentUpdateLiveMatches());
+        }, 120000); // 2 minutes
         return () => clearInterval(interval);
     }, [dispatch]);
 
