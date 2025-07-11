@@ -63,7 +63,7 @@ class BetOutcomeCalculationService {
       HALF_TIME_RESULT: [14], // Half Time Result
       CORNERS: [44], // Corners
       CARDS_TOTAL: [45], // Total Cards
-      
+      GOALSCORERS: [90], // Goalscorers (First/Last/Anytime)
     };
 
     // Result mapping for common outcomes
@@ -79,7 +79,7 @@ class BetOutcomeCalculationService {
 
     this.typeIdMapping = {
       shotsOnTarget: 86, // Type ID for shots on target
-      shotsTotal: 42
+      shotsTotal: 42,
     };
   }
 
@@ -180,7 +180,8 @@ class BetOutcomeCalculationService {
 
       case "LAST_TEAM_TO_SCORE":
       case "GOALSCORER_ANYTIME":
-        return this.calculatePlayerGoals(bet, matchData);
+      case "GOALSCORERS":
+        return this.calculateGoalscorers(bet, matchData);
 
       case "PLAYER_CARDS":
         return this.calculatePlayerCards(bet, matchData);
@@ -231,7 +232,7 @@ class BetOutcomeCalculationService {
       case "PLAYER_SHOTS_ON_TARGET":
         return this.calculatePlayerShotsOnTarget(bet, matchData);
       case "PLAYER_TOTAL_SHOTS":
-        return this.calculatePlayerTotalShots(bet,matchData);
+        return this.calculatePlayerTotalShots(bet, matchData);
 
       default:
         return this.calculateGenericOutcome(bet, matchData);
@@ -408,6 +409,128 @@ class BetOutcomeCalculationService {
       playerName: bet.betOption,
       reason: `Player goal bet: ${isWinning ? "Won" : "Lost"}`,
     };
+  }
+
+  /**
+   * Calculate Goalscorers outcome (First/Last/Anytime Goalscorer)
+   * Uses events data with type_id: 14 (goals) to determine outcomes
+   */
+  calculateGoalscorers(bet, matchData) {
+    // Check if events data is available
+    if (!matchData.events || !Array.isArray(matchData.events)) {
+      return {
+        status: "canceled",
+        payout: bet.stake,
+        reason: "Events data not available for goalscorer calculation",
+      };
+    }
+
+    // Filter events to get only goals (type_id: 14)
+    const goalEvents = matchData.events.filter(event => event.type_id === 14);
+    
+    if (goalEvents.length === 0) {
+      return {
+        status: "canceled",
+        payout: bet.stake,
+        reason: "No goals scored in the match",
+      };
+    }
+
+    // Get the bet type from betDetails.label or betOption
+    const betType = bet.betDetails?.label || bet.betOption;
+    const playerName = bet.betDetails?.name;
+    
+    if (!playerName) {
+      return {
+        status: "canceled",
+        payout: bet.stake,
+        reason: "Player name not found in bet details",
+      };
+    }
+
+    let isWinning = false;
+    let goalDetails = null;
+
+    // Sort goals by minute to determine first and last
+    const sortedGoals = [...goalEvents].sort((a, b) => {
+      const minuteA = (a.minute || 0) + (a.extra_minute || 0);
+      const minuteB = (b.minute || 0) + (b.extra_minute || 0);
+      return minuteA - minuteB;
+    });
+
+    switch (betType.toLowerCase()) {
+      case "first":
+        // Check if the player scored the first goal
+        const firstGoal = sortedGoals[0];
+        console.log('[DEBUG] First Goal Event player_name:', firstGoal?.player_name, '| Bet playerName:', playerName);
+        isWinning = firstGoal &&
+                   firstGoal.player_name &&
+                   firstGoal.player_name.trim().toLowerCase() === playerName.trim().toLowerCase();
+        goalDetails = firstGoal;
+        break;
+
+      case "last":
+        // Check if the player scored the last goal
+        const lastGoal = sortedGoals[sortedGoals.length - 1];
+        console.log('[DEBUG] Last Goal Event player_name:', lastGoal?.player_name, '| Bet playerName:', playerName);
+        isWinning = lastGoal &&
+                   lastGoal.player_name &&
+                   lastGoal.player_name.trim().toLowerCase() === playerName.trim().toLowerCase();
+        goalDetails = lastGoal;
+        break;
+
+      case "anytime":
+        // Check if the player scored any goal during the match
+        const playerGoals = sortedGoals.filter(goal =>
+          goal.player_name &&
+          goal.player_name.trim().toLowerCase() === playerName.trim().toLowerCase()
+        );
+        isWinning = playerGoals.length > 0;
+        goalDetails = playerGoals;
+        break;
+
+      default:
+        return {
+          status: "canceled",
+          payout: bet.stake,
+          reason: `Unknown goalscorer bet type: ${betType}`,
+        };
+    }
+
+    // Prepare response with detailed information
+    const response = {
+      status: isWinning ? "won" : "lost",
+      payout: isWinning ? bet.stake * bet.odds : 0,
+      playerName: playerName,
+      betType: betType,
+      totalGoalsInMatch: sortedGoals.length,
+      reason: `${betType} goalscorer: ${isWinning ? "Won" : "Lost"}`,
+    };
+
+    // Add goal details for debugging
+    if (goalDetails) {
+      if (Array.isArray(goalDetails)) {
+        // Anytime goalscorer - multiple goals possible
+        response.goalDetails = goalDetails.map(goal => ({
+          minute: goal.minute,
+          extraMinute: goal.extra_minute,
+          result: goal.result,
+          addition: goal.addition
+        }));
+        response.goalsScored = goalDetails.length;
+      } else {
+        // First/Last goalscorer - single goal
+        response.goalDetails = {
+          minute: goalDetails.minute,
+          extraMinute: goalDetails.extra_minute,
+          result: goalDetails.result,
+          addition: goalDetails.addition
+        };
+        response.goalsScored = 1;
+      }
+    }
+
+    return response;
   }
 
   /**
@@ -1144,6 +1267,7 @@ class BetOutcomeCalculationService {
       HALF_TIME_GOAL_LINE: [27], // 1st Half Goal Line
       HALF_TIME_GOALS: [28], // 1st Half Goals
       HALF_TIME_FULL_TIME: [29], // Half Time/Full Time
+      GOALSCORERS: [90], // Goalscorers (First/Last/Anytime)
       PLAYER_SHOTS_ON_TARGET: [267], // Player Total Shots On Target
       PLAYER_TOTAL_SHOTS: [268], // Player Total Shots
       ...this.marketTypes,
