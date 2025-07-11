@@ -238,6 +238,8 @@ class BetOutcomeCalculationService {
         return this.calculateSecondHalfGoalsOddEven(bet,matchData);
       case "FIRST_HALF_GOALS_ODD_EVEN":
         return this.calculateFirstHalfGoalsOddEven(bet,matchData);
+      case "BOTH_TEAM_TO_SCORE_1ST_HALF_2ND_HALF":
+        return this.calculateBothTeamsScore1stHalf2ndHalf(bet,matchData);
       default:
         return this.calculateGenericOutcome(bet, matchData);
     }
@@ -1180,6 +1182,7 @@ class BetOutcomeCalculationService {
       EXACT_TOTAL_GOALS: [93], // Exact Total Goals
       SECOND_HALF_GOALS_ODD_EVEN: [124], // Second Half Goals Odd/Even
       FIRST_HALF_GOALS_ODD_EVEN: [95], // First Half Goals Odd/Even
+      BOTH_TEAM_TO_SCORE_1ST_HALF_2ND_HALF: [125], // Both Teams to Score in 1st/2nd Half
       ...this.marketTypes,
     };
 
@@ -1367,7 +1370,15 @@ class BetOutcomeCalculationService {
     return null;
   }
 
- 
+  calculateBothTeamsScore1stHalf2ndHalf(bet,matchData){
+    const firstHalfScores = this.extractFirstHalfScores(matchData);
+    const secondHalfScores = this.extractSecondHalfScores(matchData);
+    const isWinning = firstHalfScores.homeScore > 0 && secondHalfScores.homeScore > 0 && firstHalfScores.awayScore > 0 && secondHalfScores.awayScore > 0;
+
+    return {
+      status: isWinning ? "won" : "lost",
+    };
+  }
   /**
    * Extract second half scores from match data
    */
