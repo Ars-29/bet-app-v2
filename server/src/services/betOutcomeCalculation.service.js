@@ -232,6 +232,8 @@ class BetOutcomeCalculationService {
         return this.calculatePlayerShotsOnTarget(bet, matchData);
       case "PLAYER_TOTAL_SHOTS":
         return this.calculatePlayerTotalShots(bet,matchData);
+      case "EXACT_TOTAL_GOALS":
+        return this.calculateExactTotalGoals(bet,matchData);
 
       default:
         return this.calculateGenericOutcome(bet, matchData);
@@ -1112,6 +1114,16 @@ class BetOutcomeCalculationService {
     };
   }
 
+  calculateExactTotalGoals(bet,matchData){
+    // Extract the number from the label (e.g., "5 Goals" -> 5)
+    const exactTotalGoals = parseInt((bet.betDetails?.label || '').match(/\d+/)?.[0] || 0);
+    const matchScores = this.extractMatchScores(matchData);
+    const totalGoals = matchScores.homeScore + matchScores.awayScore;
+    const isWinning = totalGoals === exactTotalGoals;
+    return {
+      status: isWinning ? "won" : "lost",
+    };
+  }
   /**
    * Enhanced market type detection with more markets
    */
@@ -1146,6 +1158,7 @@ class BetOutcomeCalculationService {
       HALF_TIME_FULL_TIME: [29], // Half Time/Full Time
       PLAYER_SHOTS_ON_TARGET: [267], // Player Total Shots On Target
       PLAYER_TOTAL_SHOTS: [268], // Player Total Shots
+      EXACT_TOTAL_GOALS: [93], // Exact Total Goals
       ...this.marketTypes,
     };
 
