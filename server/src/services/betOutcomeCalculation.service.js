@@ -63,6 +63,7 @@ class BetOutcomeCalculationService {
       HALF_TIME_RESULT: [14], // Half Time Result
       CORNERS: [44], // Corners
       CARDS_TOTAL: [45], // Total Cards
+      
     };
 
     // Result mapping for common outcomes
@@ -78,6 +79,7 @@ class BetOutcomeCalculationService {
 
     this.typeIdMapping = {
       shotsOnTarget: 86, // Type ID for shots on target
+      shotsTotal: 42
     };
   }
 
@@ -223,6 +225,8 @@ class BetOutcomeCalculationService {
 
       case "PLAYER_SHOTS_ON_TARGET":
         return this.calculatePlayerShotsOnTarget(bet, matchData);
+      case "PLAYER_TOTAL_SHOTS":
+        return this.calculatePlayerTotalShots(bet,matchData);
 
       default:
         return this.calculateGenericOutcome(bet, matchData);
@@ -1019,6 +1023,48 @@ class BetOutcomeCalculationService {
     };
   }
 
+  calculatePlayerTotalShots(bet, matchData) {
+    // Extract player name and threshold from bet details
+    const playerName = bet.betDetails?.name;
+    const shotsThreshold = parseFloat(bet.betDetails?.label || "0.0");
+
+    if (!playerName) {
+      return null;
+    }
+
+    // Check if lineups data is available
+    if (!matchData.lineups || !Array.isArray(matchData.lineups)) {
+      return null;
+    }
+
+    // Find the player in lineups
+    const player = matchData.lineups.find(
+      (lineup) => lineup.player_name === playerName
+    );
+
+    if (!player) {
+      return null;
+    }
+
+    // Find total shots statistic using typeIdMapping
+    const shotsTotalStat = player.details?.find(
+      (detail) => detail.type_id === this.typeIdMapping.shotsTotal
+    );
+
+    if (!shotsTotalStat) {
+      return null;
+    }
+
+    const actualShotsTotal = shotsTotalStat.data?.value || 0;
+
+    // Compare actual shots with threshold (Over/Under logic)
+    const isWinning = actualShotsTotal > shotsThreshold;
+
+    return {
+      status: isWinning ? "won" : "lost",
+    };
+  }
+
   /**
    * Enhanced market type detection with more markets
    */
@@ -1051,6 +1097,7 @@ class BetOutcomeCalculationService {
       HALF_TIME_GOAL_LINE: [27], // 1st Half Goal Line
       HALF_TIME_GOALS: [28], // 1st Half Goals
       PLAYER_SHOTS_ON_TARGET: [267], // Player Total Shots On Target
+      PLAYER_TOTAL_SHOTS: [268], // Player Total Shots
       ...this.marketTypes,
     };
 
