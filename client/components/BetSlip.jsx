@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,8 @@ import {
     calculateTotals,
     placeBetThunk
 } from '@/lib/features/betSlip/betSlipSlice';
+import { selectIsAuthenticated, selectUser } from '@/lib/features/auth/authSlice';
+import LoginDialog from '@/components/auth/LoginDialog';
 import { toast } from 'sonner';
 
 const BetSlip = () => {
@@ -33,6 +35,8 @@ const BetSlip = () => {
     const bets = useSelector(selectBets);
     const isExpanded = useSelector(selectBetSlipExpanded);
     const activeTab = useSelector(selectActiveTab);
+    const isAuthenticated = useSelector(selectIsAuthenticated);
+    const user = useSelector(selectUser);
     const betSlipRef = useRef(null);
     const [isPlacingBet, setIsPlacingBet] = React.useState(false);
 
@@ -115,6 +119,18 @@ const BetSlip = () => {
     };
 
     const handlePlaceBet = async () => {
+        // Check if user is authenticated
+        if (!isAuthenticated) {
+            // Don't make API request, just return - the login dialog will be shown
+            return;
+        }
+
+        // Check if user is admin
+        if (user?.role === 'admin') {
+            toast.error('Admins cannot place bets');
+            return;
+        }
+
         setIsPlacingBet(true);
         try {
             const resultAction = await dispatch(placeBetThunk());
@@ -289,20 +305,38 @@ const BetSlip = () => {
                         </div>
 
                         {/* Place Bet Button */}
-                        <Button
-                            className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 transition-all duration-200"
-                            disabled={betSlip.totalStake === 0 || isPlacingBet}
-                            onClick={handlePlaceBet}
-                        >
-                            {isPlacingBet ? (
-                                <span className="flex items-center justify-center">
-                                    <Loader2 className="animate-spin h-5 w-5 mr-2 text-black" />
-                                    Placing Bet...
-                                </span>
-                            ) : (
-                                'Place Bet'
-                            )}
-                        </Button>
+                        {!isAuthenticated ? (
+                            <LoginDialog>
+                                <Button
+                                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 transition-all duration-200"
+                                    disabled={betSlip.totalStake === 0}
+                                >
+                                    Log in to place bet
+                                </Button>
+                            </LoginDialog>
+                        ) : user?.role === 'admin' ? (
+                            <Button
+                                className="w-full bg-gray-500 text-white font-bold py-2 transition-all duration-200 cursor-not-allowed"
+                                disabled={true}
+                            >
+                                Admins cannot place bets
+                            </Button>
+                        ) : (
+                            <Button
+                                className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 transition-all duration-200"
+                                disabled={betSlip.totalStake === 0 || isPlacingBet}
+                                onClick={handlePlaceBet}
+                            >
+                                {isPlacingBet ? (
+                                    <span className="flex items-center justify-center">
+                                        <Loader2 className="animate-spin h-5 w-5 mr-2 text-black" />
+                                        Placing Bet...
+                                    </span>
+                                ) : (
+                                    'Place Bet'
+                                )}
+                            </Button>
+                        )}
                     </div>
                 </div>)}
         </div>
