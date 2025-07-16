@@ -103,9 +103,17 @@ class BetService {
     // If still no market ID, try to resolve it from market description
     if (!safeMarketId || safeMarketId === 'unknown_market') {
       if (odds.market_description) {
-        safeMarketId = this.getMarketIdByName(odds.market_description) || 'unknown_market';
-      } else {
-        safeMarketId = 'unknown_market';
+        safeMarketId = this.getMarketIdByName(odds.market_description);
+      }
+      
+      // Final fallback to prevent errors
+      if (!safeMarketId || safeMarketId === 'unknown_market') {
+        console.warn(`[createBetDetails] Could not resolve market ID, using fallback ID 1 for odds:`, {
+          oddId: odds.id,
+          label: odds.label,
+          market_description: odds.market_description
+        });
+        safeMarketId = 1; // Default to "Fulltime Result"
       }
     }
     
@@ -246,14 +254,7 @@ class BetService {
       // Get the betting_data array from the result
       const liveOdds = liveOddsResult.betting_data || [];
       
-      console.log(`[placeBet] Live odds structure:`, {
-        hasBettingData: !!liveOddsResult.betting_data,
-        bettingDataLength: liveOdds.length,
-        lookingForOddId: oddId,
-        oddIdType: typeof oddId,
-        oddIdAsNumber: parseInt(oddId),
-        oddIdAsString: oddId.toString()
-      });
+      
       
 
 
@@ -263,14 +264,7 @@ class BetService {
       
       // Search for the exact odd ID in all sections
       for (const section of liveOdds) {
-        console.log(`[placeBet] Checking section: ${section.title} with ${section.options?.length || 0} options`);
-        console.log(`[placeBet] Section structure:`, {
-          title: section.title,
-          id: section.id,
-          marketId: section.marketId,
-          market_id: section.market_id,
-          allKeys: Object.keys(section)
-        });
+        
         
         // Log all available odd IDs in this section for debugging
         if (section.options && section.options.length > 0) {
@@ -293,7 +287,7 @@ class BetService {
         if (odd) {
           foundOdd = odd;
           foundMarket = section;
-          console.log(`[placeBet] ✅ FOUND EXACT MATCH: ${odd.label} with ID: ${odd.id}`);
+          console.log(`[placeBet] ✅ FOUND EXACT MATCH: ${odd.label} with ID: ${odd.id}, market_id: ${odd.market_id}`);
           break;
         }
       }
@@ -327,14 +321,15 @@ class BetService {
         allKeys: Object.keys(foundMarket)
       });
 
-      // Get market ID by title since live odds don't include market ID
-      const resolvedMarketId = foundMarket.marketId || 
+      // Use the market_id directly from the found odd (live odds include market_id)
+      const resolvedMarketId = foundOdd.market_id || 
+                              foundMarket.marketId || 
                               foundMarket.market_id || 
                               foundMarket.id || 
                               this.getMarketIdByName(foundMarket.title) || 
-                              'unknown_market';
+                              1; // Default to "Fulltime Result" instead of 'unknown_market'
 
-      console.log(`[placeBet] Resolved market ID: ${resolvedMarketId} for title: "${foundMarket.title}"`);
+      console.log(`[placeBet] Resolved market ID: ${resolvedMarketId} for title: "${foundMarket.title}" (from odd.market_id: ${foundOdd.market_id})`);
 
       odds = {
         id: foundOdd.id,
@@ -343,7 +338,7 @@ class BetService {
         market_id: resolvedMarketId,
         label: foundOdd.label,
         total: foundOdd.total,
-        market_description: foundMarket.description || foundMarket.title,
+        market_description: foundOdd.market_description || foundMarket.description || foundMarket.title,
         handicap: foundOdd.handicap
       };
     }
