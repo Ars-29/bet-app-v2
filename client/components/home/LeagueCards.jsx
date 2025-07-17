@@ -36,7 +36,7 @@ const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
             </div>
             {/* Odds Header */}
             <div className="flex items-center px-4 py-2 bg-gray-100 border-b border-gray-200 flex-shrink-0">
-                <div className="flex-1 text-xs">{isInPlay ? 'Today' : 'Today'}</div>
+                <div className="flex-1 text-xs">{isInPlay ? 'Today' : 'Match'}</div>
                 <div className="flex gap-1">
                     <div className="w-14 text-center text-xs text-gray-600 font-medium">1</div>
                     <div className="w-14 text-center text-xs text-gray-600 font-medium">X</div>
@@ -171,7 +171,7 @@ const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
 const LeagueCards = ({
     title = "Football Daily",
     isInPlay = false,
-    showDayTabs = true,
+    showDayTabs = false,
     viewAllText = null,
     useReduxData = false,
     reduxData = []
@@ -348,7 +348,7 @@ const LeagueCards = ({
             )}
 
             {/* Day Tabs */}
-            {showDayTabs && (
+            {/* {showDayTabs && (
                 <div className="flex gap-2 mb-6">
                     <Button
                         size="sm"
@@ -365,7 +365,7 @@ const LeagueCards = ({
                         Tomorrow
                     </Button>
                 </div>
-            )}
+            )} */}
             {/* Carousel Navigation */}
             <div className="relative group">
                 <Button

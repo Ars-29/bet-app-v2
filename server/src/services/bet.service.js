@@ -266,15 +266,6 @@ class BetService {
       for (const section of liveOdds) {
         
         
-        // Log all available odd IDs in this section for debugging
-        if (section.options && section.options.length > 0) {
-          const availableOddIds = section.options.map(o => ({ 
-            id: o.id, 
-            idType: typeof o.id, 
-            label: o.label 
-          }));
-          console.log(`[placeBet] Available odds in ${section.title}:`, availableOddIds);
-        }
         
         // Simple exact match - convert both to numbers for comparison
         const odd = section.options?.find((o) => {
@@ -312,24 +303,20 @@ class BetService {
         );
       }
 
-      // Debug the foundMarket structure to understand available properties
-      console.log(`[placeBet] foundMarket structure:`, {
-        id: foundMarket.id,
-        marketId: foundMarket.marketId,
-        market_id: foundMarket.market_id,
-        title: foundMarket.title,
-        allKeys: Object.keys(foundMarket)
-      });
+      // Use the market ID from the found odd (check both marketId and market_id)
+      const resolvedMarketId = foundOdd.marketId || foundOdd.market_id;
 
-      // Use the market_id directly from the found odd (live odds include market_id)
-      const resolvedMarketId = foundOdd.market_id || 
-                              foundMarket.marketId || 
-                              foundMarket.market_id || 
-                              foundMarket.id || 
-                              this.getMarketIdByName(foundMarket.title) || 
-                              1; // Default to "Fulltime Result" instead of 'unknown_market'
+      if (!resolvedMarketId) {
+        console.log(`[placeBet] ❌ No market ID found in live odd:`, foundOdd);
+        console.log(`[placeBet] Available properties:`, Object.keys(foundOdd));
+        throw new CustomError(
+          "Invalid live odd data - missing market ID",
+          400,
+          "INVALID_LIVE_ODD_DATA"
+        );
+      }
 
-      console.log(`[placeBet] Resolved market ID: ${resolvedMarketId} for title: "${foundMarket.title}" (from odd.market_id: ${foundOdd.market_id})`);
+      console.log(`[placeBet] Using market ID: ${resolvedMarketId} for "${foundOdd.label}" (from ${foundOdd.marketId ? 'marketId' : 'market_id'})`);
 
       odds = {
         id: foundOdd.id,

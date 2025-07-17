@@ -962,6 +962,7 @@ export default function BetManagement() {
                     </TableHead>
                     <TableHead className="select-none">Match</TableHead>
                     <TableHead className="select-none">Selection</TableHead>
+                    <TableHead className="select-none">Market</TableHead>
                     <TableHead
                       className="cursor-pointer select-none"
                       onClick={() => handleSort("payout")}
@@ -977,7 +978,7 @@ export default function BetManagement() {
                   {paginatedBets.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={10}
+                        colSpan={9}
                         className="text-center py-12 text-gray-500"
                       >
                         <div className="flex flex-col items-center justify-center">
@@ -1022,6 +1023,11 @@ export default function BetManagement() {
                           <TableCell className="max-w-48">
                             <div className="truncate" title={bet.selection}>
                               {bet.selection || "-"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-48">
+                            <div className="truncate" title={bet.betDetails?.market_description}>
+                              {bet.betDetails?.market_description || "-"}
                             </div>
                           </TableCell>
                           <TableCell>
