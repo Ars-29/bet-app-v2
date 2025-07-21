@@ -14,6 +14,8 @@ import LiveTimer from './LiveTimer';
 const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
     const { createBetHandler } = useBetting();
     const [buttonsReady, setButtonsReady] = useState(false);
+    // Add state for live odds if needed
+    const [liveOdds, setLiveOdds] = useState({});
 
     // For live matches, delay button activation to prevent premature clicking
     useEffect(() => {
@@ -26,6 +28,24 @@ const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
             setButtonsReady(true); // Non-live matches are immediately ready
         }
     }, [isInPlay]);
+
+    // Polling for live odds for each live match
+    useEffect(() => {
+        if (!isInPlay) return;
+        // Find live matches
+        const liveMatches = league.matches.filter(m => m.isLive);
+        if (liveMatches.length === 0) return;
+        // Poll every 1 second
+        const interval = setInterval(() => {
+            liveMatches.forEach(match => {
+                // TODO: Replace with real API call to fetch odds for match.id
+                // Example: fetchLiveOdds(match.id).then(newOdds => ...)
+                // For now, just log or stub
+                // fetchLiveOdds(match.id).then(newOdds => setLiveOdds(prev => ({ ...prev, [match.id]: newOdds })))
+            });
+        }, 3000);
+        return () => clearInterval(interval);
+    }, [league.matches, isInPlay]);
 
     const isOddClickable = (odd) => {
         if (!buttonsReady) return false;

@@ -167,22 +167,8 @@ const LoginDialog = ({ children, ...props }) => {
                     </form>
                 </Form>
 
-                {/* Register Section */}
-                <div className="mt-5 pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-600">Don't have an account?</span>                            <Button
-                            variant="default"
-                            size="sm"
-                            className="bg-base text-white hover:bg-base-dark transition-colors px-4 py-1 h-8"
-                            onClick={() => {
-                                setIsOpen(false)
-                                router.push('/signup')
-                            }}
-                        >
-                            Register now
-                        </Button>
-                    </div>
-                </div>
+               
+                
             </div>
         </DialogContent>
     </Dialog>
