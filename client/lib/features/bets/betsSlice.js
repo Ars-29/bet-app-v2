@@ -39,6 +39,24 @@ export const fetchAdminBets = createAsyncThunk(
   }
 );
 
+export const fetchBetsByUserId = createAsyncThunk(
+  "bets/fetchBetsByUserId",
+  async (userId, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get(`/bet/${userId}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || {
+          success: false,
+          message: "Network error occurred",
+          error: error.message,
+        }
+      );
+    }
+  }
+);
+
 const initialState = {
   bets: [],
   isLoading: false,
@@ -95,6 +113,21 @@ const betsSlice = createSlice({
         state.adminBetsLoading = false;
         state.adminBetsError =
           action.payload?.message || "Failed to fetch admin bets";
+      })
+      // Fetch bets by userId (admin)
+      .addCase(fetchBetsByUserId.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchBetsByUserId.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.bets = action.payload.data || [];
+        state.message = action.payload.message;
+        state.error = null;
+      })
+      .addCase(fetchBetsByUserId.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload?.message || "Failed to fetch bets by userId";
       });
   },
 });

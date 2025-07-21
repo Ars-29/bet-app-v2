@@ -7,6 +7,7 @@ import BetOutcomeCalculationService from "./betOutcomeCalculation.service.js";
 import { CustomError } from "../utils/customErrors.js";
 import agenda from "../config/agenda.js";
 import NodeCache from "node-cache";
+import mongoose from "mongoose";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -986,6 +987,21 @@ class BetService {
       grouped[userName].push(betObj);
     }
     return grouped;
+  }
+
+  async getBetsByUserId(userId) {
+    if (!userId) {
+      throw new CustomError("User ID is required", 400, "USER_ID_REQUIRED");
+    }
+    
+    // Convert string userId to ObjectId if necessary
+    const userObjectId = typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId;
+    console.log(`[getBetsByUserId] Searching for bets with userId: ${userId} (as ObjectId: ${userObjectId})`);
+    
+    const bets = await Bet.find({ userId: userObjectId }).sort({ createdAt: -1 });
+    console.log(`[getBetsByUserId] Found ${bets.length} bets for user ${userId}`);
+    
+    return bets;
   }
 
   // In BetService.js

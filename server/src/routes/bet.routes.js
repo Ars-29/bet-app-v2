@@ -19,4 +19,7 @@ router.get("/pending/check", authenticateToken, BetController.checkPendingBets);
 //WARNING: This route is for admin use only, to get all bets
 router.get("/admin/all", authenticateToken, requireAdmin, BetController.getAllBets);
 
+// Admin route to get bets by specific user ID
+router.get("/:userId", authenticateToken, requireAdmin, BetController.getBetsByUserId);
+
 export default router;

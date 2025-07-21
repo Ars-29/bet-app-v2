@@ -362,7 +362,7 @@ export default function UserManagement({ searchQuery = "", statusFilter = "all",
                               Deposit/Withdraw
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => { router.push("/betting-history") }}
+                              onClick={() => { router.push(`/betting-history?userId=${user._id}`) }}
                             >
                               <History className="h-4 w-4 mr-2" />
                               View Betting History

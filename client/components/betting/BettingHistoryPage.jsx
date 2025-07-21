@@ -15,21 +15,28 @@ import {
   selectBetsLoading,
   selectBetsError,
   clearBetsError,
+  fetchBetsByUserId,
 } from '@/lib/features/bets/betsSlice';
+import { selectUser } from '@/lib/features/auth/authSlice';
 
-const BettingHistoryPage = () => {
+const BettingHistoryPage = ({ userId }) => {
   const dispatch = useDispatch();
   const bets = useSelector(selectBets);
   const loading = useSelector(selectBetsLoading);
   const error = useSelector(selectBetsError);
+  const user = useSelector(selectUser);
 
   // Keep filters for date range, but not bet type
   const [filters, setFilters] = useState({ dateFrom: '', dateTo: '', status: '' });
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
 
   useEffect(() => {
-    dispatch(fetchUserBets(filters));
-  }, [dispatch, filters]);
+    if (userId && user && user.role === 'admin') {
+      dispatch(fetchBetsByUserId(userId));
+    } else {
+      dispatch(fetchUserBets(filters));
+    }
+  }, [dispatch, filters, userId, user]);
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -66,18 +73,7 @@ const BettingHistoryPage = () => {
     };
   };
 
-  const getStatusBadge = (status) => {
-    const colors = {
-      won: 'bg-green-100 text-green-800 hover:bg-green-100',
-      lost: 'bg-red-100 text-red-800 hover:bg-red-100',
-      pending: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
-    };
-    return (
-      <Badge className={colors[status]}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
-  };
+
 
   // Filter bets by date range and status if set
   const filteredBets = React.useMemo(() => {
@@ -190,9 +186,9 @@ const BettingHistoryPage = () => {
               {/* Status Filter */}
               <div className="space-y-2">
                 <label className=" font-medium text-gray-700">Status</label>
-                <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="All Statuses" />
+                <Select value={filters.status}  onValueChange={(value) => handleFilterChange('status', value)}>
+                  <SelectTrigger className="h-4 text-black border-black rounded-none">
+                    <SelectValue className="text-black" placeholder="All Statuses" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>

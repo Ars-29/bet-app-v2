@@ -77,6 +77,8 @@ class BetController {
     try {
       const userId = req.user._id;
       const bets = await BetService.getUserBets(userId);
+      console.log(`Fetched bets for user ${userId}:`, bets);
+      
       res.status(200).json({
         success: true,
         data: bets,
@@ -99,6 +101,26 @@ class BetController {
       next(error);
     }
   }
+
+  async getBetsByUserId(req, res, next) {
+    try {
+      const { userId } = req.params;
+      console.log(`[BetController.getBetsByUserId] Requesting bets for user ID: ${userId}`);
+      
+      const bets = await BetService.getBetsByUserId(userId);
+      console.log(`[BetController.getBetsByUserId] Fetched ${bets.length} bets for user ${userId}`);
+      
+      res.status(200).json({
+        success: true,
+        data: bets,
+        message: "Fetched user bets successfully",
+      });
+    } catch (error) {
+      console.error(`[BetController.getBetsByUserId] Error:`, error);
+      next(error);
+    }
+  }
 }
 
 export default new BetController();
+
