@@ -51,10 +51,7 @@ class BetOutcomeCalculationService extends BaseBetOutcomeCalculationService {
       // Extract market ID from bet details
       const marketId = bet.betDetails?.market_id || bet.marketId;
       
-      // Calculate outcome based on market type
-      if (this.marketsWithWinningCalculations.includes(parseInt(marketId))) {
-        return super.calculateOutcomeFromWinningField(bet, matchData);
-      }
+      
 
       const outcome = await this.calculateOutcomeByMarketType(
         bet,
@@ -82,7 +79,8 @@ class BetOutcomeCalculationService extends BaseBetOutcomeCalculationService {
    */
   async calculateOutcomeByMarketType(bet, matchData, marketId) {
     const marketType = this.getMarketType(marketId);
-
+    console.log("THIS IS FROM THE BET OUTCOME CALCULATION SERVICE", marketType);
+    
     switch (marketType) {
       case "OVER_UNDER":
         return super.calculateOverUnder(bet, matchData);

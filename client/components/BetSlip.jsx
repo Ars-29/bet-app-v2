@@ -394,48 +394,57 @@ const SinglesBets = ({ bets, stakes, onStakeChange, onRemoveBet }) => {
         return bet.selection;
     };
     return (
-        <div className="space-y-3">            {bets.map((bet, index) => (<div
-            key={bet.id}
-            className="bg-gray-800 px-3 py-2 rounded-lg transition-all duration-200 ease-out hover:bg-gray-750"
-        >
-            <div className="flex items-start justify-between mb-2 ">
-                <div className="flex-1">
-                    <div className="text-xs text-gray-400 mb-1">
-                        {bet.match.team1} - {bet.match.team2}
-                    </div>
-                    <div className="text-sm font-medium mb-1">
-                        {getBetLabel(bet)}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                        {bet.type} • {bet.match.time}
-                    </div>
-                </div>                        <button
-                    onClick={() => onRemoveBet(bet.id)}
-                    className="text-gray-400 hover:text-white ml-2 transition-colors duration-200"
+        <div className="space-y-3">
+            {bets.map((bet, index) => (
+                <div
+                    key={bet.id}
+                    className="bg-gray-800 px-3 py-2 rounded-lg transition-all duration-200 ease-out hover:bg-gray-750"
                 >
-                    <X className="h-3 w-3" />
-                </button>
-            </div>
+                    <div className="flex items-start justify-between mb-2 ">
+                        <div className="flex-1">
+                            <div className="text-xs text-gray-400 mb-1">
+                                {bet.match.team1} - {bet.match.team2}
+                            </div>
+                            <div className="text-sm font-medium mb-1">
+                                {getBetLabel(bet)}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                                {bet.type} • {bet.match.time}
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => onRemoveBet(bet.id)}
+                            className="text-gray-400 hover:text-white ml-2 transition-colors duration-200"
+                        >
+                            <X className="h-3 w-3" />
+                        </button>
+                    </div>
 
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 flex-1">                            <div className="bg-yellow-500 text-black px-2 py-1 rounded text-xs font-bold transition-colors duration-200 hover:bg-yellow-400">
-                    {bet.odds}
-                </div>                            <Input
-                        placeholder="0.00"
-                        value={stakes[bet.id] || ''}
-                        onChange={(e) => onStakeChange(bet.id, e.target.value)}
-                        className="flex-1 h-6 p-0 px-1 !text-[11px] bg-gray-700 border-gray-600 text-white transition-colors duration-200 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500"
-                        step="0.01"
-                        min="0"
-                    />
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 flex-1">
+                            <div className="bg-yellow-500 text-black px-2 py-1 rounded text-xs font-bold transition-colors duration-200 hover:bg-yellow-400">
+                                {bet.odds}
+                            </div>
+                            <Input
+                                type="number"
+                                inputMode="decimal"
+                                pattern="[0-9]*[.,]?[0-9]*"
+                                placeholder="0.00"
+                                value={stakes[bet.id] || ''}
+                                onChange={(e) => onStakeChange(bet.id, e.target.value)}
+                                className="flex-1 h-6 p-0 px-1 !text-[11px] bg-gray-700 border-gray-600 text-white transition-colors duration-200 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500"
+                                step="0.01"
+                                min="0"
+                            />
+                        </div>
+                    </div>
+                    {stakes[bet.id] > 0 && (
+                        <div className="text-xs text-gray-400 mt-1 transition-opacity duration-300">
+                            Potential: €{(stakes[bet.id] * bet.odds).toFixed(2)}
+                        </div>
+                    )}
                 </div>
-            </div>                    {stakes[bet.id] > 0 && (
-                <div className="text-xs text-gray-400 mt-1 transition-opacity duration-300">
-                    Potential: €{(stakes[bet.id] * bet.odds).toFixed(2)}
-                </div>
-            )}
-        </div>
-        ))}
+            ))}
         </div>
     );
 };
@@ -488,6 +497,9 @@ const CombinationBet = ({ bets, stake, onStakeChange, onRemoveBet }) => {
                 <div className="flex items-center space-x-2">
                     <span className="text-sm">Stake:</span>
                     <Input
+                        type="number"
+                        inputMode="decimal"
+                        pattern="[0-9]*[.,]?[0-9]*"
                         value={stake}
                         onChange={(e) => onStakeChange(e.target.value)}
                         className="flex-1 h-6 p-0 px-1 !text-[11px] bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 focus:scale-105"

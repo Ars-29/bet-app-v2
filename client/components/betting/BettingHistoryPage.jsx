@@ -333,9 +333,7 @@ const BettingHistoryPage = ({ userId }) => {
                             {item.status.toLowerCase() === "won" ? (
                               <span className="font-medium text-green-600">
                                 +$
-                                {item.payout
-                                  ? (item.payout - item.stake).toFixed(2)
-                                  : ((item.stake * item.odds) - item.stake).toFixed(2)}
+                                {((item.stake * item.odds)).toFixed(2)}
                               </span>
                             ) : item.status.toLowerCase() === "pending" ? (
                               <span className="text-gray-500">Pending</span>

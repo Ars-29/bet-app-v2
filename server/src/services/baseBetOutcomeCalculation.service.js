@@ -494,8 +494,8 @@ export default class BaseBetOutcomeCalculationService {
 
     if (goalEvents.length === 0) {
       return {
-        status: "canceled",
-        payout: bet.stake,
+        status: "lost",
+        payout: 0,
         reason: "No goals scored in the match",
       };
     }
@@ -522,6 +522,9 @@ export default class BaseBetOutcomeCalculationService {
       return minuteA - minuteB;
     });
 
+    console.log(`[calculateGoalscorers] Processing ${betType} goalscorer bet for player: ${playerName}`);
+    console.log(`[calculateGoalscorers] Total goals in match: ${sortedGoals.length}`);
+
     switch (betType.toLowerCase()) {
       case "first":
         // Check if the player scored the first goal
@@ -534,14 +537,14 @@ export default class BaseBetOutcomeCalculationService {
         );
         console.log(
           "[DEBUG] Normalized Event name:",
-          normalizePlayerName(firstGoal?.player_name),
+          this.normalizePlayerName(firstGoal?.player_name),
           "| Normalized Bet name:",
-          normalizePlayerName(playerName)
+          this.normalizePlayerName(playerName)
         );
         isWinning =
           firstGoal &&
           firstGoal.player_name &&
-          playerNamesMatch(firstGoal.player_name, playerName);
+          this.playerNamesMatch(firstGoal.player_name, playerName);
         goalDetails = firstGoal;
         break;
 
@@ -556,14 +559,14 @@ export default class BaseBetOutcomeCalculationService {
         );
         console.log(
           "[DEBUG] Normalized Event name:",
-          normalizePlayerName(lastGoal?.player_name),
+          this.normalizePlayerName(lastGoal?.player_name),
           "| Normalized Bet name:",
-          normalizePlayerName(playerName)
+          this.normalizePlayerName(playerName)
         );
         isWinning =
           lastGoal &&
           lastGoal.player_name &&
-          playerNamesMatch(lastGoal.player_name, playerName);
+          this.playerNamesMatch(lastGoal.player_name, playerName);
         goalDetails = lastGoal;
         break;
 
@@ -571,10 +574,19 @@ export default class BaseBetOutcomeCalculationService {
         // Check if the player scored any goal during the match
         const playerGoals = sortedGoals.filter(
           (goal) =>
-            goal.player_name && playerNamesMatch(goal.player_name, playerName)
+            goal.player_name && this.playerNamesMatch(goal.player_name, playerName)
         );
         isWinning = playerGoals.length > 0;
         goalDetails = playerGoals;
+        
+        console.log(`[calculateGoalscorers] Found ${playerGoals.length} goals for player ${playerName}`);
+        if (playerGoals.length > 0) {
+          console.log(`[calculateGoalscorers] Player goals:`, playerGoals.map(g => ({
+            player_name: g.player_name,
+            minute: g.minute,
+            extra_minute: g.extra_minute
+          })));
+        }
         break;
 
       default:
@@ -585,6 +597,11 @@ export default class BaseBetOutcomeCalculationService {
         };
     }
 
+    // If player was not found in any goals, explicitly mark as lost
+    if (!isWinning) {
+      console.log(`[calculateGoalscorers] Player ${playerName} not found in goal events - marking bet as LOST`);
+    }
+
     // Prepare response with detailed information
     const response = {
       status: isWinning ? "won" : "lost",
@@ -592,10 +609,18 @@ export default class BaseBetOutcomeCalculationService {
       playerName: playerName,
       betType: betType,
       totalGoalsInMatch: sortedGoals.length,
-      reason: `${betType} goalscorer: ${isWinning ? "Won" : "Lost"}`,
+      reason: `${betType} goalscorer: ${isWinning ? "Won" : "Lost"}${!isWinning ? ` - Player ${playerName} did not score` : ""}`,
+      debugInfo: {
+        goalEvents: sortedGoals.map(goal => ({
+          player_name: goal.player_name,
+          normalized_name: this.normalizePlayerName(goal.player_name),
+          minute: goal.minute,
+          extra_minute: goal.extra_minute
+        })),
+        searchedPlayer: playerName,
+        normalizedSearchedPlayer: this.normalizePlayerName(playerName)
+      }
     };
-
-    // Add goal details for debugging
 
     return response;
   }
@@ -627,7 +652,7 @@ export default class BaseBetOutcomeCalculationService {
 
   /**
    * Calculate Double Chance outcome
-   * NOTE: CHECKED (WORKING)
+   * NOTE: CHECKED (WORKING) - Enhanced with improved team name matching
    */
   calculateDoubleChance(bet, matchData) {
     const scores = this.extractMatchScores(matchData);
@@ -650,10 +675,13 @@ export default class BaseBetOutcomeCalculationService {
     const betOption = bet.betOption.toLowerCase();
     let isWinning = false;
 
+    console.log(`[calculateDoubleChance] Home team: "${homeTeam}", Away team: "${awayTeam}"`);
+    console.log(`[calculateDoubleChance] Bet option: "${betOption}"`);
+
     // Check for 1X (Home or Draw) - Home team name + Draw terms
     if (
       betOption.includes("1x") ||
-      (betOption.includes(homeTeam.toLowerCase()) &&
+      (this.teamNamesMatch(betOption, homeTeam) &&
         (betOption.includes("draw") ||
           betOption.includes("tie") ||
           betOption.includes("x")))
@@ -666,15 +694,15 @@ export default class BaseBetOutcomeCalculationService {
       ((betOption.includes("draw") ||
         betOption.includes("tie") ||
         betOption.includes("x")) &&
-        betOption.includes(awayTeam.toLowerCase()))
+        this.teamNamesMatch(betOption, awayTeam))
     ) {
       isWinning = actualResult === "DRAW" || actualResult === "AWAY_WIN";
     }
     // Check for 12 (Home or Away) - Both team names
     else if (
       betOption.includes("12") ||
-      (betOption.includes(homeTeam.toLowerCase()) &&
-        betOption.includes(awayTeam.toLowerCase()))
+      (this.teamNamesMatch(betOption, homeTeam) &&
+        this.teamNamesMatch(betOption, awayTeam))
     ) {
       isWinning = actualResult === "HOME_WIN" || actualResult === "AWAY_WIN";
     }
@@ -1331,18 +1359,35 @@ export default class BaseBetOutcomeCalculationService {
       };
     }
 
-    // Find the player in lineups
+    console.log(`[calculatePlayerShotsOnTarget] Looking for player: ${playerName}`);
+    console.log(`[calculatePlayerShotsOnTarget] Normalized search name: ${this.normalizePlayerName(playerName)}`);
+
+    // Find the player in lineups using enhanced name matching
     const player = matchData.lineups.find(
-      (lineup) => lineup.player_name.toLowerCase() === playerName.toLowerCase()
+      (lineup) => this.playerNamesMatch(lineup.player_name, playerName)
     );
 
     if (!player) {
+      console.log(`[calculatePlayerShotsOnTarget] Player ${playerName} not found in lineups - marking bet as LOST`);
+      console.log(`[calculatePlayerShotsOnTarget] Available players:`, matchData.lineups.map(l => ({
+        player_name: l.player_name,
+        normalized_name: this.normalizePlayerName(l.player_name)
+      })));
+
       return {
-        status: "canceled",
-        payout: bet.stake,
-        reason: `Player ${playerName} not found in match lineups`,
+        status: "lost",
+        payout: 0,
+        reason: `Player ${playerName} not found in match lineups - bet lost`,
+        playerName: playerName,
+        normalizedPlayerName: this.normalizePlayerName(playerName),
+        debugInfo: {
+          searchedPlayer: playerName,
+          availablePlayers: matchData.lineups.map(l => l.player_name)
+        }
       };
     }
+
+    console.log(`[calculatePlayerShotsOnTarget] Found player: ${player.player_name}`);
 
     // Find shots on target statistic using typeIdMapping
     const shotsOnTargetStat = player.details?.find(
@@ -1352,8 +1397,10 @@ export default class BaseBetOutcomeCalculationService {
     if (!shotsOnTargetStat) {
       return {
         status: "lost",
-        payout: bet.stake,
-        reason: `Shots on target data not available for player ${playerName}`,
+        payout: 0,
+        reason: `Shots on target data not available for player ${playerName} - bet lost`,
+        playerName: playerName,
+        foundPlayerName: player.player_name
       };
     }
 
@@ -1366,9 +1413,10 @@ export default class BaseBetOutcomeCalculationService {
       status: isWinning ? "won" : "lost",
       payout: isWinning ? bet.stake * bet.odds : 0,
       playerName: playerName,
+      foundPlayerName: player.player_name,
       actualShotsOnTarget: actualShotsOnTarget,
       shotsThreshold: shotsThreshold,
-      reason: `Player ${playerName} shots on target: ${actualShotsOnTarget}, Threshold: ${shotsThreshold}`,
+      reason: `Player ${player.player_name} shots on target: ${actualShotsOnTarget}, Threshold: ${shotsThreshold}`,
     };
   }
 
@@ -1394,18 +1442,35 @@ export default class BaseBetOutcomeCalculationService {
       };
     }
 
-    // Find the player in lineups
+    console.log(`[calculatePlayerTotalShots] Looking for player: ${playerName}`);
+    console.log(`[calculatePlayerTotalShots] Normalized search name: ${this.normalizePlayerName(playerName)}`);
+
+    // Find the player in lineups using enhanced name matching
     const player = matchData.lineups.find(
-      (lineup) => lineup.player_name.toLowerCase() === playerName.toLowerCase()
+      (lineup) => this.playerNamesMatch(lineup.player_name, playerName)
     );
 
     if (!player) {
+      console.log(`[calculatePlayerTotalShots] Player ${playerName} not found in lineups - marking bet as LOST`);
+      console.log(`[calculatePlayerTotalShots] Available players:`, matchData.lineups.map(l => ({
+        player_name: l.player_name,
+        normalized_name: this.normalizePlayerName(l.player_name)
+      })));
+
       return {
-        status: "canceled",
-        payout: bet.stake,
-        reason: `Player ${playerName} not found in match lineups`,
+        status: "lost",
+        payout: 0,
+        reason: `Player ${playerName} not found in match lineups - bet lost`,
+        playerName: playerName,
+        normalizedPlayerName: this.normalizePlayerName(playerName),
+        debugInfo: {
+          searchedPlayer: playerName,
+          availablePlayers: matchData.lineups.map(l => l.player_name)
+        }
       };
     }
+
+    console.log(`[calculatePlayerTotalShots] Found player: ${player.player_name}`);
 
     // Find total shots statistic using typeIdMapping
     const shotsTotalStat = player.details?.find(
@@ -1415,8 +1480,10 @@ export default class BaseBetOutcomeCalculationService {
     if (!shotsTotalStat) {
       return {
         status: "lost",
-        payout: bet.stake,
-        reason: `Total shots data not available for player ${playerName}`,
+        payout: 0,
+        reason: `Total shots data not available for player ${playerName} - bet lost`,
+        playerName: playerName,
+        foundPlayerName: player.player_name
       };
     }
 
@@ -1429,10 +1496,193 @@ export default class BaseBetOutcomeCalculationService {
       status: isWinning ? "won" : "lost",
       payout: isWinning ? bet.stake * bet.odds : 0,
       playerName: playerName,
+      foundPlayerName: player.player_name,
       actualShotsTotal: actualShotsTotal,
       shotsThreshold: shotsThreshold,
-      reason: `Player ${playerName} total shots: ${actualShotsTotal}, Threshold: ${shotsThreshold}`,
+      reason: `Player ${player.player_name} total shots: ${actualShotsTotal}, Threshold: ${shotsThreshold}`,
     };
+  }
+
+  /**
+   * Helper method to normalize team names for comparison
+   * Handles variations like "Urawa Red Diamonds" vs "Urawa Reds"
+   */
+  normalizeTeamName(teamName) {
+    if (!teamName) return "";
+    
+    return teamName
+      .toLowerCase()
+      .replace(/\s+/g, " ") // Normalize spaces
+      .trim()
+      // Remove common suffixes/variations
+      .replace(/\s+(fc|cf|ac|sc|united|city|town|rovers|wanderers|albion|athletic|hotspur)$/i, "")
+      // Handle specific variations
+      .replace(/\s+red\s+diamonds?$/i, " reds") // "Red Diamonds" -> "Reds"
+      .replace(/\s+diamonds?$/i, " reds") // "Diamonds" -> "Reds"
+      .replace(/\s+whites?$/i, "") // Remove "White/Whites"
+      .replace(/\s+blues?$/i, "") // Remove "Blue/Blues"
+      .trim();
+  }
+
+  /**
+   * Helper method to check if two team names match (with normalization)
+   */
+  teamNamesMatch(name1, name2) {
+    if (!name1 || !name2) return false;
+    
+    const normalized1 = this.normalizeTeamName(name1);
+    const normalized2 = this.normalizeTeamName(name2);
+    
+    // Exact match after normalization
+    if (normalized1 === normalized2) return true;
+    
+    // Check if one name contains the other (for partial matches)
+    if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) {
+      return true;
+    }
+    
+    // Check if they share significant keywords (at least 2 words)
+    const words1 = normalized1.split(" ").filter(w => w.length > 2);
+    const words2 = normalized2.split(" ").filter(w => w.length > 2);
+    
+    if (words1.length >= 2 && words2.length >= 2) {
+      const commonWords = words1.filter(word => words2.includes(word));
+      return commonWords.length >= 2;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Normalize player name for comparison
+   * Removes special characters, diacritics, and standardizes formatting
+   */
+  normalizePlayerName(playerName) {
+    if (!playerName) return "";
+    
+    return playerName
+      .toLowerCase()
+      // Remove diacritics and special characters
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Remove diacritical marks
+      .replace(/[^a-z0-9\s]/g, "") // Remove all non-alphanumeric except spaces
+      .replace(/\s+/g, " ") // Normalize multiple spaces to single space
+      .trim()
+      // Handle common name variations
+      .replace(/\bjr\.?\b/g, "junior") // Jr. -> junior
+      .replace(/\bsr\.?\b/g, "senior") // Sr. -> senior
+      .replace(/\biii\b/g, "3") // III -> 3
+      .replace(/\bii\b/g, "2") // II -> 2
+      .replace(/\biv\b/g, "4") // IV -> 4
+      .trim();
+  }
+
+  /**
+   * Check if two player names match using fuzzy comparison
+   * Handles variations in spelling, special characters, and formatting
+   */
+  playerNamesMatch(name1, name2) {
+    if (!name1 || !name2) return false;
+    
+    const normalized1 = this.normalizePlayerName(name1);
+    const normalized2 = this.normalizePlayerName(name2);
+    
+    console.log(`[playerNamesMatch] Comparing: "${normalized1}" vs "${normalized2}"`);
+    
+    // Exact match after normalization
+    if (normalized1 === normalized2) {
+      console.log(`[playerNamesMatch] Exact match found`);
+      return true;
+    }
+    
+    // Split names into parts (first, middle, last names)
+    const parts1 = normalized1.split(" ").filter(part => part.length > 0);
+    const parts2 = normalized2.split(" ").filter(part => part.length > 0);
+    
+    // If both names have multiple parts, check for partial matches
+    if (parts1.length >= 2 && parts2.length >= 2) {
+      // Check if last names match and at least one other name part matches
+      const lastName1 = parts1[parts1.length - 1];
+      const lastName2 = parts2[parts2.length - 1];
+      
+      if (lastName1 === lastName2) {
+        // Last names match, check for first name or middle name match
+        const otherParts1 = parts1.slice(0, -1);
+        const otherParts2 = parts2.slice(0, -1);
+        
+        const hasCommonFirstName = otherParts1.some(part1 => 
+          otherParts2.some(part2 => 
+            part1 === part2 || 
+            (part1.length >= 3 && part2.length >= 3 && 
+             (part1.startsWith(part2) || part2.startsWith(part1)))
+          )
+        );
+        
+        if (hasCommonFirstName) {
+          console.log(`[playerNamesMatch] Partial match: same last name + common first name`);
+          return true;
+        }
+      }
+      
+      // Check if first names match and at least one other part matches
+      if (parts1[0] === parts2[0] && parts1[0].length >= 3) {
+        const hasOtherMatch = parts1.slice(1).some(part1 => 
+          parts2.slice(1).some(part2 => part1 === part2)
+        );
+        
+        if (hasOtherMatch) {
+          console.log(`[playerNamesMatch] Partial match: same first name + other matching part`);
+          return true;
+        }
+      }
+    }
+    
+    // Check for substring matches (useful for names like "Gabriel Martinelli" vs "Martinelli")
+    if (normalized1.length >= 6 && normalized2.length >= 6) {
+      if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) {
+        console.log(`[playerNamesMatch] Substring match found`);
+        return true;
+      }
+    }
+    
+    // Check for similar names using Levenshtein distance for very close matches
+    if (this.calculateLevenshteinDistance(normalized1, normalized2) <= 2 && 
+        Math.min(normalized1.length, normalized2.length) >= 6) {
+      console.log(`[playerNamesMatch] Close match found using Levenshtein distance`);
+      return true;
+    }
+    
+    console.log(`[playerNamesMatch] No match found`);
+    return false;
+  }
+
+  /**
+   * Calculate Levenshtein distance between two strings
+   * Used for fuzzy string matching
+   */
+  calculateLevenshteinDistance(str1, str2) {
+    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    
+    for (let i = 0; i <= str1.length; i++) {
+      matrix[0][i] = i;
+    }
+    
+    for (let j = 0; j <= str2.length; j++) {
+      matrix[j][0] = j;
+    }
+    
+    for (let j = 1; j <= str2.length; j++) {
+      for (let i = 1; i <= str1.length; i++) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1, // deletion
+          matrix[j - 1][i] + 1, // insertion
+          matrix[j - 1][i - 1] + indicator // substitution
+        );
+      }
+    }
+    
+    return matrix[str2.length][str1.length];
   }
 
   /**
@@ -1452,9 +1702,11 @@ export default class BaseBetOutcomeCalculationService {
       };
     }
 
-    // Get team names from match data (similar to calculateDoubleChance)
+    // Get team names from match data
     const homeTeam = matchData.participants?.[0]?.name || "Home";
     const awayTeam = matchData.participants?.[1]?.name || "Away";
+
+    console.log(`[calculateHalfTimeFullTime] Home team: "${homeTeam}", Away team: "${awayTeam}"`);
 
     // Determine half-time result
     let halfTimeResult;
@@ -1476,7 +1728,7 @@ export default class BaseBetOutcomeCalculationService {
       fullTimeResult = "Draw"; // Full time draw
     }
 
-    // Parse bet selection (e.g., "Tijuana - Draw")
+    // Parse bet selection (e.g., "Urawa Red Diamonds - Urawa Red Diamonds")
     const betOption = bet.betOption || bet.selection || "";
     const betParts = betOption.split(" - ");
 
@@ -1491,27 +1743,32 @@ export default class BaseBetOutcomeCalculationService {
     const expectedHalfTime = betParts[0].trim();
     const expectedFullTime = betParts[1].trim();
 
-    // Check if the bet selection matches the actual results
+    console.log(`[calculateHalfTimeFullTime] Expected HT: "${expectedHalfTime}", Expected FT: "${expectedFullTime}"`);
+    console.log(`[calculateHalfTimeFullTime] Actual HT: "${halfTimeResult}", Actual FT: "${fullTimeResult}"`);
+
+    // Check if the bet selection matches the actual results using enhanced team matching
     let halfTimeMatch = false;
     let fullTimeMatch = false;
 
-    // Check half-time match (similar logic to calculateDoubleChance)
+    // Check half-time match with improved team name matching
     if (expectedHalfTime.toLowerCase() === "draw") {
       halfTimeMatch = halfTimeResult === "Draw";
-    } else if (expectedHalfTime.toLowerCase() === homeTeam.toLowerCase()) {
+    } else if (this.teamNamesMatch(expectedHalfTime, homeTeam)) {
       halfTimeMatch = halfTimeResult === homeTeam;
-    } else if (expectedHalfTime.toLowerCase() === awayTeam.toLowerCase()) {
+    } else if (this.teamNamesMatch(expectedHalfTime, awayTeam)) {
       halfTimeMatch = halfTimeResult === awayTeam;
     }
 
-    // Check full-time match
+    // Check full-time match with improved team name matching
     if (expectedFullTime.toLowerCase() === "draw") {
       fullTimeMatch = fullTimeResult === "Draw";
-    } else if (expectedFullTime.toLowerCase() === homeTeam.toLowerCase()) {
+    } else if (this.teamNamesMatch(expectedFullTime, homeTeam)) {
       fullTimeMatch = fullTimeResult === homeTeam;
-    } else if (expectedFullTime.toLowerCase() === awayTeam.toLowerCase()) {
+    } else if (this.teamNamesMatch(expectedFullTime, awayTeam)) {
       fullTimeMatch = fullTimeResult === awayTeam;
     }
+
+    console.log(`[calculateHalfTimeFullTime] Half time match: ${halfTimeMatch}, Full time match: ${fullTimeMatch}`);
 
     const isWinning = halfTimeMatch && fullTimeMatch;
 
@@ -1521,6 +1778,18 @@ export default class BaseBetOutcomeCalculationService {
       reason: `Half Time/Full Time: HT: ${halfTimeResult}, FT: ${fullTimeResult}, Expected: ${expectedHalfTime} - ${expectedFullTime}`,
       actualResult: `${halfTimeResult} - ${fullTimeResult}`,
       expectedResult: betOption,
+      teamMatchingDebug: {
+        homeTeam,
+        awayTeam,
+        expectedHalfTime,
+        expectedFullTime,
+        halfTimeMatch,
+        fullTimeMatch,
+        normalizedHome: this.normalizeTeamName(homeTeam),
+        normalizedAway: this.normalizeTeamName(awayTeam),
+        normalizedExpectedHT: this.normalizeTeamName(expectedHalfTime),
+        normalizedExpectedFT: this.normalizeTeamName(expectedFullTime),
+      }
     };
   }
 
@@ -1552,56 +1821,7 @@ export default class BaseBetOutcomeCalculationService {
       status: isWinning ? "won" : "lost",
     };
   }
-  /**
-   * Enhanced market type detection with more markets
-   */
-  getMarketType(marketId) {
-    const numericMarketId = parseInt(marketId);
 
-    // Extended market mappings based on common betting markets
-    const extendedMarketTypes = {
-      DOUBLE_CHANCE: [2], // Double Chance
-      OVER_UNDER: [4, 5, 80, 81], // Match Goals, Alternative Match Goals, Goals Over/Under
-      ASIAN_HANDICAP: [6], // Asian Handicap
-      GOAL_LINE: [7], // Goal Line
-      CORRECT_SCORE: [8], // Final Score
-      THREE_WAY_HANDICAP: [9], // 3-Way Handicap
-      LAST_TEAM_TO_SCORE: [11], // Last Team To Score
-      ODD_EVEN_GOALS: [12], // Goals Odd/Even
-      // Result / Both Teams To Score
-      BOTH_TEAMS_SCORE_1ST_HALF: [15], // Both Teams to Score in 1st Half
-      BOTH_TEAMS_SCORE_2ND_HALF: [16], // Both Teams to Score in 2nd Half
-      CLEAN_SHEET: [17], // Team Clean Sheet
-      TEAM_TOTAL_GOALS: [20, 21, 86], // Home Team Goals, Away Team Goals, Team Total Goals
-      HALF_TIME_RESULT: [22, 23], // To Win 1st Half, To Win 2nd Half
-      TEAM_TO_SCORE_HALF: [24, 25], // Team to Score in 1st/2nd Half
-      HALF_TIME_ASIAN_HANDICAP: [26], // 1st Half Asian Handicap
-      HALF_TIME_GOAL_LINE: [27], // 1st Half Goal Line
-      HALF_TIME_GOALS: [28], // 1st Half Goals
-      HALF_TIME_FULL_TIME: [29], // Half Time/Full Time
-      GOALSCORERS: [90], // Goalscorers (First/Last/Anytime)
-      PLAYER_SHOTS_ON_TARGET: [267], // Player Total Shots On Target
-      PLAYER_TOTAL_SHOTS: [268], // Player Total Shots
-      EXACT_TOTAL_GOALS: [93], // Exact Total Goals
-      SECOND_HALF_GOALS_ODD_EVEN: [124], // Second Half Goals Odd/Even
-      FIRST_HALF_GOALS_ODD_EVEN: [95], // First Half Goals Odd/Even
-      BOTH_TEAM_TO_SCORE_1ST_HALF_2ND_HALF: [125],
-      ALTERNATIVE_MATCH_GOALS: [5], // Both Teams to Score in 1st/2nd Half
-      RESULT_TOTAL_GOALS: [37], // Result/Total Goals
-      RESULT_BOTH_TEAMS_SCORE: [13],
-      SECOND_HALF_RESULT: [97], // Second Half Result
-      HALF_TIME_RESULT_TOTAL_GOALS: [123], // Half Time Result / Total Goals
-      CORNERS: [60, 67, 68, 69], // Corner markets - 2-Way Corners, Corners, Total Corners, Alternative Corners
-    };
-
-    for (const [type, ids] of Object.entries(extendedMarketTypes)) {
-      if (ids.includes(numericMarketId)) {
-        return type;
-      }
-    }
-
-    return "UNKNOWN";
-  }
 
   /**
    * Calculate outcome for Result/Both Teams To Score (market_id: 13)

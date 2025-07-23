@@ -193,34 +193,36 @@ class FixtureOptimizationService {
                   return false;
                 }
 
+                //INFO: all players allowed
+                
                 // For player-related markets (267, 268), validate player is in lineups
-                if (odd.market_id === 267 || odd.market_id === 268) {
-                  // Check if the player name exists in lineups
-                  if (odd.name) {
-                    const playerName = odd.name.toLowerCase().trim();
+                // if (odd.market_id === 267 || odd.market_id === 268) {
+                //   // Check if the player name exists in lineups
+                //   if (odd.name) {
+                //     const playerName = odd.name.toLowerCase().trim();
                     
-                    // Check exact match first
-                    if (lineupPlayerNames.has(playerName)) {
-                      return true;
-                    }
+                //     // Check exact match first
+                //     if (lineupPlayerNames.has(playerName)) {
+                //       return true;
+                //     }
                     
-                    // Check partial match (in case of name variations)
-                    for (const lineupPlayer of lineupPlayerNames) {
-                      // Check if odd name is contained in lineup name or vice versa
-                      if (lineupPlayer.includes(playerName) || playerName.includes(lineupPlayer)) {
-                        return true;
-                      }
-                    }
+                //     // Check partial match (in case of name variations)
+                //     for (const lineupPlayer of lineupPlayerNames) {
+                //       // Check if odd name is contained in lineup name or vice versa
+                //       if (lineupPlayer.includes(playerName) || playerName.includes(lineupPlayer)) {
+                //         return true;
+                //       }
+                //     }
                     
-                    // Player not found in lineups, exclude this odd
-                    // console.log(`🚫 Excluding player odd for "${odd.name}" - not in lineups for match ${fixture.id}`);
-                    return false;
-                  } else {
-                    // No player name in odd, exclude it
-                    console.log(`🚫 Excluding player odd with no name for match ${fixture.id}`);
-                    return false;
-                  }
-                }
+                //     // Player not found in lineups, exclude this odd
+                //     // console.log(`🚫 Excluding player odd for "${odd.name}" - not in lineups for match ${fixture.id}`);
+                //     return false;
+                //   } else {
+                //     // No player name in odd, exclude it
+                //     console.log(`🚫 Excluding player odd with no name for match ${fixture.id}`);
+                //     return false;
+                //   }
+                // }
 
                 // For non-player markets, include the odd
                 return true;

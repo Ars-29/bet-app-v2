@@ -76,7 +76,10 @@ export default class WinningOddsCalculationService extends BaseBetOutcomeCalcula
    * Calculate outcome based on market type using winning calculations
    */
   async calculateOutcomeByMarketType(bet, matchData, marketId) {
-    const marketType = super.getMarketType(marketId);
+    let marketType;
+   
+    marketType = this.getMarketType(marketId);
+    console.log(`[WinningOddsCalculation] Market ID: ${marketId}, Market Type: ${marketType}`);
 
     switch (marketType) {
       case "FULLTIME_RESULT":
@@ -108,8 +111,33 @@ export default class WinningOddsCalculationService extends BaseBetOutcomeCalcula
         return this.calculateCleanSheet(bet, matchData);
 
       default:
-        return this.calculateFromWinningField(bet, matchData);
+        console.log(`[WinningOddsCalculation] Unknown market type for market ID ${marketId}`);
+        return {
+          status:"canceled",
+          reason: `Market type ${marketType} does not have winning calculations`,
+          payout: bet.stake, // Refund stake
+        }
     }
+  }
+
+  /**
+   * Override getMarketType to use winning calculation specific mappings
+   */
+  getMarketType(marketId) {
+    const numericMarketId = parseInt(marketId);
+    
+    console.log(`[WinningOddsCalculation] Getting market type for market ID: ${numericMarketId}`);
+
+    // Use our specific mappings for winning calculation markets
+    for (const [type, ids] of Object.entries(this.winningMarketTypes)) {
+      if (ids.includes(numericMarketId)) {
+        console.log(`[WinningOddsCalculation] Found market type: ${type} for market ID: ${numericMarketId}`);
+        return type;
+      }
+    }
+
+    console.log(`[WinningOddsCalculation] Market ID ${numericMarketId} not found in winning market types`);
+    return "UNKNOWN";
   }
 
 
@@ -412,7 +440,16 @@ export default class WinningOddsCalculationService extends BaseBetOutcomeCalcula
    * Check if market has winning calculations available
    */
   checkMarketHasWinningCalculations(marketId) {
-    return super.marketsWithWinningCalculations.includes(parseInt(marketId));
+    const numericMarketId = parseInt(marketId);
+    
+    // Check if market ID exists in our winning market types
+    for (const ids of Object.values(this.winningMarketTypes)) {
+      if (ids.includes(numericMarketId)) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
  

@@ -1046,9 +1046,7 @@ export default function BetManagement() {
                             {bet.status.toLowerCase() === "won" ? (
                               <span className="font-medium text-green-600">
                                 +$
-                                {bet.payout
-                                  ? (bet.payout - bet.stake).toFixed(2)
-                                  : ((bet.stake * bet.odds) - bet.stake).toFixed(2)}
+                                {((bet.stake * bet.odds) ).toFixed(2)}
                               </span>
                             ) : bet.status.toLowerCase() === "pending" ? (
                               <span className="text-gray-500">Pending</span>

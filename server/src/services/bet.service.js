@@ -157,6 +157,11 @@ class BetService {
     };
   }
 
+  // Helper method to calculate when bet outcome check should run (2h 5min after match start)
+  calculateBetOutcomeCheckTime(matchStartTime) {
+    return new Date(matchStartTime.getTime() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
+  }
+
   // Helper method to get current UTC time
   getCurrentUTCTime() {
     return new Date().toISOString();
@@ -488,9 +493,16 @@ class BetService {
 
     const matchDate = this.parseMatchStartTime(matchData.starting_at);
     console.log(`[DEBUG] Final match date: ${this.formatTo12Hour(matchDate)}`);
-    const estimatedMatchEnd = new Date(
-      matchDate.getTime() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000
-    );
+    
+    // Calculate when the bet outcome check should run (2 hours 5 minutes after match START)
+    const betOutcomeCheckTime = this.calculateBetOutcomeCheckTime(matchDate);
+    
+    // For backward compatibility, also calculate estimated match end (105 minutes after start)
+    const estimatedMatchEnd = new Date(matchDate.getTime() + 105 * 60 * 1000);
+    
+    console.log(`[DEBUG] Match start time (UTC): ${this.formatTo12Hour(matchDate)}`);
+    console.log(`[DEBUG] Estimated match end (UTC): ${this.formatTo12Hour(estimatedMatchEnd)}`);
+    console.log(`[DEBUG] Bet outcome check scheduled for (UTC): ${this.formatTo12Hour(betOutcomeCheckTime)} (2h 5min after match start)`);
 
     // Create betDetails object
     const betDetails = this.createBetDetails(odds, odds.market_id);
@@ -505,7 +517,8 @@ class BetService {
       stake,
       payout: 0,
       matchDate,
-      estimatedMatchEnd,
+      estimatedMatchEnd, // Keep for backward compatibility
+      betOutcomeCheckTime, // When the outcome check should actually run
       teams,
       selection,
       inplay,
@@ -526,11 +539,16 @@ class BetService {
       )}`
     );
     console.log(
+      `[placeBet] Bet outcome check time (UTC): ${this.formatTo12Hour(
+        betOutcomeCheckTime
+      )} (2h 5min after match start)`
+    );
+    console.log(
       `[placeBet] Current time (UTC): ${this.getCurrentUTCTime12Hour()}`
     );
 
     // Schedule outcome check
-    await this.scheduleBetOutcomeCheck(bet._id, estimatedMatchEnd, matchId);
+    await this.scheduleBetOutcomeCheck(bet._id, betOutcomeCheckTime, matchId);
 
     // Fetch the updated user (with new balance)
     const updatedUser = await User.findById(userId);
@@ -538,18 +556,18 @@ class BetService {
     return { bet, user: updatedUser };
   }
 
-  scheduleBetOutcomeCheck(betId, estimatedMatchEnd, matchId) {
-    // Get current time
+  scheduleBetOutcomeCheck(betId, betOutcomeCheckTime, matchId) {
+    // Get current time in UTC
     const now = new Date();
 
     // Ensure we're scheduling for the future, not the past
-    let runAt = new Date(estimatedMatchEnd);
+    let runAt = new Date(betOutcomeCheckTime);
 
     // If the scheduled time is in the past, reschedule for 5 minutes from now
     if (runAt <= now) {
       runAt = new Date(Date.now() + 5 * 60 * 1000);
       console.log(
-        `[scheduleBetOutcomeCheck] Estimated match end time is in the past. Rescheduling for 5 minutes from now at ${this.formatTo12Hour(
+        `[scheduleBetOutcomeCheck] Bet outcome check time is in the past. Rescheduling for 5 minutes from now at ${this.formatTo12Hour(
           runAt
         )}.`
       );
@@ -558,13 +576,13 @@ class BetService {
     console.log(
       `[scheduleBetOutcomeCheck] Now (UTC): ${this.getCurrentUTCTime12Hour()}, runAt (UTC): ${this.formatTo12Hour(
         runAt
-      )} (estimated match end time)`
+      )} (2h 5min after match start)`
     );
 
-    // Schedule the job with Agenda
+    // Schedule the job with Agenda - this will run in UTC regardless of server timezone
     agenda.schedule(runAt, "checkBetOutcome", { betId, matchId });
     console.log(
-      `Scheduled Agenda job for bet ${betId} at ${this.formatTo12Hour(runAt)}`
+      `Scheduled Agenda job for bet ${betId} at ${this.formatTo12Hour(runAt)} UTC`
     );
   }
 
@@ -694,20 +712,14 @@ class BetService {
     }
   }
 
-  async checkMarketHasWinningCalculations(marketId) {
+  checkMarketHasWinningCalculations(marketId) {
     try {
-      // Load markets data from constants file
-      const fs = await import("fs");
-      const path = await import("path");
-      const { fileURLToPath } = await import("url");
-
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = path.dirname(__filename);
-      const marketsPath = path.join(__dirname, "../constants/markets.json");
-
-      const marketsData = JSON.parse(fs.readFileSync(marketsPath, "utf8"));
+      // Use the existing getMarketsData method which already handles caching
+      const marketsData = this.getMarketsData();
       const market = marketsData.markets[marketId.toString()];
 
+      console.log(`[checkMarketHasWinningCalculations] Market ID: ${marketId}, has_winning_calculations: ${market ? market.has_winning_calculations : false}`);
+      
       return market ? market.has_winning_calculations : false;
     } catch (error) {
       console.error("Error checking market winning calculations:", error);
@@ -805,22 +817,44 @@ class BetService {
         matchData.state
       );
 
-      // If match hasn't started yet or is in progress, reschedule for estimated end time
+      // Calculate proper rescheduling time based on match start time (2h 5min after start)
+      const matchStartTime = this.parseMatchStartTime(matchData.starting_at);
+      const newBetOutcomeCheckTime = this.calculateBetOutcomeCheckTime(matchStartTime); // 2h 5min after match start
+
+      // If match hasn't started yet or is in progress, reschedule for proper time
       if (
         !matchData.state ||
         matchData.state.id === 1 ||
         (matchData.state.id >= 2 && matchData.state.id <= 4)
       ) {
         console.log(
-          `[checkBetOutcome] Match is not yet finished (state: ${matchData.state?.name}). Rescheduling for estimated end time.`
+          `[checkBetOutcome] Match is not yet finished (state: ${matchData.state?.name}). Rescheduling for proper bet outcome check time: ${this.formatTo12Hour(newBetOutcomeCheckTime)} (2h 5min after match start)`
         );
-        agenda.schedule(bet.estimatedMatchEnd, "checkBetOutcome", {
-          betId,
-          matchId: bet.matchId,
-        });
+        
+        // Only reschedule if the new time is in the future
+        const now = new Date();
+        if (newBetOutcomeCheckTime > now) {
+          agenda.schedule(newBetOutcomeCheckTime, "checkBetOutcome", {
+            betId,
+            matchId: bet.matchId,
+          });
+        } else {
+          // If even the proper time is in the past, check again in 10 minutes
+          const runAt = new Date(Date.now() + 10 * 60 * 1000);
+          console.log(
+            `[checkBetOutcome] Proper bet outcome check time is in the past. Rescheduling for 10 minutes from now: ${this.formatTo12Hour(runAt)}`
+          );
+          agenda.schedule(runAt, "checkBetOutcome", {
+            betId,
+            matchId: bet.matchId,
+          });
+        }
       } else {
         // For other states, check again in 10 minutes
         const runAt = new Date(Date.now() + 10 * 60 * 1000);
+        console.log(
+          `[checkBetOutcome] Unknown match state. Rescheduling for 10 minutes from now: ${this.formatTo12Hour(runAt)}`
+        );
         agenda.schedule(runAt, "checkBetOutcome", {
           betId,
           matchId: bet.matchId,
@@ -866,11 +900,10 @@ class BetService {
         final_match = { ...matchData, odds: matchData.inplayodds };
       }
       if (
-        bet.inplay &&
         this.checkMarketHasWinningCalculations(bet.betDetails.market_id)
       ) {
         console.log(
-          `[checkBetOutcome] Using WinningOddsCalculation for inplay bet`
+          `[checkBetOutcome] Using WinningOddsCalculation for bet`
         );
 
         outcomeResult = await this.WinningOddsCalculation.calculateBetOutcome(
@@ -999,12 +1032,25 @@ class BetService {
   async checkPendingBets() {
     // Use current time for comparison
     const now = new Date();
+    
+    // Query for bets that should have been checked by now
+    // Use $or to check both new and old field names for backward compatibility
     const pendingBets = await Bet.find({
       status: "pending",
-      estimatedMatchEnd: { $lte: now },
+      $or: [
+        { betOutcomeCheckTime: { $lte: now } }, // New field
+        { 
+          $and: [
+            { betOutcomeCheckTime: { $exists: false } }, // Old bets without new field
+            { estimatedMatchEnd: { $lte: now } }
+          ]
+        }
+      ]
     });
 
     if (pendingBets.length === 0) return [];
+
+    console.log(`[checkPendingBets] Found ${pendingBets.length} pending bets that should be checked`);
 
     // Group bets by matchId
     const betsByMatch = {};
@@ -1147,9 +1193,19 @@ class BetService {
   async recoverMissedBets() {
     // Use current time for comparison
     const now = new Date();
+    
+    // Query for overdue bets using both new and old field names for backward compatibility
     const overdueBets = await Bet.find({
       status: "pending",
-      estimatedMatchEnd: { $lte: now },
+      $or: [
+        { betOutcomeCheckTime: { $lte: now } }, // New field
+        { 
+          $and: [
+            { betOutcomeCheckTime: { $exists: false } }, // Old bets without new field
+            { estimatedMatchEnd: { $lte: now } }
+          ]
+        }
+      ]
     });
 
     if (overdueBets.length === 0) {
@@ -1212,23 +1268,27 @@ class BetService {
             `Match ${match.id} is not finished (state: ${match.state?.name}), rescheduling bets`
           );
           for (const bet of betsByMatch[match.id]) {
+            // Calculate proper rescheduling time based on match start time (2h 5min after start)
+            const matchStartTime = this.parseMatchStartTime(match.starting_at);
+            const properBetOutcomeCheckTime = this.calculateBetOutcomeCheckTime(matchStartTime); // 2h 5min after match start
+            
             // Determine appropriate scheduling time
             const now = new Date();
             let newScheduleTime;
 
-            // If match hasn't started yet (state.id === 1), schedule for after estimated end time
+            // If match hasn't started yet (state.id === 1), schedule for proper time
             if (match.state?.id === 1) {
-              newScheduleTime = new Date(bet.estimatedMatchEnd);
+              newScheduleTime = properBetOutcomeCheckTime;
               if (newScheduleTime <= now) {
-                // If somehow the end time is in the past, schedule for 30 minutes later
+                // If somehow the proper time is in the past, schedule for 30 minutes later
                 newScheduleTime = new Date(Date.now() + 30 * 60 * 1000);
               }
             }
-            // If match is in progress (state.id between 2-4), schedule for estimated end time
+            // If match is in progress (state.id between 2-4), schedule for proper time
             else if (match.state?.id >= 2 && match.state?.id <= 4) {
-              newScheduleTime = new Date(bet.estimatedMatchEnd);
+              newScheduleTime = properBetOutcomeCheckTime;
               if (newScheduleTime <= now) {
-                // If somehow the end time is in the past, schedule for 30 minutes later
+                // If somehow the proper time is in the past, schedule for 30 minutes later
                 newScheduleTime = new Date(Date.now() + 30 * 60 * 1000);
               }
             }

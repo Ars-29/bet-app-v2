@@ -49,6 +49,11 @@ const betSchema = new mongoose.Schema(
       type: Date,
       required: [true, "Estimated match end time is required"],
     },
+    betOutcomeCheckTime: {
+      type: Date,
+      required: false, // Optional for backward compatibility
+      // This field stores when the bet outcome check should run (2h 5min after match start)
+    },
     teams: {
       type: String,
       required: [true, "Teams are required"],
