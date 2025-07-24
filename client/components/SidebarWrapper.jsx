@@ -27,10 +27,15 @@ const SidebarWrapper = () => {
         );
     }
 
-    // Desktop sidebar
+    // Desktop sidebar - only show when not mobile (respects 1150px breakpoint)
     return (
-        <div className={`hidden lg:block lg:h-[calc(100vh-108px)] lg:z-10 transition-all duration-300 ${isCollapsed ? 'lg:w-16' : 'lg:w-56'
-            }`}>
+        <div 
+            className={`transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-56'}`}
+            style={{ 
+                display: 'block',
+                height: 'calc(100vh - 108px)',
+                zIndex: 10
+            }}>
             <Sidebar />
         </div>
     );

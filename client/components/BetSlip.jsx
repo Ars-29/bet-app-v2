@@ -28,6 +28,7 @@ import {
 import { selectIsAuthenticated, selectUser } from '@/lib/features/auth/authSlice';
 import LoginDialog from '@/components/auth/LoginDialog';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const BetSlip = () => {
     const dispatch = useDispatch();
@@ -39,6 +40,7 @@ const BetSlip = () => {
     const user = useSelector(selectUser);
     const betSlipRef = useRef(null);
     const [isPlacingBet, setIsPlacingBet] = React.useState(false);
+    const isMobile = useIsMobile();
 
     // Calculate totals when relevant data changes
     useEffect(() => {
@@ -168,8 +170,12 @@ const BetSlip = () => {
         return false;
     };
 
-    return (<div className="fixed bottom-0 right-5 z-50" ref={betSlipRef}>
-        <style jsx>{`
+    return (   
+        <div
+            className="fixed bottom-0 left-0 right-0 z-50 sm:left-auto sm:right-5 sm:w-auto w-full"
+            ref={betSlipRef}
+        >
+            <style jsx>{`
                 .betslip-container {
                     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                     transform-origin: bottom right;
@@ -179,176 +185,196 @@ const BetSlip = () => {
                 .scale-98 {
                     transform: scale(0.98);
                 }
+                @media (max-width: 640px) {
+                    .betslip-container {
+                        width: 100vw !important;
+                        max-width: 100vw !important;
+                        min-width: 100vw !important;
+                        border-radius: 0 !important;
+                        right: 0 !important;
+                        left: 0 !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        transform-origin: bottom center !important;
+                        box-sizing: border-box !important;
+                    }
+                    .scale-98 {
+                        transform: scale(1) !important;
+                    }
+                }
             `}</style>
-        <div className={`w-96 bg-gray-900 text-white shadow-2xl  betslip-container transition-all duration-500 ease-in-out ${isExpanded
-            ? 'max-h-[600px] opacity-100 scale-100'
-            : 'max-h-[60px] opacity-95 scale-98 overflow-hidden'
-            }`}>
-            {!isExpanded ? (
-                // Collapsed State
-                <div
-                    onClick={handleToggle}
-                    className="cursor-pointer hover:bg-gray-800 transition-all duration-300 p-3 rounded-lg"
-                >
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                            <div className="bg-yellow-500 text-black rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold transition-all duration-300 hover:scale-110">
-                                {bets.length}
-                            </div>
-                            <div className="flex justify-between font-semibold items-center">
-                                <span className="text-sm text-gray-400">
-                                    {bets.length === 1 ? 'Single bet' : `Combination (${bets.length} bets)`}
-                                </span>
-                            </div>
-                        </div>
-                        <ChevronUp className="h-4 w-4 text-gray-400 transition-all duration-300 hover:text-yellow-400" />
-                    </div>
-                </div>) : (
-                // Expanded State  
-                <div className="transition-all duration-300 ease-in-out">
-                    {/* Header */}
-                    <div className="bg-gray-800 px-3 py-2 rounded-t-lg ">
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-white font-semibold text-sm">Bet Slip</h3>
+            <div
+                className={`betslip-container transition-all duration-500 ease-in-out bg-gray-900 text-white shadow-2xl w-full sm:w-96 max-w-none sm:max-w-96 m-0 p-0 ${
+                    isExpanded
+                        ? 'max-h-[600px] opacity-100 scale-100'
+                        : 'max-h-[60px] opacity-95 scale-98 overflow-hidden'
+                }`}
+            >
+                {!isExpanded ? (
+                    // Collapsed State
+                    <div
+                        onClick={handleToggle}
+                        className="cursor-pointer hover:bg-gray-800 transition-all duration-300 p-3 w-full"
+                    >
+                        <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                                <button
-                                    onClick={() => dispatch(collapseBetSlip())}
-                                    className="text-white hover:text-gray-300 transition-all duration-200 cursor-pointer hover:scale-110"
-                                >
-                                    <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                                </button>
-                                <button
-                                    onClick={() => dispatch(closeBetSlip())}
-                                    className="text-white hover:text-gray-300 transition-all duration-200 cursor-pointer hover:scale-110 hover:rotate-90"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
+                                <div className="bg-yellow-500 text-black rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold transition-all duration-300 hover:scale-110">
+                                    {bets.length}
+                                </div>
+                                <div className="flex justify-between font-semibold items-center">
+                                    <span className="text-sm text-gray-400">
+                                        {bets.length === 1 ? 'Single bet' : `Combination (${bets.length} bets)`}
+                                    </span>
+                                </div>
+                            </div>
+                            <ChevronUp className="h-4 w-4 text-gray-400 transition-all duration-300 hover:text-yellow-400" />
+                        </div>
+                    </div>) : (
+                    // Expanded State  
+                    <div className="transition-all duration-300 ease-in-out">
+                        {/* Header */}
+                        <div className="bg-gray-800 px-3 py-2">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-white font-semibold text-sm">Bet Slip</h3>
+                                <div className="flex items-center space-x-2">
+                                    <button
+                                        onClick={() => dispatch(collapseBetSlip())}
+                                        className="text-white hover:text-gray-300 transition-all duration-200 cursor-pointer hover:scale-110"
+                                    >
+                                        <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                                    </button>
+                                    <button
+                                        onClick={() => dispatch(closeBetSlip())}
+                                        className="text-white hover:text-gray-300 transition-all duration-200 cursor-pointer hover:scale-110 hover:rotate-90"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Tabs */}
+                            {/*TODO: Add system in the array to make a system tab then uncommenet the system component and the active tab condition for system  */}
+                            <div className="flex space-x-0.5">
+                                {['singles'/*, 'combination'*/].map((tab) => {
+                                    const count = getTabCount(tab);
+                                    const disabled = isTabDisabled(tab);
+
+                                    return (
+                                        <button
+                                            key={tab}
+                                            onClick={() => !disabled && handleTabChange(tab)}
+                                            disabled={disabled}
+                                            className={`flex-1 px-2 py-1 text-xs font-medium transition-all duration-200 ${activeTab === tab
+                                                ? 'bg-white text-black'
+                                                : disabled
+                                                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                                    : 'bg-gray-600 text-white hover:bg-gray-500'
+                                                }`}
+                                        >
+                                            <div className="capitalize">{tab}</div>
+                                            {count > 0 && (
+                                                <div className="text-xs">({count})</div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        {/* Tabs */}
-                        {/*TODO: Add system in the array to make a system tab then uncommenet the system component and the active tab condition for system  */}
-                        <div className="flex space-x-0.5">
-                            {['singles'/*, 'combination'*/].map((tab) => {
-                                const count = getTabCount(tab);
-                                const disabled = isTabDisabled(tab);
-
-                                return (
-                                    <button
-                                        key={tab}
-                                        onClick={() => !disabled && handleTabChange(tab)}
-                                        disabled={disabled}
-                                        className={`flex-1 px-2 py-1 text-xs font-medium transition-all duration-200 ${activeTab === tab
-                                            ? 'bg-white text-black'
-                                            : disabled
-                                                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                                : 'bg-gray-600 text-white hover:bg-gray-500'
-                                            }`}
-                                    >
-                                        <div className="capitalize">{tab}</div>
-                                        {count > 0 && (
-                                            <div className="text-xs">({count})</div>
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="px-3 py-2 max-h-64 overflow-y-auto dropdown-scrollbar transition-all duration-300">
-                        {activeTab === 'singles' && (
-                            <SinglesBets
-                                bets={bets}
-                                stakes={betSlip.stake.singles}
-                                onStakeChange={handleSingleStakeChange}
-                                onRemoveBet={handleRemoveBet}
-                            />
-                        )}
-
-                        {/* Combination bet UI commented out for now */}
-                        {/* {activeTab === 'combination' && bets.length >= 2 && (
-                                <CombinationBet
+                        {/* Content */}
+                        <div className="px-3 py-2 max-h-64 overflow-y-auto dropdown-scrollbar transition-all duration-300">
+                            {activeTab === 'singles' && (
+                                <SinglesBets
                                     bets={bets}
-                                    stake={betSlip.stake.combination}
-                                    onStakeChange={handleCombinationStakeChange}
+                                    stakes={betSlip.stake.singles}
+                                    onStakeChange={handleSingleStakeChange}
                                     onRemoveBet={handleRemoveBet}
                                 />
-                            )} */}
-                    </div>
+                            )}
 
-                    {/* Footer */}
-                    <div className="border-t border-gray-700 px-3 py-2 transition-all duration-300">
-                        {/* Clear Betslip */}
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-gray-400">Clear betslip</span>
-                            <button
-                                onClick={handleClearAll}
-                                className="text-xs text-white hover:text-gray-300 transition-colors duration-200"
-                            >
-                                Clear
-                            </button>
+                            {/* Combination bet UI commented out for now */}
+                            {/* {activeTab === 'combination' && bets.length >= 2 && (
+                                    <CombinationBet
+                                        bets={bets}
+                                        stake={betSlip.stake.combination}
+                                        onStakeChange={handleCombinationStakeChange}
+                                        onRemoveBet={handleRemoveBet}
+                                    />
+                                )} */}
                         </div>
 
-                        {/* Total Stake */}
-                        <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs text-gray-300">Total stake:</span>
-                            <span className="text-xs font-medium">€{betSlip.totalStake.toFixed(2)}</span>
-                        </div>
+                        {/* Footer */}
+                        <div className="border-t border-gray-700 px-3 py-2 transition-all duration-300">
+                            {/* Clear Betslip */}
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-gray-400">Clear betslip</span>
+                                <button
+                                    onClick={handleClearAll}
+                                    className="text-xs text-white hover:text-gray-300 transition-colors duration-200"
+                                >
+                                    Clear
+                                </button>
+                            </div>
 
-                        {/* Potential Payout */}
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-gray-300">Potential payout:</span>
-                            <span className="text-sm font-bold text-yellow-400">€{betSlip.potentialReturn.toFixed(2)}</span>
-                        </div>
+                            {/* Total Stake */}
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-gray-300">Total stake:</span>
+                                <span className="text-xs font-medium">€{betSlip.totalStake.toFixed(2)}</span>
+                            </div>
 
-                        {/* Approve Odds Change */}
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-gray-400">Approve odds change</span>
-                            <Switch
-                                checked={betSlip.approveOddsChange}
-                                onCheckedChange={handleApproveOddsChange}
-                                className="scale-75"
-                            />
-                        </div>
+                            {/* Potential Payout */}
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-gray-300">Potential payout:</span>
+                                <span className="text-sm font-bold text-yellow-400">€{betSlip.potentialReturn.toFixed(2)}</span>
+                            </div>
 
-                        {/* Place Bet Button */}
-                        {!isAuthenticated ? (
-                            <LoginDialog>
+                            {/* Approve Odds Change */}
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-gray-400">Approve odds change</span>
+                                <Switch
+                                    checked={betSlip.approveOddsChange}
+                                    onCheckedChange={handleApproveOddsChange}
+                                    className="scale-75"
+                                />
+                            </div>
+
+                            {/* Place Bet Button */}
+                            {!isAuthenticated ? (
+                                <LoginDialog>
+                                    <Button
+                                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 transition-all duration-200"
+                                        disabled={betSlip.totalStake === 0}
+                                    >
+                                        Log in to place bet
+                                    </Button>
+                                </LoginDialog>
+                            ) : user?.role === 'admin' ? (
+                                <Button
+                                    className="w-full bg-gray-500 text-white font-bold py-2 transition-all duration-200 cursor-not-allowed"
+                                    disabled={true}
+                                >
+                                    Admins cannot place bets
+                                </Button>
+                            ) : (
                                 <Button
                                     className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 transition-all duration-200"
-                                    disabled={betSlip.totalStake === 0}
+                                    disabled={betSlip.totalStake === 0 || isPlacingBet}
+                                    onClick={handlePlaceBet}
                                 >
-                                    Log in to place bet
+                                    {isPlacingBet ? (
+                                        <span className="flex items-center justify-center">
+                                            <Loader2 className="animate-spin h-5 w-5 mr-2 text-black" />
+                                            Placing Bet...
+                                        </span>
+                                    ) : (
+                                        'Place Bet'
+                                    )}
                                 </Button>
-                            </LoginDialog>
-                        ) : user?.role === 'admin' ? (
-                            <Button
-                                className="w-full bg-gray-500 text-white font-bold py-2 transition-all duration-200 cursor-not-allowed"
-                                disabled={true}
-                            >
-                                Admins cannot place bets
-                            </Button>
-                        ) : (
-                            <Button
-                                className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 transition-all duration-200"
-                                disabled={betSlip.totalStake === 0 || isPlacingBet}
-                                onClick={handlePlaceBet}
-                            >
-                                {isPlacingBet ? (
-                                    <span className="flex items-center justify-center">
-                                        <Loader2 className="animate-spin h-5 w-5 mr-2 text-black" />
-                                        Placing Bet...
-                                    </span>
-                                ) : (
-                                    'Place Bet'
-                                )}
-                            </Button>
-                        )}
-                    </div>
-                </div>)}
+                            )}
+                        </div>
+                    </div>)}
+            </div>
         </div>
-    </div>
     );
 };
 

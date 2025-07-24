@@ -91,7 +91,7 @@ const MatchDropdown = ({ isOpen, onClose, currentMatchId, triggerRef, currentLea
     // Show leagues list (when back button is clicked)
     if (showLeagues) {
         return (
-            <div className="absolute top-full left-0 z-50 mt-2 w-[500px]" ref={dropdownRef}>
+            <div className="absolute top-full left-0 z-50 mt-2 w-full max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl" ref={dropdownRef}>
                 <Card className="border border-gray-300 shadow-xl bg-gray-800 w-full max-h-96 overflow-y-auto transform transition-all duration-300 ease-in-out dropdown-scrollbar">
                     <CardContent className="p-0">
                         <div className="bg-emerald-600 p-4 border-b border-gray-600 flex items-center justify-between">
@@ -130,7 +130,7 @@ const MatchDropdown = ({ isOpen, onClose, currentMatchId, triggerRef, currentLea
 
     // Show matches for selected league
     return (
-        <div className="absolute top-full left-0 z-50 mt-2 w-[500px]" ref={dropdownRef}>
+        <div className="absolute top-full left-0 z-50 mt-2 w-full max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl" ref={dropdownRef}>
             <Card className="border border-gray-300 shadow-xl bg-gray-800 w-full max-h-96 overflow-y-auto transform transition-all duration-300 ease-in-out dropdown-scrollbar">
                 <CardContent className="p-0">
                     <div className="bg-emerald-600 p-4 border-b border-gray-600 flex items-center justify-between">
@@ -178,14 +178,14 @@ const MatchDropdown = ({ isOpen, onClose, currentMatchId, triggerRef, currentLea
                                             <JerseyImage
                                                 src={match.participants?.[0]?.image_path}
                                                 alt={match.participants?.[0]?.name}
-                                                className="w-12 h-12 mb-2"
+                                                className="w-10 h-10 mb-2 sm:w-12 sm:h-12"
                                             />
                                             <span className="text-white text-xs font-medium text-center leading-tight">
                                                 {match.participants?.[0]?.name}
                                             </span>
                                         </div>
-                                        <div className="text-center flex-shrink-0 px-4">
-                                            <div className="text-white font-bold text-sm">
+                                        <div className="text-center flex-shrink-0 px-2 sm:px-4">
+                                            <div className="text-white font-bold text-xs sm:text-sm">
                                                 {match.starting_at ? formatToLocalTime(match.starting_at, { format: 'timeOnly' }) : ''}
                                             </div>
                                         </div>
@@ -193,7 +193,7 @@ const MatchDropdown = ({ isOpen, onClose, currentMatchId, triggerRef, currentLea
                                             <JerseyImage
                                                 src={match.participants?.[1]?.image_path}
                                                 alt={match.participants?.[1]?.name}
-                                                className="w-12 h-12 mb-2"
+                                                className="w-10 h-10 mb-2 sm:w-12 sm:h-12"
                                             />
                                             <span className="text-white text-xs font-medium text-center leading-tight">
                                                 {match.participants?.[1]?.name}

@@ -175,9 +175,9 @@ const BettingTabs = ({ matchData }) => {
 
 
         <div className="mb-6  -mt-6">
-            <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full ">
+            <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
                 {/* Tab navigation with scroll buttons */}
-                <div className="mb-4 sm:mb-6 bg-white pb-2 pl-2 sm:pl-[13px] p-1">
+                <div className="mb-4 sm:mb-6 bg-white pb-2 pl-1 min-[400px]:pl-2 sm:pl-[13px] p-1">
                     <div className="relative flex items-center">
                         {/* Left scroll button - Always visible */}
 
@@ -193,7 +193,7 @@ const BettingTabs = ({ matchData }) => {
                         }
 
                         {/* Scrollable tabs area */}
-                        <div className="overflow-hidden w-fit mx-8">
+                        <div className="overflow-hidden w-fit mx-4 min-[400px]:mx-8">
                             <ScrollArea
                                 ref={scrollAreaRef}
                                 orientation="horizontal"
@@ -204,7 +204,7 @@ const BettingTabs = ({ matchData }) => {
                                         <Button
                                             key={tab.id}
                                             onClick={() => setSelectedTab(tab.id)}
-                                            className={`px-2 py-1.5 sm:px-3 sm:py-1 font-normal cursor-pointer text-xs rounded-2xl sm:rounded-3xl whitespace-nowrap transition-all duration-200 flex-shrink-0 ${selectedTab === tab.id
+                                            className={`px-1.5 py-1.5 min-[400px]:px-2 sm:px-3 sm:py-1 font-normal cursor-pointer text-xs rounded-2xl sm:rounded-3xl whitespace-nowrap transition-all duration-200 flex-shrink-0 ${selectedTab === tab.id
                                                 ? "bg-base text-white "
                                                 : "text-gray-600 hover:text-gray-900 bg-white  hover:bg-gray-100"
                                                 }`}
@@ -259,22 +259,24 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
     const getGridClass = (options) => {
         // For result markets (1X2), always use 3 columns if there are 3 options
         const isResultMarket = options.length === 3 &&
-            (options.some(opt => opt.label.toLowerCase() === 'draw') ||
-                options.every(opt => ['1x', 'x2', '12'].includes(opt.label.toLowerCase())));
+            (options.some(opt => opt.label.toLowerCase().includes('draw')) ||
+                options.every(opt => ['1x', 'x2', '12'].includes(opt.label.toLowerCase())) ||
+                options.some(opt => opt.label.toLowerCase().includes('or'))) // Added for Double Chance detection
         
         // For over/under markets, always use 2 columns
         const isOverUnderMarket = options.length === 2 && 
             options.some(opt => opt.label.toLowerCase().includes('over')) && 
             options.some(opt => opt.label.toLowerCase().includes('under'));
         
-        if (isResultMarket) return "grid-cols-3";
-        if (isOverUnderMarket) return "grid-cols-2";
+        // For very small screens (< 500px), limit to max 2 columns for result markets
+        if (isResultMarket) return "grid-cols-2 min-[800px]:grid-cols-3";
+        if (isOverUnderMarket) return "grid-cols-1 min-[500px]:grid-cols-2";
         
         const optionsCount = options.length;
-        if (optionsCount <= 2) return "grid-cols-2";
-        else if (optionsCount <= 4) return "grid-cols-2 sm:grid-cols-4";
-        else if (optionsCount <= 6) return "grid-cols-2 sm:grid-cols-3";
-        else return "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4";
+        if (optionsCount <= 2) return "grid-cols-1 min-[500px]:grid-cols-2";
+        else if (optionsCount <= 4) return "grid-cols-1 min-[500px]:grid-cols-2 min-[800px]:grid-cols-4";
+        else if (optionsCount <= 6) return "grid-cols-1 min-[500px]:grid-cols-2 min-[800px]:grid-cols-3";
+        else return "grid-cols-1 min-[500px]:grid-cols-2 min-[800px]:grid-cols-3 lg:grid-cols-4";
     };
     // Render betting options
     const renderOptions = (options, section) => {
@@ -282,7 +284,8 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
         const isResultMarket = 
             section.title?.toLowerCase().includes('result') || 
             section.title?.toLowerCase().includes('winner') ||
-            section.title?.toLowerCase().includes('1x2');
+            section.title?.toLowerCase().includes('1x2') ||
+            section.title?.toLowerCase().includes('double chance');
         
         // Special handling for handicap markets
         const isHandicapMarket = 
@@ -329,7 +332,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
             );
 
         // Use appropriate grid class based on market type
-        const gridClass = isGoalScorerMarket && options.length === 3 ? "grid-cols-3" : getGridClass(options);
+        const gridClass = isGoalScorerMarket && options.length === 3 ? "grid-cols-2 min-[800px]:grid-cols-3" : getGridClass(options);
         
         // Special rendering for Team Total Goals markets
         if (isTeamTotalGoalsMarket) {
@@ -368,7 +371,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                     {team1Options.length > 0 && (
                         <div className="mb-1">
                             <div className="text-sm font-semibold text-gray-700 mb-2 px-2 py-1">{team1}</div>
-                            <div className="grid grid-cols-2 gap-1">
+                            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-1">
                                 {team1Options.map((option, idx) => (
                                     <BettingOptionButton
                                         key={`cs-team1-${option.label}-${option.name}-${idx}`}
@@ -398,7 +401,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                     {drawOptions.length > 0 && (
                         <div className="mb-1">
                             <div className="text-sm font-semibold text-gray-700 mb-2 px-2 py-1">Draw</div>
-                            <div className="grid grid-cols-2 gap-1">
+                            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-1">
                                 {drawOptions.map((option, idx) => (
                                     <BettingOptionButton
                                         key={`cs-draw-${option.label}-${option.name}-${idx}`}
@@ -428,7 +431,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                     {team2Options.length > 0 && (
                         <div className="mb-1">
                             <div className="text-sm font-semibold text-gray-700 mb-2 px-2 py-1">{team2}</div>
-                            <div className="grid grid-cols-2 gap-1">
+                            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-1">
                                 {team2Options.map((option, idx) => (
                                     <BettingOptionButton
                                         key={`cs-team2-${option.label}-${option.name}-${idx}`}
@@ -508,7 +511,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
         // For Exact Total Goals, show all options in a single grid (no partition)
         if (section.title?.toLowerCase().includes('exact total goals')) {
             return (
-                <div className="grid grid-cols-2 gap-1">
+                <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-1">
                     {options.map((option, idx) => {
                         return (
                             <BettingOptionButton
@@ -546,8 +549,8 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
         );
         
         return (
-            <div className="flex gap-2">
-                {/* Over Options (Left side) */}
+            <div className="flex flex-col min-[640px]:flex-row gap-2">
+                {/* Over Options (Top on mobile, Left on desktop) */}
                 <div className="flex-1">
                     
                     <div className="grid grid-cols-1 gap-1">
@@ -578,10 +581,10 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                     </div>
                 </div>
                 
-                {/* Visual partition */}
-                <div className="w-0.5 bg-gray-400 mx-2 rounded-full"></div>
+                {/* Visual partition - horizontal line on mobile, vertical line on desktop */}
+                <div className="h-0.5 bg-gray-400 mx-2 rounded-full min-[640px]:h-auto min-[640px]:w-0.5"></div>
                 
-                {/* Under Options (Right side) */}
+                {/* Under Options (Bottom on mobile, Right on desktop) */}
                 <div className="flex-1">
                    
                     <div className="grid grid-cols-1 gap-1">
@@ -629,8 +632,8 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
         );
         
         return (
-            <div className="flex gap-2">
-                {/* Under Options (Left) */}
+            <div className="flex flex-col min-[640px]:flex-row gap-2">
+                {/* Under Options (Top on mobile, Left on desktop) */}
                 <div className="flex-1">
                     <div className="grid grid-cols-1 gap-1">
                         {underOptions.map((option, idx) => (
@@ -658,10 +661,10 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                     </div>
                 </div>
                 
-                {/* Visual partition */}
-                <div className="w-0.5 bg-gray-400 mx-1 rounded-full"></div>
+                {/* Visual partition - horizontal line on mobile, vertical line on desktop */}
+                <div className="h-0.5 bg-gray-400 mx-2 rounded-full min-[640px]:h-auto min-[640px]:w-0.5 min-[640px]:mx-1"></div>
                 
-                {/* Exactly Options (Center) */}
+                {/* Exactly Options (Middle on mobile, Center on desktop) */}
                 <div className="flex-1">
                     <div className="grid grid-cols-1 gap-1">
                         {exactlyOptions.map((option, idx) => (
@@ -689,10 +692,10 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                     </div>
                 </div>
                 
-                {/* Visual partition */}
-                <div className="w-0.5 bg-gray-400 mx-1 rounded-full"></div>
+                {/* Visual partition - horizontal line on mobile, vertical line on desktop */}
+                <div className="h-0.5 bg-gray-400 mx-2 rounded-full min-[640px]:h-auto min-[640px]:w-0.5 min-[640px]:mx-1"></div>
                 
-                {/* Over Options (Right) */}
+                {/* Over Options (Bottom on mobile, Right on desktop) */}
                 <div className="flex-1">
                     <div className="grid grid-cols-1 gap-1">
                         {overOptions.map((option, idx) => (
@@ -766,8 +769,8 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
         }
         
         return (
-            <div className="flex gap-2">
-                {/* Team 1 (Left side) */}
+            <div className="flex flex-col min-[640px]:flex-row gap-2">
+                {/* Team 1 (Top on mobile, Left on desktop) */}
                 <div className="flex-1">
                     <div className="text-sm text-gray-700 font-semibold  mb-2 px-2 text-center  py-1 rounded">{team1}</div>
                     <div className="grid grid-cols-1 gap-1">
@@ -799,10 +802,10 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                     </div>
                 </div>
                 
-                {/* Visual partition */}
-                <div className="w-0.5 bg-gray-400 mx-2 rounded-full"></div>
+                {/* Visual partition - horizontal line on mobile, vertical line on desktop */}
+                <div className="h-0.5 bg-gray-400 mx-2 rounded-full min-[640px]:h-auto min-[640px]:w-0.5"></div>
                 
-                {/* Team 2 (Right side) */}
+                {/* Team 2 (Bottom on mobile, Right on desktop) */}
                 <div className="flex-1">
                     <div className="text-sm text-gray-700 font-semibold  mb-2 px-2 text-center  py-1 rounded">{team2}</div>
                     <div className="grid grid-cols-1 gap-1">
@@ -1037,7 +1040,7 @@ const BettingOptionButton = ({
             return (
                 <div className="flex items-center gap-1">
                     <span>{mainLabel}</span>
-                    <span className="bg-white/30 px-1 rounded text-[9px]">{name}</span>
+                    <span className="bg-white/30 px-1 rounded text-[8px] min-[400px]:text-[9px]">{name}</span>
                 </div>
             );
         }
@@ -1059,7 +1062,7 @@ const BettingOptionButton = ({
             return (
                 <div className="flex items-center gap-1">
                     <span>{mainLabel}</span>
-                    <span className="bg-white/30 px-1 rounded text-[9px]">{name}</span>
+                    <span className="bg-white/30 px-1 rounded text-[8px] min-[400px]:text-[9px]">{name}</span>
                 </div>
             );
         }
@@ -1075,7 +1078,7 @@ const BettingOptionButton = ({
             return (
                 <div className="flex items-center gap-1">
                     <span>{teamName}</span>
-                    <span className="bg-white/30 px-1 rounded text-[9px]">{handicapValue}</span>
+                    <span className="bg-white/30 px-1 rounded text-[8px] min-[400px]:text-[9px]">{handicapValue}</span>
                 </div>
             );
         }
@@ -1091,7 +1094,7 @@ const BettingOptionButton = ({
             return (
                 <div className="flex items-center gap-1">
                     <span>{teamName}</span>
-                    <span className="bg-gray-500 px-1 rounded text-[9px]">{name}</span>
+                    <span className="bg-gray-500 px-1 rounded text-[8px] min-[400px]:text-[9px]">{name}</span>
                 </div>
             );
         }
@@ -1152,7 +1155,7 @@ const BettingOptionButton = ({
             return (
                 <div className="flex items-center gap-1">
                     <span>{teamName}</span>
-                    <span className="bg-white/30 px-1 rounded text-[9px]">{total}</span>
+                    <span className="bg-white/30 px-1 rounded text-[8px] min-[400px]:text-[9px]">{total}</span>
                 </div>
             );
         }
@@ -1180,7 +1183,7 @@ const BettingOptionButton = ({
             return (
                 <div className="flex items-center gap-1">
                     <span>{teamName}</span>
-                    <span className="bg-white/30 px-1 rounded text-[9px]">{total}</span>
+                    <span className="bg-white/30 px-1 rounded text-[8px] min-[400px]:text-[9px]">{total}</span>
                 </div>
             );
         }
@@ -1212,7 +1215,7 @@ const BettingOptionButton = ({
             return (
                 <div className="flex items-center gap-1">
                     <span>{mainLabel}</span>
-                    <span className="bg-white/20 px-1 rounded text-[9px]">{handicapValue}</span>
+                    <span className="bg-white/20 px-1 rounded text-[8px] min-[400px]:text-[9px]">{handicapValue}</span>
                 </div>
             );
         }
@@ -1227,7 +1230,7 @@ const BettingOptionButton = ({
             return (
                 <div className="flex items-center gap-1">
                     <span>{teamName}</span>
-                    <span className="bg-white/20 px-1 rounded text-[9px]">{name}</span>
+                    <span className="bg-white/20 px-1 rounded text-[8px] min-[400px]:text-[9px]">{name}</span>
                 </div>
             );
         }
@@ -1237,7 +1240,7 @@ const BettingOptionButton = ({
             return (
                 <div className="flex items-center gap-1">
                     <span>{label}</span>
-                    <span className="bg-white/20 px-1 rounded text-[9px]">{name}</span>
+                    <span className="bg-white/20 px-1 rounded text-[8px] min-[400px]:text-[9px]">{name}</span>
                 </div>
             );
         }
@@ -1277,16 +1280,16 @@ const BettingOptionButton = ({
 
     return (
         <Button
-            className={`group relative px-2 py-1 text-center transition-all duration-200 ${!isSuspended ? 'active:scale-[0.98]' : ''} betting-button ${getStyleClasses()} ${extraClassName}`}
+            className={`group relative px-1 min-[500px]:px-2 py-1 text-center transition-all duration-200 ${!isSuspended ? 'active:scale-[0.98]' : ''} betting-button ${getStyleClasses()} ${extraClassName} min-h-[32px] min-[400px]:min-h-[36px]`}
             onClick={handleBetClick}
             disabled={isSuspended}
         >
-            <div className="relative w-full flex justify-between items-center py-1 z-10">
-                <div className="text-[12px] text-white font-medium transition-colors duration-200 leading-tight">
+            <div className="relative w-full flex flex-row justify-between items-center py-1 z-10 gap-1">
+                <div className="text-[10px] min-[500px]:text-[12px] text-white font-medium transition-colors duration-200 leading-tight flex-1 text-left break-words truncate">
                     {formattedLabel()}
-                    {isSuspended && <span className="ml-1 text-[10px] opacity-80">(Suspended)</span>}
+                    {isSuspended && <span className="ml-1 text-[9px] min-[500px]:text-[10px] opacity-80">(Suspended)</span>}
                 </div>
-                <div className="text-[12px] font-bold text-white transition-colors duration-200">
+                <div className="text-[10px] min-[500px]:text-[12px] font-bold text-white transition-colors duration-200 flex-shrink-0 text-right">
                     {isSuspended ? '--' : value}
                 </div>
             </div>
@@ -1352,8 +1355,8 @@ const PlayerCardOption = ({ player, matchData }) => {
         );
     } else {
         // For non-card markets, use grid layout and consistent button style
-        // Determine grid columns based on number of options
-        const gridCols = player.options.length > 2 ? 'grid-cols-3' : 'grid-cols-2';
+        // Determine grid columns based on number of options with responsive design
+        const gridCols = player.options.length > 2 ? 'grid-cols-1 min-[400px]:grid-cols-2 min-[500px]:grid-cols-3' : 'grid-cols-1 min-[400px]:grid-cols-2';
         return (
             <div className="flex flex-col gap-1 rounded-none mb-2 border border-gray-200  p-3 bg-white">
                 <div className="text-sm font-medium text-gray-700 mb-1">{player.name}</div>
@@ -1362,7 +1365,7 @@ const PlayerCardOption = ({ player, matchData }) => {
                         <Button
                             key={`${player.name}-${option.label}-${idx}`}
                             className={
-                                'group relative px-2 py-1 text-center transition-all duration-200 active:scale-[0.98] betting-button bg-base hover:bg-base-dark flex flex-col justify-between items-center'
+                                'group relative px-1 min-[400px]:px-2 py-1 text-center transition-all duration-200 active:scale-[0.98] betting-button bg-base hover:bg-base-dark flex flex-col justify-between items-center'
                             }
                             onClick={createBetHandler({
                                 id: matchData.id,
@@ -1371,11 +1374,11 @@ const PlayerCardOption = ({ player, matchData }) => {
                                 time: matchData.starting_at,
                             }, option.label, option.value, 'player', option.id)}
                         >
-                            <div className="relative w-full flex justify-between items-center py-1 z-10">
-                                <div className="text-[12px] text-white font-medium transition-colors duration-200 leading-tight">
+                            <div className="relative w-full flex flex-col min-[600px]:flex-row min-[600px]:justify-between min-[600px]:items-center py-1 z-10 gap-0 min-[600px]:gap-1">
+                                <div className="text-[10px] min-[400px]:text-[12px] text-white font-medium transition-colors duration-200 leading-tight flex-1 text-left break-words min-[600px]:truncate">
                                     {option.label}
                                 </div>
-                                <div className="text-[12px] font-bold text-white transition-colors duration-200">
+                                <div className="text-[10px] min-[400px]:text-[12px] font-bold text-white transition-colors duration-200 flex-shrink-0 text-left min-[600px]:text-right">
                                     {option.value}
                                 </div>
                             </div>

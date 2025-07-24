@@ -45,7 +45,7 @@ const LeagueDropdown = ({ leagues, isOpen, onClose, currentLeagueId, triggerRef 
     const currentLeague = leagues.find(league => league.id === parseInt(currentLeagueId));
 
     return (
-        <div className="absolute top-full left-0 z-50 mt-2 w-[500px]" ref={dropdownRef}>
+        <div className="absolute top-full left-0 z-50 mt-2 w-full max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl" ref={dropdownRef}>
             <Card className="border border-gray-300 shadow-xl bg-gray-800 w-full max-h-96 overflow-y-auto transform transition-all duration-300 ease-in-out dropdown-scrollbar">
                 <CardContent className="p-0">
                     {/* Header with close button */}

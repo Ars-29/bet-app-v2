@@ -43,7 +43,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 const Header = () => {
-  const { toggleMobileSidebar } = useCustomSidebar();
+  const { toggleMobileSidebar, isMobile } = useCustomSidebar();
   const dispatch = useDispatch();
   const [showLogoutDialog, setShowLogoutDialog] = React.useState(false);
   const router = useRouter();
@@ -108,13 +108,15 @@ const Header = () => {
       {/* Main header */}
       <div className="px-4 py-3">
         <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2 md:space-x-4 lg:space-x-8">
-            <button
-              className="md:hidden p-2 hover:bg-green-500 rounded"
-              onClick={toggleMobileSidebar}
-            >
-              <span className="text-lg">☰</span>
-            </button>
+          <div className="flex items-center space-x-4 md:space-x-4 lg:space-x-4">
+            {isMobile && (
+              <button
+                className="p-2 px-0  hover:bg-green-500 rounded"
+                onClick={toggleMobileSidebar}
+              >
+                <span className="text-lg">☰</span>
+              </button>
+            )}
             <Link href={"/"} className="text-xl lg:text-2xl font-bold">
               BETTING
               <div className="text-xs text-green-200">KINDRED</div>

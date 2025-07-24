@@ -117,21 +117,13 @@ const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
                                 <div className="flex items-center justify-between">
                                     <div className="flex-1">
                                         <div className="text-[12px] mb-1 flex items-center gap-2" title={match.team1}>
-                                            {isInPlay && match.isLive && (
-                                                <span className="text-xs font-bold text-gray-900 min-w-[16px]">
-                                                    {match.score?.team1 || '0'}
-                                                </span>
-                                            )}
+                                          
                                             <span>
                                                 {match.team1.length > 6 ? `${match.team1.slice(0, 18)}...` : match.team1}
                                             </span>
                                         </div>
                                         <div className="text-[12px] flex items-center gap-2" title={match.team2}>
-                                            {isInPlay && match.isLive && (
-                                                <span className="text-xs font-bold text-gray-900 min-w-[16px]">
-                                                    {match.score?.team2 || '0'}
-                                                </span>
-                                            )}
+                                           
                                             <span>
                                                 {match.team2.length > 6 ? `${match.team2.slice(0, 18)}...` : match.team2}
                                             </span>

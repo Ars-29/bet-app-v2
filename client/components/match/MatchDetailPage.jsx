@@ -87,7 +87,7 @@ const MatchDetailPage = ({ matchId }) => {
         return (
             <div className="bg-slate-100 min-h-screen relative">
                 <div className="lg:mr-80 xl:mr-96">
-                    <div className="p-2 sm:p-3 md:p-4">
+                    <div className="lg:p-2 xl:p-4">
                         <Card className="w-full">
                             <CardContent className="flex items-center justify-center py-12">
                                 <div className="text-center">
@@ -106,7 +106,7 @@ const MatchDetailPage = ({ matchId }) => {
         return (
             <div className="bg-slate-100 min-h-screen relative">
                 <div className="lg:mr-80 xl:mr-96">
-                    <div className="p-2 sm:p-3 md:p-4">
+                    <div className="lg:p-2 xl:p-4">
                         <Card className="w-full border-red-200">
                             <CardContent className="flex items-center justify-center py-12">
                                 <div className="text-center">
@@ -130,7 +130,7 @@ const MatchDetailPage = ({ matchId }) => {
         return (
             <div className="bg-slate-100 min-h-screen relative">
                 <div className="lg:mr-80 xl:mr-96">
-                    <div className="p-2 sm:p-3 md:p-4">
+                    <div className="lg:p-2 xl:p-4">
                         <Card className="w-full">
                             <CardContent className="flex items-center justify-center py-12">
                                 <div className="text-center">
@@ -153,7 +153,7 @@ const MatchDetailPage = ({ matchId }) => {
         return (
             <div className="bg-slate-100 min-h-screen relative">
                 <div className="lg:mr-80 xl:mr-96">
-                    <div className="p-2 sm:p-3 md:p-4">
+                    <div className="lg:p-2 xl:p-4">
                         <Card className="w-full">
                             <CardContent className="flex items-center justify-center py-12">
                                 <div className="text-center">
@@ -173,7 +173,7 @@ const MatchDetailPage = ({ matchId }) => {
         return (
             <div className="bg-slate-100 min-h-screen relative">
                 <div className="lg:mr-80 xl:mr-96">
-                    <div className="p-2 sm:p-3 md:p-4">
+                    <div className="lg:p-2 xl:p-4">
                         <Card className="w-full border-red-200">
                             <CardContent className="flex items-center justify-center py-12">
                                 <div className="text-center">
@@ -241,7 +241,7 @@ const MatchDetailPage = ({ matchId }) => {
         <div className="bg-slate-100 min-h-screen relative">
             {/* Main content - adjusts width when sidebar expands */}
             <div className="lg:mr-80 xl:mr-96">
-                <div className="p-2 sm:p-3 md:p-4">
+                <div className="lg:p-2 xl:p-4">
                     <MatchHeader matchData={matchData} />
                     <BettingTabs 
                         matchData={{ 
