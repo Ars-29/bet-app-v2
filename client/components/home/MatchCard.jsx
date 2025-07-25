@@ -37,7 +37,7 @@ const MatchCard = ({ match }) => {
                             <Button
                                 size={"sm"}
                                 className="flex-1 flex justify-between py-2 gap-0 betting-button"
-                                onClick={createBetHandler(match, `Win - ${match.team1}`, match.odds['1'].value, '1x2', match.odds['1'].oddId)}
+                                onClick={createBetHandler(match, `Win - ${match.team1}`, match.odds['1'].value, '1x2', match.odds['1'].oddId, { marketId: "1" })}
                             >
                                 <div className="text-[11px]">1</div>
                                 <div className='text-[13px]  font-bold'>{match.odds['1'].value}</div>
@@ -47,7 +47,7 @@ const MatchCard = ({ match }) => {
                             <Button
                                 className="flex-1 flex justify-between py-2  gap-0 betting-button"
                                 size={"sm"}
-                                onClick={createBetHandler(match, `Draw - ${match.team1} vs ${match.team2} `, match.odds['X'].value, '1x2', match.odds['X'].oddId)}
+                                onClick={createBetHandler(match, `Draw - ${match.team1} vs ${match.team2} `, match.odds['X'].value, '1x2', match.odds['X'].oddId, { marketId: "1" })}
                             >
                                 <div className="text-[11px]">X</div>
                                 <div className='text-[13px] font-bold'>{match.odds['X'].value}</div>
@@ -57,7 +57,7 @@ const MatchCard = ({ match }) => {
                             <Button
                                 size={"sm"}
                                 className="flex-1 flex justify-between py-2  gap-0 betting-button"
-                                onClick={createBetHandler(match, `Win - ${match.team2}`, match.odds['2'].value, '1x2', match.odds['2'].oddId)}
+                                onClick={createBetHandler(match, `Win - ${match.team2}`, match.odds['2'].value, '1x2', match.odds['2'].oddId, { marketId: "1" })}
                             >
                                 <div className="text-[11px]">2</div>
                                 <div className='text-[13px] font-bold'>{match.odds['2'].value}</div>

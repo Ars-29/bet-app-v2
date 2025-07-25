@@ -282,7 +282,8 @@ const MatchListPage = ({ config }) => {
                                                                                 `Win - ${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'}`, 
                                                                                 match.odds.home.value, 
                                                                                 '1x2', 
-                                                                                match.odds.home.oddId
+                                                                                match.odds.home.oddId,
+                                                                                { marketId: "1" }
                                                                             )}
                                                                         >
                                                                             {match.odds.home.value}
@@ -305,7 +306,8 @@ const MatchListPage = ({ config }) => {
                                                                                 `Draw - ${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'} vs ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`, 
                                                                                 match.odds.draw.value, 
                                                                                 '1x2', 
-                                                                                match.odds.draw.oddId
+                                                                                match.odds.draw.oddId,
+                                                                                { marketId: "1" }
                                                                             )}
                                                                         >
                                                                             {match.odds.draw.value}
@@ -328,7 +330,8 @@ const MatchListPage = ({ config }) => {
                                                                                 `Win - ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`, 
                                                                                 match.odds.away.value, 
                                                                                 '1x2', 
-                                                                                match.odds.away.oddId
+                                                                                match.odds.away.oddId,
+                                                                                { marketId: "1" }
                                                                             )}
                                                                         >
                                                                             {match.odds.away.value}

@@ -1,6 +1,7 @@
 import express from "express";
 import BetController from "../controllers/bet.controller.js";
 import { authenticateToken, requireAdmin } from "../middlewares/auth.js";
+import { preventConflictingBet } from "../middlewares/conflictingBet.js";
 
 const router = express.Router();
 
@@ -8,7 +9,7 @@ const router = express.Router();
 router.get("/", authenticateToken, BetController.getUserBets);
 
 //INFO: Place a new bet
-router.post("/place-bet", authenticateToken, BetController.placeBet);
+router.post("/place-bet", authenticateToken, preventConflictingBet, BetController.placeBet);
 
 //INFO: Check outcome of a specific bet
 router.get("/:betId/outcome", authenticateToken, BetController.checkBetOutcome);

@@ -71,7 +71,7 @@ const LeagueAccordions = ({ matches }) => {
                                             <Button
                                                 size={"sm"}
                                                 className="w-14 h-8 p-0 text-xs font-bold betting-button"
-                                                onClick={createBetHandler(match, '1', odds1)}
+                                                onClick={createBetHandler(match, '1', odds1, '1x2', match.odds?.home?.oddId || null, { marketId: "1" })}
                                             >
                                                 {odds1}
                                             </Button>
@@ -80,7 +80,7 @@ const LeagueAccordions = ({ matches }) => {
                                             <Button
                                                 className="w-14 h-8 p-0 text-xs font-bold betting-button"
                                                 size={"sm"}
-                                                onClick={createBetHandler(match, 'X', oddsX)}
+                                                onClick={createBetHandler(match, 'X', oddsX, '1x2', match.odds?.draw?.oddId || null, { marketId: "1" })}
                                             >
                                                 {oddsX}
                                             </Button>
@@ -89,7 +89,7 @@ const LeagueAccordions = ({ matches }) => {
                                             <Button
                                                 size={"sm"}
                                                 className="w-14 h-8 p-0 text-xs font-bold betting-button"
-                                                onClick={createBetHandler(match, '2', odds2)}
+                                                onClick={createBetHandler(match, '2', odds2, '1x2', match.odds?.away?.oddId || null, { marketId: "1" })}
                                             >
                                                 {odds2}
                                             </Button>

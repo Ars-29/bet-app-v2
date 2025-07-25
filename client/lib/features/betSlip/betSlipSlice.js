@@ -31,6 +31,7 @@ const betSlipSlice = createSlice({
         halfIndicator,
         total,
         name,
+        marketId, // Add marketId to destructuring
         ...rest
       } = action.payload;
 
@@ -62,6 +63,7 @@ const betSlipSlice = createSlice({
         halfIndicator,
         total,
         name,
+        marketId, // Store marketId in bet object
         ...rest
       };
 
@@ -251,6 +253,7 @@ export const placeBetThunk = createAsyncThunk(
           oddId: bet.oddId,
           stake,
           betOption: bet.selection,
+          marketId: bet.marketId, // Include marketId in payload
         };
         console.log("This is the payload" + payload);
 

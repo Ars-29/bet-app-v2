@@ -136,7 +136,7 @@ const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
                                                     size="sm"
                                                     className={getOddButtonClass(match.odds['1'])}
                                                     onClick={isOddClickable(match.odds['1']) 
-                                                        ? createBetHandler(match, '1', match.odds['1'].value, '1x2', match.odds['1'].oddId)
+                                                        ? createBetHandler(match, '1', match.odds['1'].value, '1x2', match.odds['1'].oddId, { marketId: "1" })
                                                         : undefined
                                                     }
                                                     disabled={!isOddClickable(match.odds['1'])}
@@ -149,7 +149,7 @@ const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
                                                     size="sm"
                                                     className={getOddButtonClass(match.odds['X'])}
                                                     onClick={isOddClickable(match.odds['X']) 
-                                                        ? createBetHandler(match, 'X', match.odds['X'].value, '1x2', match.odds['X'].oddId)
+                                                        ? createBetHandler(match, 'X', match.odds['X'].value, '1x2', match.odds['X'].oddId, { marketId: "1" })
                                                         : undefined
                                                     }
                                                     disabled={!isOddClickable(match.odds['X'])}
@@ -162,7 +162,7 @@ const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
                                                     size="sm"
                                                     className={getOddButtonClass(match.odds['2'])}
                                                     onClick={isOddClickable(match.odds['2']) 
-                                                        ? createBetHandler(match, '2', match.odds['2'].value, '1x2', match.odds['2'].oddId)
+                                                        ? createBetHandler(match, '2', match.odds['2'].value, '1x2', match.odds['2'].oddId, { marketId: "1" })
                                                         : undefined
                                                     }
                                                     disabled={!isOddClickable(match.odds['2'])}

@@ -6,7 +6,7 @@ class BetController {
   async placeBet(req, res, next) {
     console.log("Placing bet with data:", req.body);
     try {
-      const { matchId, oddId, stake, betOption } = req.body;
+      const { matchId, oddId, stake, betOption, marketId } = req.body;
       const userId = req.user._id; 
 
       // Validate inputs
@@ -23,6 +23,11 @@ class BetController {
           400,
           "INVALID_STAKE"
         );
+      }
+
+      // Log marketId if provided (for middleware to use)
+      if (marketId) {
+        console.log(`Market ID provided: ${marketId}`);
       }
 
       // Check if the match is live

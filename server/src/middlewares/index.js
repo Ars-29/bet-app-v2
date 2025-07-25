@@ -7,3 +7,4 @@ export {
 
 // Auth middleware exports
 export { authenticateToken, requireAdmin, optionalAuth } from "./auth.js";
+export { preventConflictingBet } from "./conflictingBet.js";

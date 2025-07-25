@@ -44,10 +44,7 @@ const MatchHeader = ({ matchData }) => {
             </div>
         );
     }
-    else{
-        console.log(matchData);
-        
-    }
+    
 
     return (
         <div className="mb-4 bg-white p-3">

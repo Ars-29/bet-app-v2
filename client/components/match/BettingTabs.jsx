@@ -392,6 +392,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                         name={option.name}
                                         marketDescription={section.title}
                                         suspended={option.suspended}
+                                        marketId={option.marketId}
                                     />
                                 ))}
                             </div>
@@ -422,6 +423,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                         name={option.name}
                                         marketDescription={section.title}
                                         suspended={option.suspended}
+                                        marketId={option.marketId}
                                     />
                                 ))}
                             </div>
@@ -452,6 +454,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                         name={option.name}
                                         marketDescription={section.title}
                                         suspended={option.suspended}
+                                        marketId={option.marketId}
                                     />
                                 ))}
                             </div>
@@ -499,6 +502,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                             name={name}
                             marketDescription={section.title}
                             suspended={option.suspended}
+                            marketId={option.marketId}
                         />
                     );
                 })}
@@ -533,6 +537,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                 name={option.name}
                                 marketDescription={section.title}
                                 suspended={option.suspended}
+                                marketId={option.marketId}
                             />
                         );
                     })}
@@ -575,6 +580,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                     name={option.name}
                                     marketDescription={section.title}
                                     suspended={option.suspended}
+                                    marketId={option.marketId}
                                 />
                             );
                         })}
@@ -609,6 +615,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                     name={option.name}
                                     marketDescription={section.title}
                                     suspended={option.suspended}
+                                    marketId={option.marketId}
                                 />
                             );
                         })}
@@ -656,6 +663,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                 name={option.name}
                                 marketDescription={section.title}
                                 suspended={option.suspended}
+                                marketId={option.marketId}
                             />
                         ))}
                     </div>
@@ -687,6 +695,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                 name={option.name}
                                 marketDescription={section.title}
                                 suspended={option.suspended}
+                                marketId={option.marketId}
                             />
                         ))}
                     </div>
@@ -718,6 +727,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                 name={option.name}
                                 marketDescription={section.title}
                                 suspended={option.suspended}
+                                marketId={option.marketId}
                             />
                         ))}
                     </div>
@@ -761,6 +771,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                 name={name}
                                 marketDescription={section.title}
                                 suspended={option.suspended}
+                                marketId={option.marketId}
                             />
                         );
                     })}
@@ -796,6 +807,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                     name={name}
                                     marketDescription={section.title}
                                     suspended={option.suspended}
+                                    marketId={option.marketId}
                                 />
                             );
                         })}
@@ -831,6 +843,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                     name={name}
                                     marketDescription={section.title}
                                     suspended={option.suspended}
+                                    marketId={option.marketId}
                                 />
                             );
                         })}
@@ -972,9 +985,33 @@ const BettingOptionButton = ({
     const isSelected = selectedBets && selectedBets.some((bet) => bet.oddId === optionId);
     const isSuspended = suspended || false;
 
+    // --- CONFLICTING BET LOGIC ---
+    // Helper: get marketId and matchId for this option
+    const thisMarketId = props.marketId || optionId?.toString().split('-')[0] || null;
+    const thisMatchId = matchData?.id;
+    // Try to get marketId from props or fallback to marketDescription+type
+    function getMarketKey(bet) {
+        // Prefer explicit marketId if present
+        if (bet.marketId) return bet.marketId;
+        // Fallback: use marketDescription + type
+        return (bet.marketDescription || '') + '|' + (bet.type || '');
+    }
+    const thisMarketKey = (marketDescription || '') + '|' + (sectionType || '');
+    // Find if user has a bet on this market for this match (but not this odd)
+    const conflictingBet = selectedBets && selectedBets.find(
+        bet => bet.match.id === thisMatchId && getMarketKey(bet) === thisMarketKey && bet.oddId !== optionId
+    );
+    // If user has a bet on this market for this match, disable this button (unless it's the same odd)
+    const isConflicting = Boolean(conflictingBet);
+    // --- END CONFLICTING BET LOGIC ---
+
     const handleBetClick = () => {
         // Don't allow betting on suspended odds
         if (isSuspended) {
+            return;
+        }
+        // Don't allow betting on conflicting odds
+        if (isConflicting) {
             return;
         }
         if (isSelected) {
@@ -1003,7 +1040,8 @@ const BettingOptionButton = ({
                 handicapValue,
                 halfIndicator,
                 total,
-                name
+                name,
+                marketId: props.marketId // Include marketId from props
             };
             // Only add to slip, do not call backend
             addBetToSlip(formattedMatch, betOption.label, betOption.value, betOption.type, betOption.oddId, {
@@ -1011,7 +1049,8 @@ const BettingOptionButton = ({
                 handicapValue: betOption.handicapValue,
                 halfIndicator: betOption.halfIndicator,
                 total: betOption.total,
-                name: betOption.name
+                name: betOption.name,
+                marketId: betOption.marketId // Pass marketId to bet slip
             });
         }
     };
@@ -1280,17 +1319,21 @@ const BettingOptionButton = ({
 
     return (
         <Button
-            className={`group relative px-1 min-[500px]:px-2 py-1 text-center transition-all duration-200 ${!isSuspended ? 'active:scale-[0.98]' : ''} betting-button ${getStyleClasses()} ${extraClassName} min-h-[32px] min-[400px]:min-h-[36px]`}
+            className={`group relative px-1 min-[500px]:px-2 py-1 text-center transition-all duration-200 ${!isSuspended && !isConflicting ? 'active:scale-[0.98]' : ''} betting-button ${getStyleClasses()} ${extraClassName} min-h-[32px] min-[400px]:min-h-[36px]`}
             onClick={handleBetClick}
-            disabled={isSuspended}
+            disabled={isSuspended || isConflicting}
+            title={isSuspended ? 'This odd is suspended' : isConflicting ? 'You already have a bet on another outcome in this market' : ''}
         >
             <div className="relative w-full flex flex-row justify-between items-center py-1 z-10 gap-1">
                 <div className="text-[10px] min-[500px]:text-[12px] text-white font-medium transition-colors duration-200 leading-tight flex-1 text-left break-words truncate">
                     {formattedLabel()}
                     {isSuspended && <span className="ml-1 text-[9px] min-[500px]:text-[10px] opacity-80">(Suspended)</span>}
+                    {isConflicting && !isSuspended && (
+                        <span className="ml-1 text-[9px] min-[500px]:text-[10px] opacity-80 text-yellow-300">(Conflicting bet)</span>
+                    )}
                 </div>
                 <div className="text-[10px] min-[500px]:text-[12px] font-bold text-white transition-colors duration-200 flex-shrink-0 text-right">
-                    {isSuspended ? '--' : value}
+                    {isSuspended || isConflicting ? '--' : value}
                 </div>
             </div>
         </Button>
