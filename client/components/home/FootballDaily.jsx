@@ -4,7 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import MatchCard from './MatchCard';
-import { selectFootballDaily } from '@/lib/features/home/homeSlice';
+import FootballDailySkeleton from '../Skeletons/FootballDailySkeleton';
+import { selectFootballDaily, selectHomeLoading } from '@/lib/features/home/homeSlice';
 import { formatMatchTime } from '@/lib/utils';
 
 // Helper function to transform API data to MatchCard format
@@ -62,6 +63,12 @@ const transformApiMatchToDisplayFormat = (apiMatch, league) => {
 
 const FootballDaily = () => {
     const footballDaily = useSelector(selectFootballDaily);
+    const loading = useSelector(selectHomeLoading);
+
+    // Show skeleton while loading
+    if (loading) {
+        return <FootballDailySkeleton />;
+    }
 
     if (!footballDaily || footballDaily.length === 0) {
         return (

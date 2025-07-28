@@ -259,7 +259,160 @@ class BetService {
     return parsedDate;
   }
 
-  async placeBet(userId, matchId, oddId, stake, betOption, inplay = false) {
+  async placeBet(userId, matchId, oddId, stake, betOption, inplay = false, combinationData = null) {
+    // Handle combination bets
+    if (combinationData && Array.isArray(combinationData)) {
+      console.log(`[placeBet] Processing combination bet with ${combinationData.length} legs`);
+      
+      // Validate combination bet
+      if (combinationData.length < 2) {
+        throw new CustomError(
+          "Combination bet must have at least 2 legs",
+          400,
+          "INVALID_COMBINATION_BET"
+        );
+      }
+      if (combinationData.length > 10) {
+        throw new CustomError(
+          "Combination bet cannot have more than 10 legs",
+          400,
+          "TOO_MANY_LEGS"
+        );
+      }
+
+      // Validate user and balance
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new CustomError("User not found", 404, "USER_NOT_FOUND");
+      }
+      if (user.balance < stake) {
+        throw new CustomError(
+          "Insufficient balance",
+          400,
+          "INSUFFICIENT_BALANCE"
+        );
+      }
+
+      // Process each leg to get odds and match data
+      const processedLegs = [];
+      let totalOdds = 1;
+      let firstLegData = null;
+
+      for (let i = 0; i < combinationData.length; i++) {
+        const leg = combinationData[i];
+        console.log(`[placeBet] Processing combination leg ${i + 1}: matchId=${leg.matchId}, oddId=${leg.oddId}`);
+
+        // Get match data and odds for this leg using the single bet logic
+        const { matchData, odds } = await this.getMatchDataAndOdds(leg.matchId, leg.oddId, leg.inplay || false);
+        
+        // Create bet details for this leg
+        const betDetails = this.createBetDetails(odds, odds.market_id);
+        
+        // Calculate match dates
+        const matchDate = this.parseMatchStartTime(matchData.starting_at);
+        const betOutcomeCheckTime = this.calculateBetOutcomeCheckTime(matchDate);
+        const estimatedMatchEnd = new Date(matchDate.getTime() + 105 * 60 * 1000);
+
+        // Create leg object for combination array
+        const processedLeg = {
+          matchId: leg.matchId,
+          oddId: leg.oddId,
+          betOption: leg.betOption || leg.selection || odds.name,
+          odds: parseFloat(odds.value),
+          stake: stake, // Same stake for all legs in combination
+          payout: 0,
+          status: "pending",
+          selection: leg.selection || leg.betOption || odds.name,
+          inplay: leg.inplay || false,
+          betDetails,
+          matchDate,
+          estimatedMatchEnd,
+          betOutcomeCheckTime,
+          teams: matchData.participants && matchData.participants.length >= 2
+            ? `${matchData.participants[0].name} vs ${matchData.participants[1].name}`
+            : ""
+        };
+
+        processedLegs.push(processedLeg);
+        totalOdds *= parseFloat(odds.value);
+
+        // Store first leg data for main bet document
+        if (i === 0) {
+          firstLegData = {
+            matchData,
+            odds,
+            matchDate,
+            estimatedMatchEnd,
+            betOutcomeCheckTime,
+            teams: matchData.participants && matchData.participants.length >= 2
+              ? `${matchData.participants[0].name} vs ${matchData.participants[1].name}`
+              : ""
+          };
+        }
+      }
+
+      // Calculate potential payout
+      const potentialPayout = stake * totalOdds;
+      console.log(`[placeBet] Combination bet - Total odds: ${totalOdds}, Potential payout: ${potentialPayout}`);
+
+      // Deduct stake from user balance
+      user.balance -= stake;
+      await user.save();
+
+      // Create the combination bet document with cleaner structure
+      // Main bet document represents the overall combination, not just the first leg
+      const bet = new Bet({
+        userId,
+        // For combination bets, use first match details for required fields
+        matchId: firstLegData.matchData.id,
+        oddId: `combo_${Date.now()}`, // Unique ID for combination bet
+        betOption: `Combination Bet (${processedLegs.length} legs)`,
+        odds: totalOdds, // Total combined odds
+        stake,
+        payout: 0,
+        matchDate: firstLegData.matchDate,
+        estimatedMatchEnd: firstLegData.estimatedMatchEnd,
+        betOutcomeCheckTime: firstLegData.betOutcomeCheckTime,
+        teams: `Combination: ${processedLegs.length} matches`,
+        selection: `${processedLegs.length}-leg combination`,
+        inplay: false, // Combination bet itself is not inplay
+        betDetails: {
+          market_id: "combination",
+          market_name: "Combination Bet",
+          label: `${processedLegs.length}-leg combination`,
+          value: totalOdds,
+          total: null,
+          market_description: `Combination bet with ${processedLegs.length} legs`,
+          handicap: null,
+          name: `Combination Bet (${processedLegs.length} legs)`
+        },
+        combination: processedLegs, // All legs including the first one
+        totalOdds,
+        potentialPayout,
+      });
+
+      await bet.save();
+
+      // Schedule outcome checks for the LATEST leg's check time (when all matches will be finished)
+      let latestCheckTime = firstLegData.betOutcomeCheckTime;
+      for (const leg of processedLegs) {
+        if (leg.betOutcomeCheckTime > latestCheckTime) {
+          latestCheckTime = leg.betOutcomeCheckTime;
+        }
+      }
+      
+      console.log(`[placeBet] Combination bet scheduled for latest check time: ${this.formatTo12Hour(latestCheckTime)} (when all matches will be finished)`);
+      await this.scheduleBetOutcomeCheck(bet._id, latestCheckTime, firstLegData.matchData.id);
+
+      // Fetch the updated user
+      const updatedUser = await User.findById(userId);
+
+      return { bet, user: updatedUser };
+    }
+
+    // Handle single bets
+    console.log(`[placeBet] Processing single bet for matchId: ${matchId}, oddId: ${oddId}`);
+    
     let matchData;
     let odds;
     const cacheKey = `match_${matchId}`;
@@ -512,7 +665,7 @@ class BetService {
       matchId,
       oddId,
       marketId: odds.market_id,
-      betOption: betOption || odds.name,
+      betOption: betOption || selection || odds.name,
       odds: parseFloat(odds.value),
       stake,
       payout: 0,
@@ -584,6 +737,159 @@ class BetService {
     console.log(
       `Scheduled Agenda job for bet ${betId} at ${this.formatTo12Hour(runAt)} UTC`
     );
+  }
+
+  async getMatchDataAndOdds(matchId, oddId, inplay = false) {
+    let matchData;
+    let odds;
+    const cacheKey = `match_${matchId}`;
+    const cacheTTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+    // For inplay bets, get odds from live odds cache
+    if (inplay) {
+      console.log(`[getMatchDataAndOdds] Processing inplay bet for match ${matchId}, odd ${oddId}`);
+
+      // Force a fresh fetch for betting to ensure we have the latest odds
+      console.log(`[getMatchDataAndOdds] Forcing fresh fetch of live odds for betting...`);
+      FixtureOptimizationService.liveFixturesService.liveOddsCache.del(matchId);
+
+      const liveOddsResult = await FixtureOptimizationService.liveFixturesService.ensureLiveOdds(matchId);
+      const liveOdds = liveOddsResult.betting_data || [];
+
+      // Find the odd directly in the live odds data
+      let foundOdd = null;
+      let foundMarket = null;
+
+      // Search for the exact odd ID in all sections
+      for (const section of liveOdds) {
+        const odd = section.options?.find((o) => {
+          const optionId = parseInt(o.id);
+          const requestedId = parseInt(oddId);
+          return optionId === requestedId;
+        });
+
+        if (odd) {
+          foundOdd = odd;
+          foundMarket = section;
+          console.log(`[getMatchDataAndOdds] ✅ FOUND EXACT MATCH: ${odd.label} with ID: ${odd.id}, market_id: ${odd.market_id}`);
+          break;
+        }
+      }
+
+      if (!foundOdd) {
+        throw new CustomError(
+          `Invalid odd ID for live bet. Odd ID ${oddId} not found in current live odds.`,
+          400,
+          "INVALID_LIVE_ODD_ID"
+        );
+      }
+
+      // Check if the odd is suspended or stopped
+      if (foundOdd.suspended || foundOdd.stopped) {
+        throw new CustomError(
+          "This betting option is currently suspended",
+          400,
+          "ODD_SUSPENDED"
+        );
+      }
+
+      const resolvedMarketId = foundOdd.marketId || foundOdd.market_id;
+      if (!resolvedMarketId) {
+        throw new CustomError(
+          "Invalid live odd data - missing market ID",
+          400,
+          "INVALID_LIVE_ODD_DATA"
+        );
+      }
+
+      odds = {
+        id: foundOdd.id,
+        value: foundOdd.value,
+        name: foundOdd.name || foundOdd.label,
+        market_id: resolvedMarketId,
+        label: foundOdd.label,
+        total: foundOdd.total,
+        market_description: foundOdd.market_description || foundMarket.description || foundMarket.title,
+        handicap: foundOdd.handicap,
+      };
+    }
+
+    // Get match data (same logic as placeBet)
+    const allCachedMatches = FixtureOptimizationService.getAllCachedMatches();
+    matchData = allCachedMatches.find(
+      (fixture) => fixture.id == matchId || fixture.id === parseInt(matchId)
+    );
+    
+    if (!matchData) {
+      matchData = FixtureOptimizationService.fixtureCache.get(cacheKey);
+      if (!matchData || !matchData.updatedAt || matchData.updatedAt <= new Date(Date.now() - cacheTTL)) {
+        const cachedOdds = await MatchOdds.findOne({ matchId });
+        if (cachedOdds && cachedOdds.updatedAt > new Date(Date.now() - cacheTTL)) {
+          matchData = {
+            id: matchId,
+            odds: cachedOdds.odds.map((odd) => ({
+              id: odd.oddId,
+              marketId: odd.marketId,
+              name: odd.name,
+              value: odd.value,
+            })),
+            starting_at: cachedOdds.starting_at,
+            participants: cachedOdds.participants || [],
+            state: cachedOdds.state || {},
+          };
+        } else {
+          const apiParams = {
+            filters: `fixtureIds:${matchId}`,
+            include: "odds;participants;state",
+            per_page: 1,
+          };
+          const response = await FixtureOptimizationService.getOptimizedFixtures(apiParams);
+          const matches = response.data || [];
+          if (!matches || matches.length === 0) {
+            throw new CustomError("Match not found", 404, "MATCH_NOT_FOUND");
+          }
+          matchData = matches.find(
+            (match) => match.id == matchId || match.id === parseInt(matchId)
+          );
+          if (!matchData) {
+            throw new CustomError("Match not found", 404, "MATCH_NOT_FOUND");
+          }
+          
+          // Update MongoDB cache
+          await MatchOdds.findOneAndUpdate(
+            { matchId: matchData.id },
+            {
+              matchId: matchData.id,
+              starting_at: matchData.starting_at,
+              odds: matchData.odds.map((odd) => ({
+                oddId: odd.id,
+                marketId: odd.market_id,
+                name: odd.name,
+                value: parseFloat(odd.value),
+              })),
+              participants: matchData.participants || [],
+              state: matchData.state || {},
+              updatedAt: new Date(),
+            },
+            { upsert: true }
+          );
+          
+          // Update in-memory cache
+          matchData.updatedAt = new Date();
+          FixtureOptimizationService.fixtureCache.set(cacheKey, matchData, 3600);
+        }
+      }
+    }
+
+    // If not an inplay bet, get odds from match data
+    if (!inplay) {
+      odds = matchData.odds?.find((odd) => odd.id === oddId);
+      if (!odds) {
+        throw new CustomError("Invalid odd ID", 400, "INVALID_ODD_ID");
+      }
+    }
+
+    return { matchData, odds };
   }
 
   async fetchMatchResult(matchId, isLive = false) {
@@ -748,6 +1054,19 @@ class BetService {
       };
     }
 
+    // Check if this is a combination bet
+    if (bet.combination && Array.isArray(bet.combination) && bet.combination.length > 0) {
+      console.log(`[checkBetOutcome] Processing combination bet with ${bet.combination.length} legs`);
+      return await this.processCombinationBetOutcome(bet, match);
+    }
+
+    // Process single bet
+    console.log(`[checkBetOutcome] Processing single bet for betId: ${betId}`);
+    return await this.processSingleBetOutcome(bet, match);
+  }
+
+  async processSingleBetOutcome(bet, match = null) {
+    const betId = bet._id;
     let matchData = match;
 
     // Check the final match result cache first
@@ -755,23 +1074,23 @@ class BetService {
       if (this.finalMatchResultCache.has(bet.matchId)) {
         matchData = this.finalMatchResultCache.get(bet.matchId);
         console.log(
-          `[checkBetOutcome] Used cached final result for matchId: ${bet.matchId}`
+          `[processSingleBetOutcome] Used cached final result for matchId: ${bet.matchId}`
         );
       } else {
         try {
           console.log(
-            `[checkBetOutcome] Fetching latest fixture for matchId: ${bet.matchId}, inplay: ${bet.inplay}`
+            `[processSingleBetOutcome] Fetching latest fixture for matchId: ${bet.matchId}, inplay: ${bet.inplay}`
           );
           matchData = await this.fetchMatchResult(bet.matchId, bet.inplay);
           // Only cache if match is finished
           if (matchData.state?.id === 5) {
             this.finalMatchResultCache.set(bet.matchId, matchData);
             console.log(
-              `[checkBetOutcome] Cached final result for matchId: ${bet.matchId}`
+              `[processSingleBetOutcome] Cached final result for matchId: ${bet.matchId}`
             );
           }
         } catch (err) {
-          console.error(`[checkBetOutcome] Error fetching match:`, err);
+          console.error(`[processSingleBetOutcome] Error fetching match:`, err);
 
           // Handle network errors gracefully
           if (
@@ -781,7 +1100,7 @@ class BetService {
             err.message.includes("NETWORK_ERROR")
           ) {
             console.log(
-              `[checkBetOutcome] Network error for betId: ${betId}. Rescheduling for retry in 10 minutes.`
+              `[processSingleBetOutcome] Network error for betId: ${betId}. Rescheduling for retry in 10 minutes.`
             );
 
             // Reschedule for retry in 10 minutes due to network issues
@@ -804,16 +1123,15 @@ class BetService {
       }
     }
 
-    console.log(`[checkBetOutcome] Match state:`, matchData.state);
+    console.log(`[processSingleBetOutcome] Match state:`, matchData.state);
     console.log(
-      `[checkBetOutcome] Looking for odd ID ${bet.oddId} in match data`
+      `[processSingleBetOutcome] Looking for odd ID ${bet.oddId} in match data`
     );
 
-    //NOTE: Dont remove it i will uncomment it
     // Check if match is finished (state.id === 5 means finished)
     if (!matchData.state || matchData.state.id !== 5) {
       console.log(
-        `[checkBetOutcome] Match not finished for betId: ${betId}, state:`,
+        `[processSingleBetOutcome] Match not finished for betId: ${betId}, state:`,
         matchData.state
       );
 
@@ -828,7 +1146,7 @@ class BetService {
         (matchData.state.id >= 2 && matchData.state.id <= 4)
       ) {
         console.log(
-          `[checkBetOutcome] Match is not yet finished (state: ${matchData.state?.name}). Rescheduling for proper bet outcome check time: ${this.formatTo12Hour(newBetOutcomeCheckTime)} (2h 5min after match start)`
+          `[processSingleBetOutcome] Match is not yet finished (state: ${matchData.state?.name}). Rescheduling for proper bet outcome check time: ${this.formatTo12Hour(newBetOutcomeCheckTime)} (2h 5min after match start)`
         );
         
         // Only reschedule if the new time is in the future
@@ -842,7 +1160,7 @@ class BetService {
           // If even the proper time is in the past, check again in 10 minutes
           const runAt = new Date(Date.now() + 10 * 60 * 1000);
           console.log(
-            `[checkBetOutcome] Proper bet outcome check time is in the past. Rescheduling for 10 minutes from now: ${this.formatTo12Hour(runAt)}`
+            `[processSingleBetOutcome] Proper bet outcome check time is in the past. Rescheduling for 10 minutes from now: ${this.formatTo12Hour(runAt)}`
           );
           agenda.schedule(runAt, "checkBetOutcome", {
             betId,
@@ -853,7 +1171,7 @@ class BetService {
         // For other states, check again in 10 minutes
         const runAt = new Date(Date.now() + 10 * 60 * 1000);
         console.log(
-          `[checkBetOutcome] Unknown match state. Rescheduling for 10 minutes from now: ${this.formatTo12Hour(runAt)}`
+          `[processSingleBetOutcome] Unknown match state. Rescheduling for 10 minutes from now: ${this.formatTo12Hour(runAt)}`
         );
         agenda.schedule(runAt, "checkBetOutcome", {
           betId,
@@ -868,24 +1186,244 @@ class BetService {
       };
     }
 
+    // Calculate bet outcome
+    return await this.calculateAndUpdateBetOutcome(bet, matchData);
+  }
+
+  async processCombinationBetOutcome(bet, match = null) {
+    const betId = bet._id;
+    console.log(`[processCombinationBetOutcome] Processing combination bet with ${bet.combination.length} legs`);
+
+    // Check if all legs have finished matches
+    const updatedCombination = [];
+    let allLegsFinished = true;
+    let allLegsWon = true;
+    let anyLegCanceled = false;
+
+    for (let i = 0; i < bet.combination.length; i++) {
+      const leg = bet.combination[i];
+      console.log(`[processCombinationBetOutcome] Processing leg ${i + 1}: matchId=${leg.matchId}, oddId=${leg.oddId}`);
+
+      // Skip legs that are already processed
+      if (leg.status !== "pending") {
+        console.log(`[processCombinationBetOutcome] Leg ${i + 1} already processed with status: ${leg.status}`);
+        updatedCombination.push(leg);
+        
+        if (leg.status === "lost") {
+          allLegsWon = false;
+        } else if (leg.status === "canceled") {
+          anyLegCanceled = true;
+        } else if (leg.status !== "won") {
+          allLegsWon = false;
+        }
+        continue;
+      }
+
+      // Get match data for this leg
+      let matchData = null;
+      try {
+        matchData = await this.fetchMatchResult(leg.matchId, leg.inplay);
+      } catch (error) {
+        console.error(`[processCombinationBetOutcome] Error fetching match data for leg ${i + 1}:`, error);
+        allLegsFinished = false;
+        // Keep the leg as pending
+        updatedCombination.push({ ...leg });
+        continue;
+      }
+
+      // Check if match is finished
+      if (!matchData.state || matchData.state.id !== 5) {
+        console.log(`[processCombinationBetOutcome] Leg ${i + 1} match not finished, state:`, matchData.state);
+        allLegsFinished = false;
+        // Keep the leg as pending
+        updatedCombination.push({ ...leg });
+        continue;
+      }
+
+      // Calculate outcome for this leg using the same calculation logic as single bets
+      try {
+        // Create a temporary bet object for this leg to use with existing calculation services
+        const tempBet = {
+          _id: `${bet._id}_leg_${i + 1}`, // Unique ID for logging
+          userId: bet.userId,
+          matchId: leg.matchId,
+          oddId: leg.oddId,
+          betOption: leg.betOption,
+          odds: leg.odds,
+          stake: leg.stake,
+          inplay: leg.inplay,
+          betDetails: leg.betDetails,
+          selection: leg.selection,
+          teams: leg.teams || ""
+        };
+
+        const outcomeResult = await this.calculateBetOutcomeForLeg(tempBet, matchData);
+        console.log(`[processCombinationBetOutcome] Leg ${i + 1} outcome:`, outcomeResult);
+
+        // Update leg status based on outcome
+        const updatedLeg = {
+          ...leg,
+          status: outcomeResult.status,
+          payout: outcomeResult.status === "won" ? leg.stake * leg.odds : 0
+        };
+
+        updatedCombination.push(updatedLeg);
+
+        // Track overall bet status
+        if (outcomeResult.status === "lost") {
+          allLegsWon = false;
+        } else if (outcomeResult.status === "canceled") {
+          anyLegCanceled = true;
+        } else if (outcomeResult.status !== "won") {
+          allLegsWon = false;
+        }
+
+      } catch (error) {
+        console.error(`[processCombinationBetOutcome] Error calculating outcome for leg ${i + 1}:`, error);
+        
+        // Mark leg as canceled due to calculation error
+        const updatedLeg = {
+          ...leg,
+          status: "canceled",
+          payout: 0
+        };
+        updatedCombination.push(updatedLeg);
+        anyLegCanceled = true;
+        allLegsWon = false;
+      }
+    }
+
+    // If not all legs are finished, reschedule the check
+    if (!allLegsFinished) {
+      console.log(`[processCombinationBetOutcome] Not all legs finished, rescheduling check`);
+      
+      // Update the bet with current leg statuses
+      await Bet.findByIdAndUpdate(betId, {
+        combination: updatedCombination
+      });
+      
+      // Reschedule for 10 minutes from now
+      const runAt = new Date(Date.now() + 10 * 60 * 1000);
+      agenda.schedule(runAt, "checkBetOutcome", {
+        betId,
+        matchId: bet.matchId,
+      });
+
+      return {
+        betId: bet._id,
+        status: bet.status,
+        message: "Not all legs finished, rescheduled",
+      };
+    }
+
+    // Determine overall bet outcome
+    let overallStatus = "lost";
+    let overallPayout = 0;
+
+    if (allLegsWon) {
+      overallStatus = "won";
+      overallPayout = bet.potentialPayout || (bet.stake * bet.totalOdds);
+      console.log(`[processCombinationBetOutcome] All legs won! Payout: ${overallPayout}`);
+      
+      // Update user balance for winning combination bet
+      if (bet.userId) {
+        await User.findByIdAndUpdate(bet.userId, {
+          $inc: { balance: overallPayout },
+        });
+        console.log(`[processCombinationBetOutcome] User balance updated. Added: ${overallPayout}`);
+      }
+    } else if (anyLegCanceled && !allLegsWon) {
+      // If any leg is canceled and not all legs won, handle according to business rules
+      overallStatus = "canceled";
+      overallPayout = bet.stake; // Refund stake
+      
+      if (bet.userId) {
+        await User.findByIdAndUpdate(bet.userId, {
+          $inc: { balance: bet.stake },
+        });
+        console.log(`[processCombinationBetOutcome] Stake refunded due to canceled leg: ${bet.stake}`);
+      }
+    } else {
+      console.log(`[processCombinationBetOutcome] At least one leg lost. No payout.`);
+    }
+
+    // Update the bet in database
+    const updateData = {
+      status: overallStatus,
+      payout: overallPayout,
+      combination: updatedCombination,
+    };
+
+    const updatedBet = await Bet.findByIdAndUpdate(betId, updateData, {
+      new: true,
+    });
+
+    if (!updatedBet) {
+      throw new CustomError("Failed to update combination bet", 500, "UPDATE_FAILED");
+    }
+
+    console.log(
+      `[processCombinationBetOutcome] Combination bet updated successfully. betId: ${bet._id}, status: ${updatedBet.status}, payout: ${updatedBet.payout}`
+    );
+
+    return {
+      betId: updatedBet._id,
+      status: updatedBet.status,
+      payout: updatedBet.payout,
+      combination: updatedBet.combination,
+    };
+  }
+
+
+
+  
+  async calculateBetOutcomeForLeg(bet, matchData) {
     // Prepare match data for outcome calculation
     let final_match = matchData;
     if (bet.inplay) {
-      console.log(
-        `[checkBetOutcome] Processing inplay bet for betId: ${betId}`
-      );
-      // For inplay bets, use inplay odds from the current match data
-      // The odds are already stored in the bet object from when it was placed
+      console.log(`[calculateBetOutcomeForLeg] Processing inplay bet for leg: ${bet._id}`);
       final_match = { ...matchData, odds: matchData.inplayodds };
-      console.log(
-        `[checkBetOutcome] Using inplay odds for outcome calculation`
-      );
     }
 
     // Calculate bet outcome using the BetOutcomeCalculationService
     try {
-      console.log(`[checkBetOutcome] Calculating outcome for betId: ${betId}`);
-      console.log(`[checkBetOutcome] Bet details:`, {
+      console.log(`[calculateBetOutcomeForLeg] Calculating outcome for leg: ${bet._id}`);
+      
+      let outcomeResult;
+      if (this.checkMarketHasWinningCalculations(bet.betDetails.market_id)) {
+        console.log(`[calculateBetOutcomeForLeg] Using WinningOddsCalculation for leg`);
+        outcomeResult = await this.WinningOddsCalculation.calculateBetOutcome(bet, final_match);
+      } else {
+        outcomeResult = await this.SimpleOddsCalculation.calculateBetOutcome(bet, final_match);
+      }
+
+      console.log(`[calculateBetOutcomeForLeg] Outcome calculated:`, outcomeResult);
+      return outcomeResult;
+
+    } catch (error) {
+      console.error(`[calculateBetOutcomeForLeg] Error in outcome calculation:`, error);
+      return {
+        status: "canceled",
+        reason: `Error calculating outcome: ${error.message}`,
+      };
+    }
+  }
+
+  async calculateAndUpdateBetOutcome(bet, matchData) {
+    const betId = bet._id;
+    
+    // Prepare match data for outcome calculation
+    let final_match = matchData;
+    if (bet.inplay) {
+      console.log(`[calculateAndUpdateBetOutcome] Processing inplay bet for betId: ${betId}`);
+      final_match = { ...matchData, odds: matchData.inplayodds };
+      console.log(`[calculateAndUpdateBetOutcome] Using inplay odds for outcome calculation`);
+    }
+
+    // Calculate bet outcome using the BetOutcomeCalculationService
+    try {
+      console.log(`[calculateAndUpdateBetOutcome] Calculating outcome for betId: ${betId}`);
+      console.log(`[calculateAndUpdateBetOutcome] Bet details:`, {
         oddId: bet.oddId,
         betOption: bet.betOption,
         inplay: bet.inplay,
@@ -894,30 +1432,14 @@ class BetService {
       });
 
       let outcomeResult;
-      if (bet.inplay) {
-        //INFO: For inplay bets, use inplay odds from the current match data
-        
-        final_match = { ...matchData, odds: matchData.inplayodds };
-      }
-      if (
-        this.checkMarketHasWinningCalculations(bet.betDetails.market_id)
-      ) {
-        console.log(
-          `[checkBetOutcome] Using WinningOddsCalculation for bet`
-        );
-
-        outcomeResult = await this.WinningOddsCalculation.calculateBetOutcome(
-          bet,
-          final_match
-        );
+      if (this.checkMarketHasWinningCalculations(bet.betDetails.market_id)) {
+        console.log(`[calculateAndUpdateBetOutcome] Using WinningOddsCalculation for bet`);
+        outcomeResult = await this.WinningOddsCalculation.calculateBetOutcome(bet, final_match);
       } else {
-        outcomeResult = await this.SimpleOddsCalculation.calculateBetOutcome(
-          bet,
-          final_match
-        );
+        outcomeResult = await this.SimpleOddsCalculation.calculateBetOutcome(bet, final_match);
       }
 
-      console.log(`[checkBetOutcome] Outcome calculated:`, outcomeResult);
+      console.log(`[calculateAndUpdateBetOutcome] Outcome calculated:`, outcomeResult);
 
       // Update bet based on the outcome
       let updateData = {
@@ -929,29 +1451,25 @@ class BetService {
       switch (outcomeResult.status) {
         case "won":
           const winningPayout = bet.stake * bet.odds;
-          console.log(`[checkBetOutcome] Bet won. Payout: ${winningPayout}`);
+          console.log(`[calculateAndUpdateBetOutcome] Bet won. Payout: ${winningPayout}`);
           updateData.payout = winningPayout;
           // Update user balance for winning bet
           if (bet.userId) {
             await User.findByIdAndUpdate(bet.userId, {
               $inc: { balance: winningPayout },
             });
-            console.log(
-              `[checkBetOutcome] User balance updated. Added: ${winningPayout}`
-            );
+            console.log(`[calculateAndUpdateBetOutcome] User balance updated. Added: ${winningPayout}`);
           }
           break;
 
         case "lost":
-          console.log(`[checkBetOutcome] Bet lost. No payout.`);
+          console.log(`[calculateAndUpdateBetOutcome] Bet lost. No payout.`);
           updateData.payout = 0;
           // No balance update needed for lost bets
           break;
 
         case "cancelled":
-          console.log(
-            `[checkBetOutcome] Bet canceled. Refunding stake: ${bet.stake}`
-          );
+          console.log(`[calculateAndUpdateBetOutcome] Bet canceled. Refunding stake: ${bet.stake}`);
           updateData.payout = bet.stake;
           updateData.status = "canceled";
           // Refund stake to user
@@ -959,17 +1477,12 @@ class BetService {
             await User.findByIdAndUpdate(bet.userId, {
               $inc: { balance: bet.stake },
             });
-            console.log(
-              `[checkBetOutcome] Stake refunded to user: ${bet.stake}`
-            );
+            console.log(`[calculateAndUpdateBetOutcome] Stake refunded to user: ${bet.stake}`);
           }
           break;
 
         default:
-          console.error(
-            `[checkBetOutcome] Unknown status in outcome calculation:`,
-            outcomeResult
-          );
+          console.error(`[calculateAndUpdateBetOutcome] Unknown status in outcome calculation:`, outcomeResult);
           updateData.status = "canceled";
           updateData.payout = bet.stake; // Refund the stake
           // Refund stake to user
@@ -977,9 +1490,7 @@ class BetService {
             await User.findByIdAndUpdate(bet.userId, {
               $inc: { balance: bet.stake },
             });
-            console.log(
-              `[checkBetOutcome] Stake refunded to user due to unknown status: ${bet.stake}`
-            );
+            console.log(`[calculateAndUpdateBetOutcome] Stake refunded to user due to unknown status: ${bet.stake}`);
           }
           break;
       }
@@ -994,7 +1505,7 @@ class BetService {
       }
 
       console.log(
-        `[checkBetOutcome] Bet updated successfully. betId: ${bet._id}, status: ${updatedBet.status}, payout: ${updatedBet.payout}`
+        `[calculateAndUpdateBetOutcome] Bet updated successfully. betId: ${bet._id}, status: ${updatedBet.status}, payout: ${updatedBet.payout}`
       );
 
       return {
@@ -1003,7 +1514,7 @@ class BetService {
         payout: updatedBet.payout,
       };
     } catch (error) {
-      console.error(`[checkBetOutcome] Error in outcome calculation:`, error);
+      console.error(`[calculateAndUpdateBetOutcome] Error in outcome calculation:`, error);
 
       // Update bet status to error (using canceled since error is not in enum)
       await Bet.findByIdAndUpdate(betId, {
@@ -1016,9 +1527,7 @@ class BetService {
         await User.findByIdAndUpdate(bet.userId, {
           $inc: { balance: bet.stake },
         });
-        console.log(
-          `[checkBetOutcome] Stake refunded to user due to calculation error: ${bet.stake}`
-        );
+        console.log(`[calculateAndUpdateBetOutcome] Stake refunded to user due to calculation error: ${bet.stake}`);
       }
 
       throw new CustomError(
@@ -1340,6 +1849,54 @@ class BetService {
     }
 
     return results;
+  }
+
+  async getBetById(betId) {
+    try {
+      const bet = await Bet.findById(betId)
+        .populate("userId", "username email")
+        .lean();
+
+      return bet;
+    } catch (error) {
+      console.error("Error fetching bet by ID:", error);
+      throw new CustomError("Failed to fetch bet", 500, "FETCH_FAILED");
+    }
+  }
+
+  async getPendingCombinationBets() {
+    try {
+      const bets = await Bet.find({
+        combination: { $exists: true, $ne: [] },
+        status: 'pending'
+      })
+        .sort({ createdAt: -1 })
+        .populate("userId", "username email")
+        .lean();
+
+      return bets;
+    } catch (error) {
+      console.error("Error fetching pending combination bets:", error);
+      throw new CustomError("Failed to fetch pending combination bets", 500, "FETCH_FAILED");
+    }
+  }
+
+  async getCompletedCombinationBets(limit = 50) {
+    try {
+      const bets = await Bet.find({
+        combination: { $exists: true, $ne: [] },
+        status: { $in: ['won', 'lost', 'canceled'] }
+      })
+        .sort({ updatedAt: -1 })
+        .limit(limit)
+        .populate("userId", "username email")
+        .lean();
+
+      return bets;
+    } catch (error) {
+      console.error("Error fetching completed combination bets:", error);
+      throw new CustomError("Failed to fetch completed combination bets", 500, "FETCH_FAILED");
+    }
   }
 }
 

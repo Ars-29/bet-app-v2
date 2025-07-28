@@ -11,20 +11,24 @@ const betSchema = new mongoose.Schema(
     matchId: {
       type: String,
       required: [true, "Match ID is required"],
+      // For combination bets, this will be the first match ID
     },
     oddId: {
       type: String,
       required: [true, "Odd ID is required"],
+      // For combination bets, this will be a unique combo ID
     },
     betOption: {
       type: String,
       required: [true, "Bet option is required"],
       trim: true,
+      // For combination bets, this describes the combination
     },
     odds: {
       type: Number,
       required: [true, "Odds are required"],
       min: [1.01, "Odds must be greater than 1.01"],
+      // For combination bets, this is the total combined odds
     },
     stake: {
       type: Number,
@@ -101,6 +105,47 @@ const betSchema = new mongoose.Schema(
         type: String,
         required: true,
       },
+    },
+    // Combination bet support
+    // For combination bets, ALL legs are stored in this array (including what would be the "first" bet)
+    // The main bet document fields represent the overall combination, not individual legs
+    combination: [
+      {
+        matchId: { type: String, required: true },
+        oddId: { type: String, required: true },
+        betOption: { type: String, required: true, trim: true },
+        odds: { type: Number, required: true, min: 1.01 },
+        stake: { type: Number, required: true, min: 1 }, // Same as main stake for all legs
+        payout: { type: Number, required: true, default: 0 },
+        status: { type: String, enum: ["pending", "won", "lost", "canceled"], default: "pending" },
+        selection: { type: String, required: true, trim: true },
+        inplay: { type: Boolean, default: false },
+        betDetails: {
+          market_id: { type: String, required: true },
+          market_name: { type: String, required: true },
+          label: { type: String, required: true },
+          value: { type: Number, required: true },
+          total: { type: mongoose.Schema.Types.Mixed, default: null },
+          market_description: { type: String, default: null },
+          handicap: { type: String, default: null },
+          name: { type: String, required: true },
+        },
+        // Additional fields for combination legs
+        matchDate: { type: Date },
+        estimatedMatchEnd: { type: Date },
+        betOutcomeCheckTime: { type: Date },
+        teams: { type: String, trim: true },
+      }
+    ],
+    // Total odds for combination bet (product of all individual odds)
+    totalOdds: {
+      type: Number,
+      required: false,
+    },
+    // Potential payout for combination bet (stake × totalOdds)
+    potentialPayout: {
+      type: Number,
+      required: false,
     },
   },
   {

@@ -282,11 +282,11 @@ const MatchListPage = ({ config }) => {
                                                                                     isLive: false,
                                                                                     name: match.name || `${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'} vs ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`
                                                                                 }, 
-                                                                                `Win - ${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'}`, 
+                                                                                'Home', 
                                                                                 match.odds.home.value, 
                                                                                 '1x2', 
                                                                                 match.odds.home.oddId,
-                                                                                { marketId: "1" }
+                                                                                { marketId: "1", label: "Home", name: `Win - ${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'}`, marketDescription: "Full Time Result" }
                                                                             )}
                                                                         >
                                                                             {match.odds.home.value}
@@ -306,11 +306,11 @@ const MatchListPage = ({ config }) => {
                                                                                     isLive: false,
                                                                                     name: match.name || `${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'} vs ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`
                                                                                 }, 
-                                                                                `Draw - ${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'} vs ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`, 
+                                                                                'Draw', 
                                                                                 match.odds.draw.value, 
                                                                                 '1x2', 
                                                                                 match.odds.draw.oddId,
-                                                                                { marketId: "1" }
+                                                                                { marketId: "1", label: "Draw", name: `Draw - ${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'} vs ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`, marketDescription: "Full Time Result" }
                                                                             )}
                                                                         >
                                                                             {match.odds.draw.value}
@@ -330,11 +330,11 @@ const MatchListPage = ({ config }) => {
                                                                                     isLive: false,
                                                                                     name: match.name || `${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'} vs ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`
                                                                                 }, 
-                                                                                `Win - ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`, 
+                                                                                'Away', 
                                                                                 match.odds.away.value, 
                                                                                 '1x2', 
                                                                                 match.odds.away.oddId,
-                                                                                { marketId: "1" }
+                                                                                { marketId: "1", label: "Away", name: `Win - ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`, marketDescription: "Full Time Result" }
                                                                             )}
                                                                         >
                                                                             {match.odds.away.value}

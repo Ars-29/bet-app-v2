@@ -1,15 +1,47 @@
 import BetService from "../services/bet.service.js";
 import { CustomError } from "../utils/customErrors.js";
 import FixtureOptimizationService from "../services/fixture.service.js";
+import mongoose from "mongoose";
 
 class BetController {
   async placeBet(req, res, next) {
     console.log("Placing bet with data:", req.body);
     try {
-      const { matchId, oddId, stake, betOption, marketId } = req.body;
+      const { matchId, oddId, stake, betOption, marketId, combinationData } = req.body;
       const userId = req.user._id; 
 
-      // Validate inputs
+      // Handle combination bets
+      if (combinationData && Array.isArray(combinationData)) {
+        // Validate combination bet inputs
+        if (combinationData.length < 2) {
+          throw new CustomError(
+            "Combination bet must have at least 2 legs",
+            400,
+            "INVALID_COMBINATION_BET"
+          );
+        }
+        if (!stake || isNaN(stake) || stake <= 0) {
+          throw new CustomError(
+            "Stake must be a positive number",
+            400,
+            "INVALID_STAKE"
+          );
+        }
+
+        console.log(`Processing combination bet with ${combinationData.length} legs`);
+        const result = await BetService.placeBet(userId, null, null, stake, null, false, combinationData);
+        
+        res.status(201).json({
+          success: true,
+          bet: result.bet,
+          user: result.user,
+          message: "Combination bet placed successfully",
+        });
+        return;
+      }
+
+      // Handle single bets
+      // Validate single bet inputs
       if (!matchId || !oddId || !stake || !betOption) {
         throw new CustomError(
           "Missing required fields: matchId, oddId, stake, betOption",
@@ -55,13 +87,33 @@ class BetController {
         throw new CustomError("Invalid bet ID", 400, "INVALID_BET_ID");
       }
 
+      console.log(`[BetController.checkBetOutcome] Checking outcome for bet: ${betId}`);
+
       const result = await BetService.checkBetOutcome(betId);
-      res.status(200).json({
+      
+      // Enhanced response with additional details for combination bets
+      const response = {
         success: true,
-        data: result,
-        message: "Bet outcome checked",
-      });
+        data: {
+          ...result,
+          // Add combination details if it's a combination bet
+          ...(result.combination && {
+            combination: result.combination,
+            legStatuses: result.combination?.map(leg => ({
+              matchId: leg.matchId,
+              status: leg.status,
+              payout: leg.payout
+            }))
+          })
+        },
+        message: result.combination 
+          ? "Combination bet outcome checked" 
+          : "Bet outcome checked",
+      };
+
+      res.status(200).json(response);
     } catch (error) {
+      console.error(`[BetController.checkBetOutcome] Error:`, error);
       next(error);
     }
   }

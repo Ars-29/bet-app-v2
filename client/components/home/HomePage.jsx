@@ -29,17 +29,18 @@ const HomePage = () => {
         dispatch(fetchLiveMatches());
     }, [dispatch]);
 
-    if (loading) {
-        return (
-            <div className="flex-1 bg-gray-100">
-                <div className="p-3 lg:p-6 overflow-hidden">
-                    <div className="flex items-center justify-center h-64">
-                        <div className="text-gray-500">Loading homepage data...</div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    // Remove the old loading state since individual components handle their own loading
+    // if (loading) {
+    //     return (
+    //         <div className="flex-1 bg-gray-100">
+    //             <div className="p-3 lg:p-6 overflow-hidden">
+    //                 <div className="flex items-center justify-center h-64">
+    //                     <div className="text-gray-500">Loading homepage data...</div>
+    //                 </div>
+    //             </div>
+    //         </div>
+    //     );
+    // }
 
     if (error) {
         return (
@@ -70,6 +71,7 @@ const HomePage = () => {
                             isInPlay={false}
                             showDayTabs={true}
                             viewAllText="View All Football Daily"
+                            loading={loading}
                         />
 
                         {/* In-Play Section - using live matches from Redux */}

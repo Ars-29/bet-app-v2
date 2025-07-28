@@ -11,12 +11,12 @@ const betSlipSlice = createSlice({
     activeTab: "singles",
     stake: {
       singles: {},
-      combination: 100.0,
-      system: 100.0,
+      combination: 0,
+      system: 0,
     },
     totalStake: 0,
     potentialReturn: 0,
-    approveOddsChange: false,
+    lastError: null, // For storing error messages like "same market bet exists"
   },
   reducers: {
     addBet: (state, action) => {
@@ -37,10 +37,40 @@ const betSlipSlice = createSlice({
 
       console.log("Adding bet with payload:", action.payload);
 
-      // Check if bet already exists
+      // Check if bet already exists (same oddId) or same market bet exists (same match + marketId)
       const existingBetIndex = state.bets.findIndex(
-        (bet) => bet.oddId === oddId
+        (bet) => bet.oddId === oddId || (bet.match.id === match.id && bet.marketId === marketId)
       );
+
+      // If same market bet exists, don't add it
+      if (existingBetIndex >= 0) {
+        const existingBet = state.bets[existingBetIndex];
+        if (existingBet.oddId === oddId) {
+          // Same exact bet, update it
+          console.log("Updating existing bet with same oddId");
+        } else {
+          // Same market bet exists, don't add
+          console.log("Same market bet already exists for this match, not adding");
+          state.lastError = "You already have a bet on this market for this match";
+          return; // Exit early, don't add the bet
+        }
+      }
+
+      // Determine if match is live/inplay
+      const isMatchLive = (match) => {
+        if (!match || !match.starting_at) return match?.isLive || false;
+        const now = new Date();
+        let matchTime;
+        if (match.starting_at.includes('T')) {
+          matchTime = new Date(match.starting_at.endsWith('Z') ? match.starting_at : match.starting_at + 'Z');
+        } else {
+          matchTime = new Date(match.starting_at.replace(' ', 'T') + 'Z');
+        }
+        const matchEnd = new Date(matchTime.getTime() + 120 * 60 * 1000);
+        return matchTime <= now && now < matchEnd;
+      };
+
+      const inplay = isMatchLive(match);
 
       const newBet = {
         id: `${match.id}-${oddId}-${Date.now()}`,
@@ -52,6 +82,7 @@ const betSlipSlice = createSlice({
           time: match.time || match.startTime || (match.starting_at ? match.starting_at.split(' ')[1].slice(0, 5) : ''),
           isLive: match.isLive || false,
           name: match.name || `${match.team1 || ''} vs ${match.team2 || ''}`,
+          starting_at: match.starting_at, // Keep for inplay calculation
         },
         selection,
         odds: parseFloat(odds),
@@ -63,17 +94,21 @@ const betSlipSlice = createSlice({
         halfIndicator,
         total,
         name,
+        label: action.payload.label || selection, // Use provided label if available
         marketId, // Store marketId in bet object
+        marketName: marketDescription, // Store for combination bet payload
+        inplay, // ✅ Add inplay flag for combination bets
         ...rest
       };
 
-      if (existingBetIndex >= 0) {
-        // Update existing bet
+      if (existingBetIndex >= 0 && state.bets[existingBetIndex].oddId === oddId) {
+        // Update existing bet with same oddId
         state.bets[existingBetIndex] = newBet;
-      } else {
-        // Add new bet
+      } else if (existingBetIndex === -1) {
+        // Add new bet (no existing bet found)
         state.bets.push(newBet);
       }
+      // If existingBetIndex >= 0 but oddId doesn't match, we already returned early above
       
       // Auto-open bet slip when bet is added
       state.isOpen = true;
@@ -107,11 +142,12 @@ const betSlipSlice = createSlice({
       state.activeTab = "singles";
       state.stake = {
         singles: {},
-        combination: 100.0,
-        system: 100.0,
+        combination: 0,
+        system: 0,
       };
       state.totalStake = 0;
       state.potentialReturn = 0;
+      state.lastError = null;
     },
 
     toggleBetSlip: (state) => {
@@ -161,9 +197,15 @@ const betSlipSlice = createSlice({
       state.stake.system = parseFloat(action.payload) || 0;
     },
 
-    setApproveOddsChange: (state, action) => {
-      state.approveOddsChange = action.payload;
+    setError: (state, action) => {
+      state.lastError = action.payload;
     },
+
+    clearError: (state) => {
+      state.lastError = null;
+    },
+
+
 
     calculateTotals: (state) => {
       let totalStake = 0;
@@ -216,7 +258,8 @@ export const {
   updateSingleStake,
   updateCombinationStake,
   updateSystemStake,
-  setApproveOddsChange,
+  setError,
+  clearError,
   calculateTotals,
 } = betSlipSlice.actions;
 
@@ -228,50 +271,138 @@ export const selectBetSlipExpanded = (state) => state.betSlip.isExpanded;
 export const selectActiveTab = (state) => state.betSlip.activeTab;
 export const selectTotalStake = (state) => state.betSlip.totalStake;
 export const selectPotentialReturn = (state) => state.betSlip.potentialReturn;
+export const selectLastError = (state) => state.betSlip.lastError;
 
-// Thunk to place bets (API integration placeholder)
+// Thunk to place bets (supports both singles and combination bets)
 export const placeBetThunk = createAsyncThunk(
   "betSlip/placeBet",
   async (_, { getState, rejectWithValue, dispatch }) => {
     const state = getState().betSlip;
     const bets = state.bets;
+    const activeTab = state.activeTab;
     const stakes = state.stake.singles;
-    // Only support singles for now
+    const combinationStake = state.stake.combination;
+    
     try {
       const results = [];
-      console.log("This is bets: ", bets);
+      console.log("Placing bets:", { activeTab, betsCount: bets.length, bets });
 
-      for (const bet of bets) {
-        console.log(bet.id);
+      if (activeTab === "singles") {
+        // Handle single bets (clean, label-based)
+        for (const bet of bets) {
+          const stake = stakes[bet.id] || 0;
+          if (!bet.match.id || !bet.oddId || !stake) {
+            continue; // skip invalid
+          }
+          // Use label for betOption and selection
+          const label = bet.label || bet.selection;
+          const payload = {
+            matchId: bet.match.id,
+            oddId: bet.oddId,
+            stake,
+            odds: bet.odds,
+            betOption: label,
+            selection: label,
+            teams: `${bet.match.team1} vs ${bet.match.team2}`,
+            marketId: bet.marketId,
+            betDetails: {
+              market_id: bet.marketId,
+              market_name: bet.marketName || "Unknown Market",
+              label,
+              value: bet.odds,
+              total: bet.total || null,
+              market_description: bet.marketDescription || null,
+              handicap: bet.handicapValue || null,
+              name: bet.name || label
+            },
+            ...(bet.match.starting_at && { matchDate: bet.match.starting_at }),
+            ...(bet.match.estimatedMatchEnd && { estimatedMatchEnd: bet.match.estimatedMatchEnd }),
+            ...(bet.match.betOutcomeCheckTime && { betOutcomeCheckTime: bet.match.betOutcomeCheckTime }),
+            inplay: bet.inplay || false
+          };
+          console.log("Single bet payload:", payload);
 
-        const stake = stakes[bet.id] || 0;
-        if (!bet.match.id || !bet.oddId || !stake) {
-          continue; // skip invalid
+          const response = await apiClient.post("/bet/place-bet", payload);
+          results.push(response.data);
+          // Update user balance
+          if (response.data.user) {
+            dispatch(setUser(response.data.user));
+          }
         }
+      } else if (activeTab === "combination" && bets.length >= 2) {
+        // Handle combination bet (NEW)
+        if (!combinationStake || combinationStake <= 0) {
+          throw new Error("Please enter a valid stake for combination bet");
+        }
+
+        // Prepare combination data for backend
+        const combinationData = bets.map(bet => {
+          const label = bet.label || bet.selection;
+          return {
+            matchId: bet.match.id,
+            oddId: bet.oddId,
+            betOption: label, // Always use label for betOption
+            odds: bet.odds,
+            stake: combinationStake, // Same stake for all legs
+            inplay: bet.inplay || false,
+            selection: label, // Always use label for selection
+            teams: `${bet.match.team1} vs ${bet.match.team2}`,
+            marketId: bet.marketId,
+            betDetails: {
+              market_id: bet.marketId,
+              market_name: bet.marketName || "Unknown Market",
+              label,
+              value: bet.odds,
+              total: bet.total || null,
+              market_description: bet.marketDescription || null,
+              handicap: bet.handicapValue || null,
+              name: bet.name || label
+            },
+            ...(bet.match.starting_at && { matchDate: bet.match.starting_at }),
+            ...(bet.match.estimatedMatchEnd && { estimatedMatchEnd: bet.match.estimatedMatchEnd }),
+            ...(bet.match.betOutcomeCheckTime && { betOutcomeCheckTime: bet.match.betOutcomeCheckTime })
+          };
+        });
+
+        // Generate combination bet identifiers
+        const combinationOddId = `combo_${Date.now()}`;
+        const totalOdds = bets.reduce((acc, bet) => acc * bet.odds, 1);
+        
+        // For combination bets, use proper combination identifiers
         const payload = {
-          matchId: bet.match.id,
-          oddId: bet.oddId,
-          stake,
-          betOption: bet.selection,
-          marketId: bet.marketId, // Include marketId in payload
+          matchId: "combination", // ✅ Use "combination" as matchId 
+          oddId: combinationOddId, // ✅ Generate unique combination oddId
+          stake: combinationStake,
+          betOption: `Combination Bet (${bets.length} legs)`, // ✅ Proper combination description
+          marketId: "combination", // ✅ Use "combination" as marketId
+          combinationData // ✅ This contains all the bet details
         };
-        console.log("This is the payload" + payload);
+
+        console.log("Combination bet payload:", {
+          ...payload,
+          combinationDataSample: combinationData.slice(0, 2) // Log first 2 legs for debugging
+        });
 
         const response = await apiClient.post("/bet/place-bet", payload);
         results.push(response.data);
-        // If the response contains a user object, update the Redux user state
+        
+        // Update user balance
         if (response.data.user) {
           dispatch(setUser(response.data.user));
         }
+      } else {
+        throw new Error(`Invalid bet configuration: ${activeTab} with ${bets.length} bets`);
       }
-      console.log(results);
+
+      console.log("Bet placement results:", results);
       dispatch(clearAllBets());
       return results;
     } catch (error) {
+      console.error("Error placing bet:", error);
       return rejectWithValue(
         error.response?.data || {
           success: false,
-          message: "Failed to place bet",
+          message: error.message || "Failed to place bet",
           error: error.message,
         }
       );

@@ -9,6 +9,7 @@ import { useBetting } from '@/hooks/useBetting';
 import leaguesData, { getLiveLeagues } from '@/data/dummayLeagues';
 import { formatToLocalTime, formatMatchTime } from '@/lib/utils';
 import LiveTimer from './LiveTimer';
+import LeagueCardsSkeleton from '../Skeletons/LeagueCardsSkeleton';
 
 // League Card Component
 const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
@@ -144,7 +145,7 @@ const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
                                                     size="sm"
                                                     className={getOddButtonClass(match.odds['1'])}
                                                     onClick={isOddClickable(match.odds['1']) 
-                                                        ? createBetHandler(match, '1', match.odds['1'].value, '1x2', match.odds['1'].oddId, { marketId: "1" })
+                                                        ? createBetHandler(match, 'Home', match.odds['1'].value, '1x2', match.odds['1'].oddId, { marketId: "1", label: "Home", name: `Win - ${match.team1 || match.participants?.[0]?.name || 'Team 1'}`, marketDescription: "Full Time Result" })
                                                         : undefined
                                                     }
                                                     disabled={!isOddClickable(match.odds['1'])}
@@ -157,7 +158,7 @@ const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
                                                     size="sm"
                                                     className={getOddButtonClass(match.odds['X'])}
                                                     onClick={isOddClickable(match.odds['X']) 
-                                                        ? createBetHandler(match, 'X', match.odds['X'].value, '1x2', match.odds['X'].oddId, { marketId: "1" })
+                                                        ? createBetHandler(match, 'Draw', match.odds['X'].value, '1x2', match.odds['X'].oddId, { marketId: "1", label: "Draw", name: `Draw - ${match.team1 || match.participants?.[0]?.name || 'Team 1'} vs ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })
                                                         : undefined
                                                     }
                                                     disabled={!isOddClickable(match.odds['X'])}
@@ -170,7 +171,7 @@ const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
                                                     size="sm"
                                                     className={getOddButtonClass(match.odds['2'])}
                                                     onClick={isOddClickable(match.odds['2']) 
-                                                        ? createBetHandler(match, '2', match.odds['2'].value, '1x2', match.odds['2'].oddId, { marketId: "1" })
+                                                        ? createBetHandler(match, 'Away', match.odds['2'].value, '1x2', match.odds['2'].oddId, { marketId: "1", label: "Away", name: `Win - ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })
                                                         : undefined
                                                     }
                                                     disabled={!isOddClickable(match.odds['2'])}
@@ -209,7 +210,8 @@ const LeagueCards = ({
     showDayTabs = false,
     viewAllText = null,
     useReduxData = false,
-    reduxData = []
+    reduxData = [],
+    loading = false
 }) => {
     const scrollRef = useRef(null);
 
@@ -346,6 +348,11 @@ const LeagueCards = ({
         return null;
      
     };
+
+    // Show skeleton while loading
+    if (loading) {
+        return <LeagueCardsSkeleton title={title} />;
+    }
 
     const transformed = transformReduxData(reduxData).filter(league=>league.matches.length > 0);
    

@@ -5,9 +5,13 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useBetting } from '@/hooks/useBetting';
+import { getBetLabel } from '@/lib/utils';
 
 const MatchCard = ({ match }) => {
     const { createBetHandler } = useBetting();
+
+    // Helper function to create bet object for label formatting
+    
 
     return (
         <Link href={`/matches/${match.id}`}>
@@ -37,7 +41,12 @@ const MatchCard = ({ match }) => {
                             <Button
                                 size={"sm"}
                                 className="flex-1 flex justify-between py-2 gap-0 betting-button"
-                                onClick={createBetHandler(match, `Win - ${match.team1}`, match.odds['1'].value, '1x2', match.odds['1'].oddId, { marketId: "1" })}
+                                onClick={createBetHandler(match, "Home", match.odds['1'].value, '1x2', match.odds['1'].oddId, { 
+                                    marketId: "1", 
+                                    label: "Home", 
+                                    name: `Win - ${match.team1}`, 
+                                    marketDescription: "Full Time Result" 
+                                })}
                             >
                                 <div className="text-[11px]">1</div>
                                 <div className='text-[13px]  font-bold'>{match.odds['1'].value}</div>
@@ -47,7 +56,7 @@ const MatchCard = ({ match }) => {
                             <Button
                                 className="flex-1 flex justify-between py-2  gap-0 betting-button"
                                 size={"sm"}
-                                onClick={createBetHandler(match, `Draw - ${match.team1} vs ${match.team2} `, match.odds['X'].value, '1x2', match.odds['X'].oddId, { marketId: "1" })}
+                                onClick={createBetHandler(match, "Draw", match.odds['X'].value, '1x2', match.odds['X'].oddId, { marketId: "1", label: "Draw", name: `Draw - ${match.team1} vs ${match.team2}`, marketDescription: "Full Time Result" })}
                             >
                                 <div className="text-[11px]">X</div>
                                 <div className='text-[13px] font-bold'>{match.odds['X'].value}</div>
@@ -57,7 +66,7 @@ const MatchCard = ({ match }) => {
                             <Button
                                 size={"sm"}
                                 className="flex-1 flex justify-between py-2  gap-0 betting-button"
-                                onClick={createBetHandler(match, `Win - ${match.team2}`, match.odds['2'].value, '1x2', match.odds['2'].oddId, { marketId: "1" })}
+                                onClick={createBetHandler(match, "Away", match.odds['2'].value, '1x2', match.odds['2'].oddId, { marketId: "1", label: "Away", name: `Win - ${match.team2}`, marketDescription: "Full Time Result" })}
                             >
                                 <div className="text-[11px]">2</div>
                                 <div className='text-[13px] font-bold'>{match.odds['2'].value}</div>

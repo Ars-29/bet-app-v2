@@ -5,13 +5,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import { X, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import {
     selectBetSlip,
     selectBets,
     selectBetSlipOpen,
     selectBetSlipExpanded,
     selectActiveTab,
+    selectLastError,
     toggleBetSlip,
     collapseBetSlip,
     closeBetSlip,
@@ -21,7 +21,8 @@ import {
     updateSingleStake,
     updateCombinationStake,
     updateSystemStake,
-    setApproveOddsChange,
+    setError,
+    clearError,
     calculateTotals,
     placeBetThunk
 } from '@/lib/features/betSlip/betSlipSlice';
@@ -29,6 +30,7 @@ import { selectIsAuthenticated, selectUser } from '@/lib/features/auth/authSlice
 import LoginDialog from '@/components/auth/LoginDialog';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getBetLabel } from '@/lib/utils';
 
 const BetSlip = () => {
     const dispatch = useDispatch();
@@ -36,6 +38,7 @@ const BetSlip = () => {
     const bets = useSelector(selectBets);
     const isExpanded = useSelector(selectBetSlipExpanded);
     const activeTab = useSelector(selectActiveTab);
+    const lastError = useSelector(selectLastError);
     const isAuthenticated = useSelector(selectIsAuthenticated);
     const user = useSelector(selectUser);
     const betSlipRef = useRef(null);
@@ -81,7 +84,15 @@ const BetSlip = () => {
     }, [isExpanded, dispatch]);
     useEffect(() => {
         dispatch(calculateTotals());
-    }, [bets, betSlip.stake, activeTab, dispatch]);    // Don't render if no bets
+    }, [bets, betSlip.stake, activeTab, dispatch]);
+
+    // Show error toast and clear error
+    useEffect(() => {
+        if (lastError) {
+            toast.error(lastError);
+            dispatch(clearError());
+        }
+    }, [lastError, dispatch]);    // Don't render if no bets
     if (bets.length === 0) {
         return null;
     }
@@ -116,9 +127,7 @@ const BetSlip = () => {
         dispatch(updateSystemStake(value));
     };
 
-    const handleApproveOddsChange = (checked) => {
-        dispatch(setApproveOddsChange(checked));
-    };
+
 
     const handlePlaceBet = async () => {
         // Check if user is authenticated
@@ -255,7 +264,7 @@ const BetSlip = () => {
                             {/* Tabs */}
                             {/*TODO: Add system in the array to make a system tab then uncommenet the system component and the active tab condition for system  */}
                             <div className="flex space-x-0.5">
-                                {['singles'/*, 'combination'*/].map((tab) => {
+                                {['singles', 'combination'].map((tab) => {
                                     const count = getTabCount(tab);
                                     const disabled = isTabDisabled(tab);
 
@@ -292,15 +301,15 @@ const BetSlip = () => {
                                 />
                             )}
 
-                            {/* Combination bet UI commented out for now */}
-                            {/* {activeTab === 'combination' && bets.length >= 2 && (
-                                    <CombinationBet
-                                        bets={bets}
-                                        stake={betSlip.stake.combination}
-                                        onStakeChange={handleCombinationStakeChange}
-                                        onRemoveBet={handleRemoveBet}
-                                    />
-                                )} */}
+                            {/* Combination bet UI */}
+                            {activeTab === 'combination' && bets.length >= 2 && (
+                                <CombinationBet
+                                    bets={bets}
+                                    stake={betSlip.stake.combination}
+                                    onStakeChange={handleCombinationStakeChange}
+                                    onRemoveBet={handleRemoveBet}
+                                />
+                            )}
                         </div>
 
                         {/* Footer */}
@@ -328,15 +337,7 @@ const BetSlip = () => {
                                 <span className="text-sm font-bold text-yellow-400">€{betSlip.potentialReturn.toFixed(2)}</span>
                             </div>
 
-                            {/* Approve Odds Change */}
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs text-gray-400">Approve odds change</span>
-                                <Switch
-                                    checked={betSlip.approveOddsChange}
-                                    onCheckedChange={handleApproveOddsChange}
-                                    className="scale-75"
-                                />
-                            </div>
+
 
                             {/* Place Bet Button */}
                             {!isAuthenticated ? (
@@ -380,45 +381,6 @@ const BetSlip = () => {
 
 // Singles Bets Component
 const SinglesBets = ({ bets, stakes, onStakeChange, onRemoveBet }) => {
-    // Helper to format bet label
-    const getBetLabel = (bet) => {
-        // Determine the badge value (handicap, total, threshold, etc.)
-        const badgeValue = bet.handicapValue  || bet.name || bet.total || bet.threshold || null;
-
-        // Player market: show 'Market Name - Player Name (Badge)'
-        if (bet.marketDescription && bet.name && bet.marketDescription.toLowerCase().includes('player')) {
-            return `${bet.marketDescription} - ${bet.name}${badgeValue ? ` (${badgeValue})` : ''}`;
-        }
-        // Handicap/Alternative Handicap: show 'Market Name - Team Name/Label (Badge)'
-        if (
-            bet.marketDescription &&
-            (bet.marketDescription.toLowerCase().includes('handicap') || bet.marketDescription.toLowerCase().includes('alternative')) &&
-            bet.label
-        ) {
-            if ((bet.label === '1' || bet.label === '2') && bet.name) {
-                return `${bet.marketDescription} - ${bet.name}${badgeValue ? ` (${badgeValue})` : ''}`;
-            }
-            return `${bet.marketDescription} - ${bet.label}${badgeValue ? ` (${badgeValue})` : ''}`;
-        }
-        // Over/Under and other markets with badge value
-        if (bet.marketDescription && badgeValue) {
-            if ((bet.label === '1' || bet.label === '2') && bet.name) {
-                return `${bet.marketDescription} - ${bet.name} (${badgeValue})`;
-            }
-            return `${bet.marketDescription} - ${bet.selection} (${badgeValue})`;
-        }
-        // Fallbacks
-        if (bet.marketDescription) {
-            if ((bet.label === '1' || bet.label === '2') && bet.name) {
-                return `${bet.marketDescription} - ${bet.name}`;
-            }
-            return `${bet.marketDescription} - ${bet.selection}`;
-        }
-        if ((bet.label === '1' || bet.label === '2') && bet.name) {
-            return bet.name;
-        }
-        return bet.selection;
-    };
     return (
         <div className="space-y-3">
             {bets.map((bet, index) => (
@@ -433,9 +395,6 @@ const SinglesBets = ({ bets, stakes, onStakeChange, onRemoveBet }) => {
                             </div>
                             <div className="text-sm font-medium mb-1">
                                 {getBetLabel(bet)}
-                            </div>
-                            <div className="text-xs text-gray-400">
-                                {bet.type} • {bet.match.time}
                             </div>
                         </div>
                         <button
@@ -480,37 +439,39 @@ const CombinationBet = ({ bets, stake, onStakeChange, onRemoveBet }) => {
     const combinedOdds = bets.reduce((acc, bet) => acc * bet.odds, 1);
 
     return (
-        <div className="space-y-3">            <div className="text-sm font-medium text-center transition-all duration-300">
-            Combination ({bets.length} selections)
-        </div>            {bets.map((bet, index) => (
-            <div
-                key={bet.id}
-                className="bg-gray-800 rounded-lg p-2 transition-all duration-200 ease-out hover:bg-gray-750"
-            >
-                <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                        <div className="text-xs text-gray-400 mb-1">
-                            {bet.match.team1} - {bet.match.team2}
-                        </div>
-                        <div className="text-sm">
-                            {bet.selection === '1' ? bet.match.team1 : bet.selection === '2' ? bet.match.team2 : 'Draw'}
-                        </div>
-                        <div className="flex items-center justify-between mt-1">
-                            <span className="text-xs text-gray-400">{bet.type}</span>
-                            <div className="bg-yellow-500 text-black px-1.5 py-0.5 rounded text-xs font-bold transition-all duration-200 hover:bg-yellow-400 hover:scale-105">
-                                {bet.odds}
+        <div className="space-y-3">
+            <div className="text-sm font-medium text-center transition-all duration-300">
+                Combination ({bets.length} selections)
+            </div>
+            {bets.map((bet, index) => (
+                <div
+                    key={bet.id}
+                    className="bg-gray-800 rounded-lg p-2 transition-all duration-200 ease-out hover:bg-gray-750"
+                >
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                            <div className="text-xs text-gray-400 mb-1">
+                                {bet.match.team1} - {bet.match.team2}
+                            </div>
+                            <div className="text-sm font-medium mb-1">
+                                {getBetLabel(bet)}
+                            </div>
+                            <div className="flex items-center justify-between mt-1">
+                                <span className="text-xs text-gray-400">{bet.type}</span>
+                                <div className="bg-yellow-500 text-black px-1.5 py-0.5 rounded text-xs font-bold transition-all duration-200 hover:bg-yellow-400 hover:scale-105">
+                                    {bet.odds}
+                                </div>
                             </div>
                         </div>
+                        <button
+                            onClick={() => onRemoveBet(bet.id)}
+                            className="text-gray-400 hover:text-white ml-2 transition-all duration-200 hover:scale-110 hover:rotate-90"
+                        >
+                            <X className="h-3 w-3" />
+                        </button>
                     </div>
-                    <button
-                        onClick={() => onRemoveBet(bet.id)}
-                        className="text-gray-400 hover:text-white ml-2 transition-all duration-200 hover:scale-110 hover:rotate-90"
-                    >
-                        <X className="h-3 w-3" />
-                    </button>
                 </div>
-            </div>
-        ))}
+            ))}
 
             <div className="bg-gray-800 rounded p-3 animate-in slide-in-from-bottom duration-300" style={{ animationDelay: `${bets.length * 100 + 200}ms`, animationFillMode: 'both' }}>
                 <div className="flex items-center justify-between mb-2">

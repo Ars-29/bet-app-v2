@@ -4,7 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import MatchCard from './MatchCard';
-import { selectTopPicks } from '@/lib/features/home/homeSlice';
+import TopPicksSkeleton from '../Skeletons/TopPicksSkeleton';
+import { selectTopPicks, selectHomeLoading } from '@/lib/features/home/homeSlice';
 import { formatMatchTime } from '@/lib/utils';
 
 // Helper function to transform API data to MatchCard format
@@ -86,6 +87,12 @@ const transformMatchData = (apiMatch, league) => {
 
 const TopPicks = () => {
     const topPicks = useSelector(selectTopPicks);
+    const loading = useSelector(selectHomeLoading);
+
+    // Show skeleton while loading
+    if (loading) {
+        return <TopPicksSkeleton />;
+    }
 
     // Transform API data to MatchCard format and filter out matches without valid odds
     const transformedMatches = topPicks

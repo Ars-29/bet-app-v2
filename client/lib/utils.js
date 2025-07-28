@@ -371,3 +371,56 @@ export const getCountdownToKickoff = (match) => {
   const seconds = Math.floor(diff / 1000);
   return { hours, minutes, seconds };
 };
+
+/**
+ * Formats bet label for consistent display across singles and combination bets
+ * @param {Object} bet - The bet object containing selection, label, name, marketDescription, etc.
+ * @returns {string} - Formatted bet label
+ */
+export const getBetLabel = (bet) => {
+    // Determine the badge value (handicap, total, threshold, etc.)
+    const badgeValue = bet.handicapValue || bet.name || bet.total || bet.threshold || null;
+
+    // For 1x2 markets, prioritize the label field
+    const is1x2Market = (bet.marketDescription && bet.marketDescription.toLowerCase().includes('full time result')) || bet.type === '1x2';
+    
+    if (is1x2Market) {
+        if (bet.label) {
+            return bet.label; // Return "Home", "Draw", "Away"
+        }
+    }
+
+    // Player market: show 'Market Name - Player Name (Badge)'
+    if (bet.marketDescription && bet.name && bet.marketDescription.toLowerCase().includes('player')) {
+        return `${bet.marketDescription} - ${bet.name}${badgeValue ? ` (${badgeValue})` : ''}`;
+    }
+    // Handicap/Alternative Handicap: show 'Market Name - Team Name/Label (Badge)'
+    if (
+        bet.marketDescription &&
+        (bet.marketDescription.toLowerCase().includes('handicap') || bet.marketDescription.toLowerCase().includes('alternative')) &&
+        bet.label
+    ) {
+        if ((bet.label === '1' || bet.label === '2') && bet.name) {
+            return `${bet.marketDescription} - ${bet.name}${badgeValue ? ` (${badgeValue})` : ''}`;
+        }
+        return `${bet.marketDescription} - ${bet.label}${badgeValue ? ` (${badgeValue})` : ''}`;
+    }
+    // Over/Under and other markets with badge value
+    if (bet.marketDescription && badgeValue) {
+        if ((bet.label === '1' || bet.label === '2') && bet.name) {
+            return `${bet.marketDescription} - ${bet.name} (${badgeValue})`;
+        }
+        return `${bet.marketDescription} - ${bet.selection} (${badgeValue})`;
+    }
+    // Fallbacks
+    if (bet.marketDescription) {
+        if ((bet.label === '1' || bet.label === '2') && bet.name) {
+            return `${bet.marketDescription} - ${bet.name}`;
+        }
+        return `${bet.marketDescription} - ${bet.selection}`;
+    }
+    if ((bet.label === '1' || bet.label === '2') && bet.name) {
+        return bet.name;
+    }
+    return bet.selection;
+};
