@@ -19,6 +19,26 @@ const isMatchLive = (match) => {
     return matchTime <= now && now < matchEnd;
 };
 
+// Utility function to parse match name and extract home and away teams
+const parseTeamsFromName = (matchName) => {
+    if (!matchName) {
+        return { homeTeam: null, awayTeam: null };
+    }
+
+    // Split by "vs" and trim whitespace
+    const parts = matchName.split('vs').map(part => part.trim());
+    
+    if (parts.length === 2) {
+        return {
+            homeTeam: parts[0],
+            awayTeam: parts[1]
+        };
+    }
+
+    // Fallback if no "vs" found
+    return { homeTeam: null, awayTeam: null };
+};
+
 const MatchHeader = ({ matchData }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const triggetRef = useRef(null)
@@ -31,6 +51,9 @@ const MatchHeader = ({ matchData }) => {
     const closeDropdown = () => {
         setIsDropdownOpen(false)
     }
+
+    // Parse teams from match name
+    const { homeTeam, awayTeam } = parseTeamsFromName(matchData?.name);
 
     // Show loading state if no matchData
     if (!matchData) {
@@ -71,12 +94,12 @@ const MatchHeader = ({ matchData }) => {
                                     <AvatarImage className="w-10 h-10" src={`${matchData.participants?.[0]?.image_path}`} alt="@shadcn" />
                                     <AvatarFallback>HomeTeam</AvatarFallback>
                                 </Avatar>
-                                <span className="text-base font-medium">{matchData.participants?.[0]?.name || 'Home Team'}</span>
+                                <span className="text-base font-medium">{homeTeam || 'Home Team'}</span>
                                 <span className=" text-slate-400">vs</span>
-                                <span className="text-base font-medium">{matchData.participants?.[1]?.name || 'Away Team'}</span>
+                                <span className="text-base font-medium">{awayTeam || 'Away Team'}</span>
                                 <Avatar>
                                     <AvatarImage className="w-10 h-10" src={`${matchData.participants?.[1]?.image_path}`} alt="@shadcn" />
-                                    <AvatarFallback>HomeTeam</AvatarFallback>
+                                    <AvatarFallback>AwayTeam</AvatarFallback>
                                 </Avatar>
                                 {isMatchLive(matchData) && (
                                     <span className="ml-3 px-2 py-0.5 bg-red-600 text-white text-xs font-bold rounded shadow animate-pulse">LIVE</span>
@@ -104,7 +127,5 @@ const MatchHeader = ({ matchData }) => {
         </div>
     )
 }
-
-
 
 export default MatchHeader
