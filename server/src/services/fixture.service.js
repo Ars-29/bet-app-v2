@@ -128,7 +128,7 @@ class FixtureOptimizationService {
         if (flamengoMatches.length > 0) {
           console.log(`🔍 Found ${flamengoMatches.length} Flamengo matches in API response page ${page}:`);
           flamengoMatches.forEach(match => {
-            console.log(`🔍 - ${match.name} at ${match.starting_at}`);
+            console.log(`🔍 - ${match.name} at ${match.starting_at} with id ${match.id}`);
           });
         }
         
@@ -1266,6 +1266,60 @@ class FixtureOptimizationService {
     return allFixtures;
   }
 
+  // Helper method to check if a match has started
+  isMatchStarted(match) {
+    if (!match || !match.starting_at) {
+      return false;
+    }
+
+    const now = new Date();
+    let matchTime;
+
+    try {
+      // Parse the starting_at field using the same logic as LiveFixtures service
+      if (typeof match.starting_at === "string") {
+        // Check if the string includes timezone info
+        if (
+          match.starting_at.includes("T") ||
+          match.starting_at.includes("Z") ||
+          match.starting_at.includes("+") ||
+          (match.starting_at.includes("-") && match.starting_at.split("-").length > 3)
+        ) {
+          // String has timezone info, parse normally
+          matchTime = new Date(match.starting_at);
+        } else {
+          // String doesn't have timezone info, treat as UTC
+          // Format: "2025-07-05 09:00:00" should be treated as UTC
+          let isoString = match.starting_at.replace(" ", "T");
+          if (!isoString.includes("T")) {
+            isoString = match.starting_at + "T00:00:00";
+          }
+          if (!isoString.endsWith("Z")) {
+            isoString += "Z";
+          }
+          matchTime = new Date(isoString);
+        }
+      } else if (match.starting_at instanceof Date) {
+        // If it's already a Date object
+        matchTime = match.starting_at;
+      } else {
+        return false;
+      }
+
+      // Check if the date is valid
+      if (isNaN(matchTime.getTime())) {
+        console.error(`[FixtureService] Invalid date created from: ${match.starting_at}`);
+        return false;
+      }
+
+      // Check if match has started (current time is past the start time)
+      return matchTime <= now;
+    } catch (error) {
+      console.error(`[FixtureService] Error parsing match start time: ${error.message}`);
+      return false;
+    }
+  }
+
   async getMatchById(matchId, options = {}) {
     const {
       includeOdds = true,
@@ -1326,28 +1380,47 @@ class FixtureOptimizationService {
       }
     }
 
-    // Always group odds by market for the returned match
-    cachedMatch.odds = this.groupOddsByMarket(cachedMatch.odds);
+    // Check if match has passed its start time
+    const isMatchStarted = this.isMatchStarted(cachedMatch);
+    
+    if (isMatchStarted) {
+      console.log(`⏰ Match ${matchId} has started at ${cachedMatch.starting_at}, removing pre-match odds`);
+      // Remove pre-match odds for started matches
+      // Note: Live odds should be fetched separately via /fixtures/:id/inplay-odds endpoint
+      cachedMatch.odds = {};
+      cachedMatch.odds_classification = {
+        categories: [{ id: "all", label: "All", odds_count: 0 }],
+        classified_odds: {},
+        stats: { total_categories: 0, total_odds: 0 },
+      };
+      cachedMatch.betting_data = [];
+      // Add a flag to indicate this match has started
+      cachedMatch.isStarted = true;
+    } else {
+      console.log(`⏰ Match ${matchId} has not started yet (${cachedMatch.starting_at}), keeping pre-match odds`);
+      // Only process odds for matches that haven't started yet
+      cachedMatch.odds = this.groupOddsByMarket(cachedMatch.odds);
 
-    // Add odds classification and betting data format
-    if (cachedMatch.odds && Object.keys(cachedMatch.odds).length > 0) {
-      try {
-        const oddsData = { odds_by_market: cachedMatch.odds };
-        const classification = classifyOdds(oddsData);
-        cachedMatch.odds_classification = classification;
-        cachedMatch.betting_data = transformToBettingData(
-          classification,
-          cachedMatch
-        );
-      } catch (classificationError) {
-        console.error("⚠️ Error classifying odds:", classificationError);
-        // Provide fallback data structure
-        cachedMatch.odds_classification = {
-          categories: [{ id: "all", label: "All", odds_count: 0 }],
-          classified_odds: {},
-          stats: { total_categories: 0, total_odds: 0 },
-        };
-        cachedMatch.betting_data = [];
+      // Add odds classification and betting data format
+      if (cachedMatch.odds && Object.keys(cachedMatch.odds).length > 0) {
+        try {
+          const oddsData = { odds_by_market: cachedMatch.odds };
+          const classification = classifyOdds(oddsData);
+          cachedMatch.odds_classification = classification;
+          cachedMatch.betting_data = transformToBettingData(
+            classification,
+            cachedMatch
+          );
+        } catch (classificationError) {
+          console.error("⚠️ Error classifying odds:", classificationError);
+          // Provide fallback data structure
+          cachedMatch.odds_classification = {
+            categories: [{ id: "all", label: "All", odds_count: 0 }],
+            classified_odds: {},
+            stats: { total_categories: 0, total_odds: 0 },
+          };
+          cachedMatch.betting_data = [];
+        }
       }
     }
 

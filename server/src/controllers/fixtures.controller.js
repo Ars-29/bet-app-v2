@@ -225,6 +225,12 @@ export const getMatchById = asyncHandler(async (req, res) => {
       participants_count: match.participants ? match.participants.length : 0,
       has_league_info: !!match.league,
       classification_stats: match.odds_classification?.stats || null,
+      match_status: {
+        isStarted: match.isStarted || false,
+        starting_at: match.starting_at,
+        has_prematch_odds: Object.keys(match.odds || {}).length > 0,
+        note: match.isStarted ? "Use /fixtures/:id/inplay-odds for live odds" : "Pre-match odds available"
+      }
     },
     timestamp: new Date().toISOString(),
   });
