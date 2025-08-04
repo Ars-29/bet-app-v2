@@ -10,7 +10,7 @@ import {
 class LiveFixturesService {
   constructor(fixtureCache) {
     this.fixtureCache = fixtureCache;
-    this.liveOddsCache = new NodeCache({ stdTTL: 1 }); // 1 second for live odds
+    this.liveOddsCache = new NodeCache({ stdTTL: 10 }); // 10 seconds for live odds (updated every 1 second, increased to prevent cache misses)
     this.inplayMatchesCache = new NodeCache({ stdTTL: 300 }); // 5 minutes
     this.delayedMatchesCache = new NodeCache({ stdTTL: 3600 }); // 1 hour
     this.lastInplayUpdate = 0;
@@ -45,15 +45,135 @@ class LiveFixturesService {
   }
 
   // Emit live matches update via WebSocket
-  emitLiveMatchesUpdate(liveMatches) {
+  async emitLiveMatchesUpdate(liveMatches) {
     if (this.io) {
+      // Filter out matches that don't have inplay odds at all
+      const matchesWithOdds = [];
+      
+      for (const match of liveMatches) {
+        // Check if this match has inplay odds
+        const liveOdds = this.liveOddsCache.get(match.id);
+        if (!liveOdds || !liveOdds.betting_data || liveOdds.betting_data.length === 0) {
+          console.log(`[LiveFixtures] Skipping match ${match.id} - no inplay odds available`);
+          continue;
+        }
+        
+        // Check if the match has any valid odds structure
+        const mainOdds = this.extractMainOdds(liveOdds.betting_data);
+        if (!mainOdds || Object.keys(mainOdds).length === 0) {
+          console.log(`[LiveFixtures] Skipping match ${match.id} - no valid odds structure`);
+          continue;
+        }
+        
+        // Include the match even if all odds are suspended (they will show as suspended on frontend)
+        matchesWithOdds.push(match);
+      }
+      
+      console.log(`[LiveFixtures] Filtered ${liveMatches.length} matches to ${matchesWithOdds.length} matches with odds`);
+      
+      // Group matches by league (same as in socket.js)
+      const leagueMap = new Map();
+      
+      for (const match of matchesWithOdds) {
+        // Extract team names from the name field
+        let team1 = 'Team 1';
+        let team2 = 'Team 2';
+        
+        if (match.name) {
+          const teams = match.name.split(' vs ');
+          if (teams.length >= 2) {
+            team1 = teams[0].trim();
+            team2 = teams[1].trim();
+          }
+        }
+        
+        // Get league information from cache
+        let league = {
+          id: match.league_id,
+          name: `League ${match.league_id}`,
+          imageUrl: null,
+          country: null
+        };
+        
+        // Try to get league details from cache
+        try {
+          const popularLeagues = global.fixtureOptimizationService?.leagueCache?.get("popular_leagues") || [];
+          console.log(`[LiveFixtures] Found ${popularLeagues.length} popular leagues in cache for match ${match.league_id}`);
+          
+          const foundLeague = popularLeagues.find(l => Number(l.id) === Number(match.league_id));
+          if (foundLeague) {
+            console.log(`[LiveFixtures] Found league info for ${match.league_id}:`, foundLeague.name);
+            league.name = foundLeague.name;
+            league.imageUrl = foundLeague.image_path || null;
+            league.country = typeof foundLeague.country === "string" 
+              ? foundLeague.country 
+              : foundLeague.country?.name || null;
+          } else {
+            console.log(`[LiveFixtures] No league info found for ${match.league_id} in cache, trying to fetch from API`);
+            
+            // Try to fetch league info from API if not in cache
+            try {
+              const apiToken = process.env.SPORTSMONKS_API_KEY;
+              if (apiToken) {
+                const url = `https://api.sportmonks.com/v3/football/leagues/${match.league_id}?api_token=${apiToken}`;
+                const response = await axios.get(url);
+                const leagueData = response.data?.data;
+                
+                if (leagueData) {
+                  console.log(`[LiveFixtures] Fetched league info from API for ${match.league_id}:`, leagueData.name);
+                  league.name = leagueData.name;
+                  league.imageUrl = leagueData.image_path || null;
+                  league.country = leagueData.country?.name || null;
+                }
+              }
+            } catch (apiError) {
+              console.log(`[LiveFixtures] Error fetching league info from API for ${match.league_id}:`, apiError.message);
+            }
+          }
+        } catch (error) {
+          console.log(`[LiveFixtures] Error fetching league info for ${match.league_id}:`, error);
+        }
+        
+        // Group by league
+        const leagueId = match.league_id;
+        if (!leagueMap.has(leagueId)) {
+          leagueMap.set(leagueId, {
+            league: league,
+            matches: []
+          });
+        }
+        
+        // Add match to league group (without odds - client will merge them)
+        const transformedMatch = {
+          ...match,
+          team1,
+          team2,
+          league,
+          isLive: true,
+          time: 'LIVE',
+          date: match.starting_at ? match.starting_at.split(' ')[0] : '',
+          clock: match.isTicking || false
+        };
+        
+        leagueMap.get(leagueId).matches.push(transformedMatch);
+      }
+      
+      // Convert to array format and filter out empty leagues
+      const leagueGroups = Array.from(leagueMap.values()).filter(leagueGroup => {
+        if (leagueGroup.matches.length === 0) {
+          console.log(`[LiveFixtures] Skipping league ${leagueGroup.league.id} - no matches with odds`);
+          return false;
+        }
+        return true;
+      });
+      
       const updateData = {
-        matches: liveMatches,
+        matches: leagueGroups,
         timestamp: new Date().toISOString()
       };
       
       this.io.to('liveMatches').emit('liveMatchesUpdate', updateData);
-      console.log(`📡 [WebSocket] Emitted live matches update for ${liveMatches.length} matches`);
+      console.log(`📡 [WebSocket] Emitted live matches update for ${leagueGroups.length} league groups (filtered from ${Array.from(leagueMap.values()).length} total leagues)`);
     }
   }
 
@@ -624,6 +744,14 @@ class LiveFixturesService {
     }
 
     console.log(`[LiveFixtures] Successfully updated ${successfulUpdates}/${inplayMatches.length} inplay matches`);
+    
+          // After all odds are fetched, emit the live matches update
+      // This ensures matches are only shown after odds are ready
+      const cachedMatches = this.inplayMatchesCache.get('inplay_matches') || [];
+      if (cachedMatches.length > 0) {
+        console.log(`[LiveFixtures] Emitting live matches update after odds fetch for ${cachedMatches.length} matches`);
+        await this.emitLiveMatchesUpdate(cachedMatches);
+      }
   }
 
   // Update odds for fallback matches (when scheduler is not available or as backup)
@@ -760,6 +888,39 @@ class LiveFixturesService {
       classified_odds: {},
       stats: { total_categories: 0, total_odds: 0 },
     };
+  }
+
+  // Check if fixture cache has any data
+  hasFixtureCacheData() {
+    if (!this.fixtureCache) {
+      console.log('[LiveFixtures] No fixture cache available');
+      return false;
+    }
+    
+    const cacheKeys = this.fixtureCache.keys();
+    const hasData = cacheKeys.length > 0;
+    
+    console.log(`[LiveFixtures] Fixture cache check: ${cacheKeys.length} keys found`);
+    
+    // Log some sample keys for debugging
+    if (hasData) {
+      const sampleKeys = cacheKeys.slice(0, 5);
+      console.log(`[LiveFixtures] Sample cache keys:`, sampleKeys);
+    }
+    
+    return hasData;
+  }
+
+  // Notify agenda jobs about fixture cache changes
+  async notifyFixtureCacheChange() {
+    try {
+      // Import the function dynamically to avoid circular dependencies
+      const { checkFixtureCacheAndManageJobs } = await import('../config/agendaJobs.js');
+      await checkFixtureCacheAndManageJobs();
+      console.log('[LiveFixtures] Notified agenda jobs about fixture cache change');
+    } catch (error) {
+      console.error('[LiveFixtures] Error notifying agenda jobs:', error);
+    }
   }
 
   // Ensure we have live odds for a specific match
@@ -1136,60 +1297,55 @@ class LiveFixturesService {
 
   // Check if a specific match is live
   isMatchLive(matchId) {
-    const now = new Date();
-    const cacheKeys = this.fixtureCache.keys();
-
-    for (const key of cacheKeys) {
-      if (key.startsWith("fixtures_")) {
-        const cachedData = this.fixtureCache.get(key);
-        let fixtures = [];
-        if (Array.isArray(cachedData)) {
-          fixtures = cachedData;
-        } else if (cachedData && Array.isArray(cachedData.data)) {
-          fixtures = cachedData.data;
-        } else if (cachedData instanceof Map) {
-          fixtures = Array.from(cachedData.values());
-        } else {
-          continue;
-        }
-
-        const match = fixtures.find(
-          (m) => m.id == matchId || m.id === parseInt(matchId)
-        );
-        if (match) {
-          if (!match.starting_at) {
-            return false;
-          }
-
-          const matchTime = this.parseMatchStartTime(match.starting_at);
-          if (!matchTime) {
-            return false;
-          }
-
-          const matchEnd = new Date(matchTime.getTime() + 120 * 60 * 1000); // 120 minutes after start
-
-          // Check multiple conditions for live matches
-          const isStarted = matchTime <= now;
-          const isNotEnded = now < matchEnd;
-          const isLiveByTime = isStarted && isNotEnded;
-
-          // Also check by state_id if available (2 = live, 3 = halftime, 4 = extra time, 22 = 2nd half, 23 = 2nd half HT, 24 = extra time)
-          const isLiveByState =
-            match.state_id && [2, 3, 4, 22, 23, 24].includes(match.state_id);
-
-          // Consider match live if either time-based or state-based criteria are met
-          const isLive = isLiveByTime || isLiveByState;
-          
-          if (isLive) {
-            console.log(`[isMatchLive] Match ${matchId} is live: time-based=${isLiveByTime}, state-based=${isLiveByState}, state_id=${match.state_id}, state=${match.state?.name || 'unknown'}`);
-          }
-          
-          return isLive;
-        }
-      }
+    console.log(`[isMatchLive] Checking if match ${matchId} is live...`);
+    
+    // Check if the match exists in the inplay matches cache
+    const inplayMatches = this.inplayMatchesCache.get('inplay_matches') || [];
+    console.log(`[isMatchLive] Found ${inplayMatches.length} inplay matches in cache`);
+    
+    // Check if matchId exists in inplay matches
+    const liveMatch = inplayMatches.find(match => 
+      match.id == matchId || match.id === parseInt(matchId)
+    );
+    
+    if (!liveMatch) {
+      console.log(`[isMatchLive] Match ${matchId} NOT found in inplay matches cache - NOT LIVE`);
+      return false;
+    }
+    
+    console.log(`[isMatchLive] Match ${matchId} found in inplay matches cache - IS LIVE`);
+    console.log(`[isMatchLive] Match details: state_id=${liveMatch.state_id}, state=${liveMatch.state?.name || 'unknown'}, starting_at=${liveMatch.starting_at}`);
+    
+    // Since the match is in the inplay cache, it's already validated as live
+    // But we can do additional validation if needed
+    if (!liveMatch.starting_at) {
+      console.log(`[isMatchLive] Match ${matchId} has no starting_at time - but still in inplay cache, so LIVE`);
+      return true; // Still return true since it's in inplay cache
     }
 
-    return false;
+    const matchTime = this.parseMatchStartTime(liveMatch.starting_at);
+    if (!matchTime) {
+      console.log(`[isMatchLive] Match ${matchId} has invalid starting_at time - but still in inplay cache, so LIVE`);
+      return true; // Still return true since it's in inplay cache
+    }
+
+    const now = new Date();
+    const matchEnd = new Date(matchTime.getTime() + 120 * 60 * 1000); // 120 minutes after start
+
+    // Check multiple conditions for live matches
+    const isStarted = matchTime <= now;
+    const isNotEnded = now < matchEnd;
+    const isLiveByTime = isStarted && isNotEnded;
+
+    // Also check by state_id if available (2 = live, 3 = halftime, 4 = extra time, 22 = 2nd half, 23 = 2nd half HT, 24 = extra time)
+    const isLiveByState = liveMatch.state_id && [2, 3, 4, 22, 23, 24].includes(liveMatch.state_id);
+
+    // Consider match live if either time-based or state-based criteria are met
+    const isLive = isLiveByTime || isLiveByState;
+    
+    console.log(`[isMatchLive] Match ${matchId} final result: time-based=${isLiveByTime}, state-based=${isLiveByState}, isLive=${isLive}`);
+    
+    return isLive;
   }
 }
 

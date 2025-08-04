@@ -5,12 +5,18 @@ import websocketService from '@/lib/services/websocketService';
 
 const WebSocketInitializer = () => {
   useEffect(() => {
-    // Initialize WebSocket service when component mounts
+    // Initialize WebSocket connection early
     websocketService.initialize();
-
-    // Cleanup when component unmounts
+    
+    // Join live matches room by default
+    websocketService.joinLiveMatches();
+    
+    console.log('🔌 WebSocket initialized and joined live matches room');
+    
+    // Cleanup on unmount
     return () => {
-      websocketService.disconnect();
+      // Don't disconnect here as other components might be using the socket
+      console.log('🔌 WebSocket initializer unmounted');
     };
   }, []);
 

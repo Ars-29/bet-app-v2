@@ -99,6 +99,50 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Manual trigger for live matches update
+app.get("/api/live-matches/trigger", async (req, res) => {
+  try {
+    const liveFixturesService = global.liveFixturesService;
+    if (liveFixturesService) {
+      await liveFixturesService.updateInplayMatches();
+      const cachedMatches = liveFixturesService.inplayMatchesCache.get('inplay_matches') || [];
+      
+      // Also update odds immediately
+      if (cachedMatches.length > 0) {
+        await liveFixturesService.updateInplayMatchesOdds();
+      }
+      
+      res.json({
+        success: true,
+        message: `Updated ${cachedMatches.length} live matches`,
+        matches: cachedMatches
+      });
+    } else {
+      res.status(500).json({ success: false, message: "LiveFixtures service not available" });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Manual trigger for live odds update only
+app.get("/api/live-odds/trigger", async (req, res) => {
+  try {
+    const liveFixturesService = global.liveFixturesService;
+    if (liveFixturesService) {
+      await liveFixturesService.updateAllLiveOdds();
+      res.json({
+        success: true,
+        message: "Live odds updated successfully"
+      });
+    } else {
+      res.status(500).json({ success: false, message: "LiveFixtures service not available" });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/sportsmonk", sportsMonkRouter);
@@ -122,6 +166,36 @@ app.set('io', io);
 
 // Set up Agenda listeners
 setupAgendaListeners();
+
+// Initialize live matches on startup
+const initializeLiveMatches = async () => {
+  try {
+    console.log('🚀 [Startup] Initializing live matches...');
+    const liveFixturesService = global.liveFixturesService;
+    if (liveFixturesService) {
+      // Check if fixture cache has data before proceeding
+      if (!liveFixturesService.hasFixtureCacheData()) {
+        console.log('🚀 [Startup] Fixture cache is empty - skipping live matches initialization');
+        return;
+      }
+      
+      await liveFixturesService.updateInplayMatches();
+      const cachedMatches = liveFixturesService.inplayMatchesCache.get('inplay_matches') || [];
+      console.log(`🚀 [Startup] Cached ${cachedMatches.length} live matches on startup`);
+      
+      // Also update odds immediately
+      if (cachedMatches.length > 0) {
+        await liveFixturesService.updateInplayMatchesOdds();
+        console.log('🚀 [Startup] Updated odds for live matches on startup');
+      }
+    }
+  } catch (error) {
+    console.error('❌ [Startup] Error initializing live matches:', error);
+  }
+};
+
+// Initialize live matches after a short delay to ensure services are ready
+setTimeout(initializeLiveMatches, 3000);
 
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

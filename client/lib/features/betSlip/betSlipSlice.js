@@ -36,20 +36,22 @@ const betSlipSlice = createSlice({
       } = action.payload;
 
       console.log("Adding bet with payload:", action.payload);
+      console.log("MarketId type and value:", typeof marketId, marketId);
 
       // Check if bet already exists (same oddId) or same market bet exists (same match + marketId)
+      // For combination bets, we allow multiple selections from the same market (1X2)
       const existingBetIndex = state.bets.findIndex(
-        (bet) => bet.oddId === oddId || (bet.match.id === match.id && bet.marketId === marketId)
+        (bet) => bet.oddId === oddId || (bet.match.id === match.id && bet.marketId === marketId && !(typeof marketId === 'string' && marketId.includes('_')))
       );
 
-      // If same market bet exists, don't add it
+      // If same market bet exists, don't add it (only for non-combination markets)
       if (existingBetIndex >= 0) {
         const existingBet = state.bets[existingBetIndex];
         if (existingBet.oddId === oddId) {
           // Same exact bet, update it
           console.log("Updating existing bet with same oddId");
-        } else {
-          // Same market bet exists, don't add
+        } else if (!(typeof marketId === 'string' && marketId.includes('_'))) {
+          // Same market bet exists for non-combination markets, don't add
           console.log("Same market bet already exists for this match, not adding");
           state.lastError = "You already have a bet on this market for this match";
           return; // Exit early, don't add the bet
@@ -304,9 +306,9 @@ export const placeBetThunk = createAsyncThunk(
             betOption: label,
             selection: label,
             teams: `${bet.match.team1} vs ${bet.match.team2}`,
-            marketId: bet.marketId,
+            marketId: (typeof bet.marketId === 'string' && bet.marketId.includes('_')) ? bet.marketId.split('_')[0] : bet.marketId,
             betDetails: {
-              market_id: bet.marketId,
+              market_id: (typeof bet.marketId === 'string' && bet.marketId.includes('_')) ? bet.marketId.split('_')[0] : bet.marketId,
               market_name: bet.marketName || "Unknown Market",
               label,
               value: bet.odds,
@@ -318,9 +320,17 @@ export const placeBetThunk = createAsyncThunk(
             ...(bet.match.starting_at && { matchDate: bet.match.starting_at }),
             ...(bet.match.estimatedMatchEnd && { estimatedMatchEnd: bet.match.estimatedMatchEnd }),
             ...(bet.match.betOutcomeCheckTime && { betOutcomeCheckTime: bet.match.betOutcomeCheckTime }),
-            inplay: bet.inplay || false
+            inplay: bet.inplay || false,
+            // Add these fields for live matches
+            ...(bet.inplay && { 
+              isLive: true,
+              matchStartTime: bet.match.starting_at,
+              matchEndTime: bet.match.estimatedMatchEnd || (bet.match.starting_at ? new Date(new Date(bet.match.starting_at).getTime() + 120 * 60 * 1000).toISOString() : null)
+            })
           };
-          console.log("Single bet payload:", payload);
+                      console.log("Single bet payload:", payload);
+            console.log("Single bet - matchId type:", typeof payload.matchId, "value:", payload.matchId);
+            console.log("Single bet - inplay:", payload.inplay, "isLive:", payload.isLive);
 
           const response = await apiClient.post("/bet/place-bet", payload);
           results.push(response.data);
@@ -347,9 +357,9 @@ export const placeBetThunk = createAsyncThunk(
             inplay: bet.inplay || false,
             selection: label, // Always use label for selection
             teams: `${bet.match.team1} vs ${bet.match.team2}`,
-            marketId: bet.marketId,
+            marketId: (typeof bet.marketId === 'string' && bet.marketId.includes('_')) ? bet.marketId.split('_')[0] : bet.marketId,
             betDetails: {
-              market_id: bet.marketId,
+              market_id: (typeof bet.marketId === 'string' && bet.marketId.includes('_')) ? bet.marketId.split('_')[0] : bet.marketId,
               market_name: bet.marketName || "Unknown Market",
               label,
               value: bet.odds,
@@ -360,7 +370,13 @@ export const placeBetThunk = createAsyncThunk(
             },
             ...(bet.match.starting_at && { matchDate: bet.match.starting_at }),
             ...(bet.match.estimatedMatchEnd && { estimatedMatchEnd: bet.match.estimatedMatchEnd }),
-            ...(bet.match.betOutcomeCheckTime && { betOutcomeCheckTime: bet.match.betOutcomeCheckTime })
+            ...(bet.match.betOutcomeCheckTime && { betOutcomeCheckTime: bet.match.betOutcomeCheckTime }),
+            // Add these fields for live matches
+            ...(bet.inplay && { 
+              isLive: true,
+              matchStartTime: bet.match.starting_at,
+              matchEndTime: bet.match.estimatedMatchEnd || (bet.match.starting_at ? new Date(new Date(bet.match.starting_at).getTime() + 120 * 60 * 1000).toISOString() : null)
+            })
           };
         });
 

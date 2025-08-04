@@ -181,8 +181,12 @@ const MatchListPage = ({ config }) => {
                             </Link>
                         </div>
                     ) : (<div className="space-y-4">
-                        <Accordion type="multiple" className="space-y-4" defaultValue={[]}>
-                            {leagues.map((league) => {
+                        <Accordion 
+                            type="multiple" 
+                            className="space-y-4" 
+                            defaultValue={leagues.map((league, index) => `league-${league.id || index}`)}
+                        >
+                            {leagues.map((league, index) => {
                                 // Skip leagues without matches or with invalid data
                                 if (!league || !Array.isArray(league.matches)) return null;
                                 
@@ -190,8 +194,8 @@ const MatchListPage = ({ config }) => {
                                 
                                 return (
                                     <AccordionItem
-                                        key={league.id || `league-${Math.random()}`}
-                                        value={`league-${league.id || Math.random()}`}
+                                        key={league.id || `league-${index}`}
+                                        value={`league-${league.id || index}`}
                                         className="bg-white border border-gray-200 overflow-hidden"
                                     >
                                         <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-gray-50/50 transition-colors duration-200 [&[data-state=open]]:bg-gray-50/80">
@@ -271,73 +275,88 @@ const MatchListPage = ({ config }) => {
                                                                     {match.odds && match.odds.home && (
                                                                         <Button
                                                                             size="sm"
-                                                                            className="w-12 h-8 md:w-14 p-0 text-xs font-bold betting-button bg-emerald-600 hover:bg-emerald-700"
-                                                                            onClick={createBetHandler(
+                                                                            className={`w-12 h-8 md:w-14 p-0 text-xs font-bold betting-button ${
+                                                                                match.odds.home.suspended 
+                                                                                    ? 'opacity-60 cursor-not-allowed bg-gray-400 hover:bg-gray-400' 
+                                                                                    : 'bg-emerald-600 hover:bg-emerald-700'
+                                                                            }`}
+                                                                            onClick={match.odds.home.suspended ? undefined : createBetHandler(
                                                                                 {
                                                                                     id: match.id,
-                                                                                    team1: match.participants && match.participants[0] ? match.participants[0].name : 'Team 1',
-                                                                                    team2: match.participants && match.participants[1] ? match.participants[1].name : 'Team 2',
+                                                                                    team1: match.team1 || (match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'),
+                                                                                    team2: match.team2 || (match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'),
                                                                                     time: match.starting_at ? match.starting_at.split(' ')[1].slice(0, 5) : '',
                                                                                     competition: match.league ? match.league.name : 'Football',
-                                                                                    isLive: false,
-                                                                                    name: match.name || `${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'} vs ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`
+                                                                                    isLive: match.isLive || false,
+                                                                                    name: match.name || `${match.team1 || 'Team 1'} vs ${match.team2 || 'Team 2'}`
                                                                                 }, 
                                                                                 'Home', 
                                                                                 match.odds.home.value, 
                                                                                 '1x2', 
                                                                                 match.odds.home.oddId,
-                                                                                { marketId: "1", label: "Home", name: `Win - ${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'}`, marketDescription: "Full Time Result" }
+                                                                                { marketId: "1_home", label: "Home", name: `Win - ${match.team1 || 'Team 1'}`, marketDescription: "Full Time Result" }
                                                                             )}
+                                                                            disabled={match.odds.home.suspended}
                                                                         >
-                                                                            {match.odds.home.value}
+                                                                            {match.odds.home.suspended ? '--' : match.odds.home.value}
                                                                         </Button>
                                                                     )}
                                                                     {match.odds && match.odds.draw && (
                                                                         <Button
-                                                                            className="w-12 h-8 md:w-14 p-0 text-xs font-bold betting-button bg-emerald-600 hover:bg-emerald-700"
+                                                                            className={`w-12 h-8 md:w-14 p-0 text-xs font-bold betting-button ${
+                                                                                match.odds.draw.suspended 
+                                                                                    ? 'opacity-60 cursor-not-allowed bg-gray-400 hover:bg-gray-400' 
+                                                                                    : 'bg-emerald-600 hover:bg-emerald-700'
+                                                                            }`}
                                                                             size={"sm"}
-                                                                            onClick={createBetHandler(
+                                                                            onClick={match.odds.draw.suspended ? undefined : createBetHandler(
                                                                                 {
                                                                                     id: match.id,
-                                                                                    team1: match.participants && match.participants[0] ? match.participants[0].name : 'Team 1',
-                                                                                    team2: match.participants && match.participants[1] ? match.participants[1].name : 'Team 2',
+                                                                                    team1: match.team1 || (match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'),
+                                                                                    team2: match.team2 || (match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'),
                                                                                     time: match.starting_at ? match.starting_at.split(' ')[1].slice(0, 5) : '',
                                                                                     competition: match.league ? match.league.name : 'Football',
-                                                                                    isLive: false,
-                                                                                    name: match.name || `${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'} vs ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`
+                                                                                    isLive: match.isLive || false,
+                                                                                    name: match.name || `${match.team1 || 'Team 1'} vs ${match.team2 || 'Team 2'}`
                                                                                 }, 
                                                                                 'Draw', 
                                                                                 match.odds.draw.value, 
                                                                                 '1x2', 
                                                                                 match.odds.draw.oddId,
-                                                                                { marketId: "1", label: "Draw", name: `Draw - ${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'} vs ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`, marketDescription: "Full Time Result" }
+                                                                                { marketId: "1_draw", label: "Draw", name: `Draw - ${match.team1 || 'Team 1'} vs ${match.team2 || 'Team 2'}`, marketDescription: "Full Time Result" }
                                                                             )}
+                                                                            disabled={match.odds.draw.suspended}
                                                                         >
-                                                                            {match.odds.draw.value}
+                                                                            {match.odds.draw.suspended ? '--' : match.odds.draw.value}
                                                                         </Button>
                                                                     )}
                                                                     {match.odds && match.odds.away && (
                                                                         <Button
                                                                             size="sm"
-                                                                            className="w-12 h-8 md:w-14 p-0 text-xs font-bold betting-button bg-emerald-600 hover:bg-emerald-700"
-                                                                            onClick={createBetHandler(
+                                                                            className={`w-12 h-8 md:w-14 p-0 text-xs font-bold betting-button ${
+                                                                                match.odds.away.suspended 
+                                                                                    ? 'opacity-60 cursor-not-allowed bg-gray-400 hover:bg-gray-400' 
+                                                                                    : 'bg-emerald-600 hover:bg-emerald-700'
+                                                                            }`}
+                                                                            onClick={match.odds.away.suspended ? undefined : createBetHandler(
                                                                                 {
                                                                                     id: match.id,
-                                                                                    team1: match.participants && match.participants[0] ? match.participants[0].name : 'Team 1',
-                                                                                    team2: match.participants && match.participants[1] ? match.participants[1].name : 'Team 2',
+                                                                                    team1: match.team1 || (match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'),
+                                                                                    team2: match.team2 || (match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'),
                                                                                     time: match.starting_at ? match.starting_at.split(' ')[1].slice(0, 5) : '',
                                                                                     competition: match.league ? match.league.name : 'Football',
-                                                                                    isLive: false,
-                                                                                    name: match.name || `${match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'} vs ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`
+                                                                                    isLive: match.isLive || false,
+                                                                                    name: match.name || `${match.team1 || 'Team 1'} vs ${match.team2 || 'Team 2'}`
                                                                                 }, 
                                                                                 'Away', 
                                                                                 match.odds.away.value, 
                                                                                 '1x2', 
                                                                                 match.odds.away.oddId,
-                                                                                { marketId: "1", label: "Away", name: `Win - ${match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'}`, marketDescription: "Full Time Result" }
+                                                                                { marketId: "1_away", label: "Away", name: `Win - ${match.team2 || 'Team 2'}`, marketDescription: "Full Time Result" }
                                                                             )}
+                                                                            disabled={match.odds.away.suspended}
                                                                         >
-                                                                            {match.odds.away.value}
+                                                                            {match.odds.away.suspended ? '--' : match.odds.away.value}
                                                                         </Button>
                                                                     )}
                                                                 </div>

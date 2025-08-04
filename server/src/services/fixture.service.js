@@ -167,6 +167,16 @@ class FixtureOptimizationService {
       );
 
       this.fixtureCache.set(cacheKey, transformed);
+      
+      // Notify agenda jobs about fixture cache change
+      if (global.liveFixturesService) {
+        try {
+          await global.liveFixturesService.notifyFixtureCacheChange();
+        } catch (error) {
+          console.error('[FixtureService] Error notifying agenda jobs:', error);
+        }
+      }
+      
       return transformed;
     } catch (error) {
       console.error("Error in getOptimizedFixtures:", error);

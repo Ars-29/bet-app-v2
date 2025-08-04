@@ -5,8 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import TopPicks from './TopPicks';
 import LeagueCards from './LeagueCards';
 import { fetchHomepageData, selectHomeLoading, selectHomeError, selectFootballDaily } from '@/lib/features/home/homeSlice';
-import { fetchLiveMatches, selectLiveMatches, selectLiveMatchesLoading, selectLiveMatchesError } from '@/lib/features/matches/liveMatchesSlice';
-import { selectLiveMatches as selectWebSocketLiveMatches } from '@/lib/features/websocket/websocketSlice';
+import { selectLiveMatches } from '@/lib/features/websocket/websocketSlice';
 
 const HomePage = () => {
     const dispatch = useDispatch();
@@ -18,17 +17,13 @@ const HomePage = () => {
         league.matches.some(match => (match.odds_main && Object.keys(match.odds_main).length > 0) || (match.odds && (match.odds.home || match.odds.draw || match.odds.away)))
     );
     
-    // Live matches state
+    // Live matches state from WebSocket
     const liveMatches = useSelector(selectLiveMatches);
-    const liveLoading = useSelector(selectLiveMatchesLoading);
-    const liveError = useSelector(selectLiveMatchesError);
-    const webSocketLiveMatches = useSelector(selectWebSocketLiveMatches);
 
     useEffect(() => {
         // Fetch homepage data when component mounts
         dispatch(fetchHomepageData());
-        // Fetch live matches separately
-        dispatch(fetchLiveMatches());
+        // Live matches are fetched via WebSocket automatically
     }, [dispatch]);
 
 
@@ -78,16 +73,15 @@ const HomePage = () => {
                             loading={loading}
                         />
 
-                        {/* In-Play Section - using live matches from Redux */}
+                        {/* In-Play Section - using live matches from WebSocket */}
                         <LeagueCards
                             title="In-Play"
                             isInPlay={true}
                             showDayTabs={false}
                             viewAllText="View All Live Football"
                             useReduxData={true}
-                            reduxData={webSocketLiveMatches.length > 0 ? webSocketLiveMatches : liveMatches}
-                            loading={liveLoading}
-                            error={liveError}
+                            reduxData={liveMatches}
+                            loading={false}
                         />
                     </div>
 

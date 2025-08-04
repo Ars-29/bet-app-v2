@@ -424,17 +424,38 @@ class BetService {
         `[placeBet] Processing inplay bet for match ${matchId}, odd ${oddId}`
       );
 
-      // Force a fresh fetch for betting to ensure we have the latest odds
-      console.log(`[placeBet] Forcing fresh fetch of live odds for betting...`);
-      FixtureOptimizationService.liveFixturesService.liveOddsCache.del(matchId);
-
-      const liveOddsResult =
-        await FixtureOptimizationService.liveFixturesService.ensureLiveOdds(
-          matchId
-        );
-
-      // Get the betting_data array from the result
-      const liveOdds = liveOddsResult.betting_data || [];
+      // Use cached live odds data (already updated every second)
+      console.log(`[placeBet] Using cached live odds data for betting...`);
+      
+      // Check cache status first
+      if (global.liveFixturesService) {
+        const cacheStatus = global.liveFixturesService.liveOddsCache.get(matchId);
+        console.log(`[placeBet] Cache status for match ${matchId}:`, {
+          hasCache: !!cacheStatus,
+          cacheAge: cacheStatus?.cached_at ? Date.now() - cacheStatus.cached_at : null,
+          source: cacheStatus?.source || 'unknown',
+          bettingDataLength: cacheStatus?.betting_data?.length || 0
+        });
+      }
+      
+      const liveOdds = global.liveFixturesService 
+        ? global.liveFixturesService.getLiveOdds(matchId) || []
+        : [];
+      
+      console.log(`[placeBet] Found ${liveOdds.length} betting sections for match ${matchId}`);
+      console.log(`[placeBet] Looking for oddId: ${oddId}`);
+      
+      // Debug: Log all available odd IDs
+      const allOddIds = [];
+      liveOdds.forEach((section, sectionIndex) => {
+        if (section.options && Array.isArray(section.options)) {
+          section.options.forEach(option => {
+            allOddIds.push(option.id);
+            console.log(`[placeBet] Section ${sectionIndex}: oddId=${option.id}, label=${option.label}, market_id=${option.market_id}`);
+          });
+        }
+      });
+      console.log(`[placeBet] All available odd IDs:`, allOddIds);
 
       // Find the odd directly in the live odds data
       let foundOdd = null;
@@ -442,16 +463,33 @@ class BetService {
 
       // Search for the exact odd ID in all sections
       for (const section of liveOdds) {
-        // Simple exact match - convert both to numbers for comparison
+        // Try multiple comparison methods
         const odd = section.options?.find((o) => {
-          const optionId = parseInt(o.id);
-          const requestedId = parseInt(oddId);
-          console.log(
-            `[placeBet] Comparing: ${optionId} === ${requestedId} (${
-              optionId === requestedId
-            })`
-          );
-          return optionId === requestedId;
+          const optionId = o.id;
+          const requestedId = oddId;
+          
+          // Try exact match first
+          if (optionId === requestedId) {
+            console.log(`[placeBet] ✅ EXACT MATCH: ${optionId} === ${requestedId}`);
+            return true;
+          }
+          
+          // Try number comparison
+          const optionIdNum = parseInt(optionId);
+          const requestedIdNum = parseInt(requestedId);
+          if (optionIdNum === requestedIdNum) {
+            console.log(`[placeBet] ✅ NUMBER MATCH: ${optionIdNum} === ${requestedIdNum}`);
+            return true;
+          }
+          
+          // Try string comparison
+          if (optionId.toString() === requestedId.toString()) {
+            console.log(`[placeBet] ✅ STRING MATCH: ${optionId.toString()} === ${requestedId.toString()}`);
+            return true;
+          }
+          
+          console.log(`[placeBet] ❌ NO MATCH: ${optionId} (${typeof optionId}) !== ${requestedId} (${typeof requestedId})`);
+          return false;
         });
 
         if (odd) {
@@ -466,15 +504,111 @@ class BetService {
 
       if (!foundOdd) {
         console.log(`[placeBet] ❌ EXACT MATCH NOT FOUND for oddId: ${oddId}`);
-        console.log(
-          `[placeBet] This shouldn't happen if SportsMonks doesn't change odd IDs!`
-        );
-
-        throw new CustomError(
-          `Invalid odd ID for live bet. Odd ID ${oddId} not found in current live odds.`,
-          400,
-          "INVALID_LIVE_ODD_ID"
-        );
+        console.log(`[placeBet] Available odd IDs:`, allOddIds);
+        console.log(`[placeBet] This shouldn't happen if SportsMonks doesn't change odd IDs!`);
+        
+        // Try to force refresh the odds and check again
+        if (global.liveFixturesService) {
+          console.log(`[placeBet] Attempting to force refresh odds for match ${matchId}...`);
+          try {
+            // Check if match is still live before refreshing
+            const isLive = global.liveFixturesService.isMatchLive(matchId);
+            console.log(`[placeBet] Match ${matchId} is live: ${isLive}`);
+            
+            if (!isLive) {
+              throw new CustomError(
+                `Match ${matchId} is no longer live. Cannot place inplay bet.`,
+                400,
+                "MATCH_NOT_LIVE"
+              );
+            }
+            
+            const refreshedOdds = await global.liveFixturesService.ensureLiveOdds(matchId);
+            const refreshedBettingData = refreshedOdds.betting_data || [];
+            
+            console.log(`[placeBet] Refreshed odds found ${refreshedBettingData.length} sections`);
+            
+            // Log all refreshed odd IDs for debugging
+            const refreshedOddIds = [];
+            refreshedBettingData.forEach((section, sectionIndex) => {
+              if (section.options && Array.isArray(section.options)) {
+                section.options.forEach(option => {
+                  refreshedOddIds.push(option.id);
+                  console.log(`[placeBet] Refreshed Section ${sectionIndex}: oddId=${option.id}, label=${option.label}, market_id=${option.market_id}`);
+                });
+              }
+            });
+            console.log(`[placeBet] All refreshed odd IDs:`, refreshedOddIds);
+            
+            // Search in refreshed data
+            for (const section of refreshedBettingData) {
+              const refreshedOdd = section.options?.find((o) => {
+                const optionId = o.id;
+                const requestedId = oddId;
+                
+                if (optionId === requestedId || 
+                    parseInt(optionId) === parseInt(requestedId) ||
+                    optionId.toString() === requestedId.toString()) {
+                  console.log(`[placeBet] ✅ FOUND IN REFRESHED DATA: ${optionId} === ${requestedId}`);
+                  return true;
+                }
+                return false;
+              });
+              
+              if (refreshedOdd) {
+                foundOdd = refreshedOdd;
+                foundMarket = section;
+                console.log(`[placeBet] ✅ FOUND EXACT MATCH IN REFRESHED DATA: ${refreshedOdd.label} with ID: ${refreshedOdd.id}`);
+                break;
+              }
+            }
+          } catch (refreshError) {
+            console.log(`[placeBet] Error refreshing odds:`, refreshError.message);
+          }
+        }
+        
+        if (!foundOdd) {
+          // Check if the match is still live
+          const isStillLive = global.liveFixturesService ? global.liveFixturesService.isMatchLive(matchId) : false;
+          console.log(`[placeBet] Match ${matchId} is still live: ${isStillLive}`);
+          
+          // Try to find a similar odd with the same market_id and label
+          console.log(`[placeBet] Attempting to find similar odd...`);
+          let similarOdd = null;
+          
+          for (const section of liveOdds) {
+            if (section.options && Array.isArray(section.options)) {
+              // Try to find by market_id and label
+              const found = section.options.find((o) => {
+                // Check if this is a similar odd (same market, similar label)
+                return o.market_id && o.label && 
+                       (o.label.toLowerCase().includes('home') || 
+                        o.label.toLowerCase().includes('away') || 
+                        o.label.toLowerCase().includes('draw'));
+              });
+              
+              if (found) {
+                similarOdd = found;
+                console.log(`[placeBet] Found similar odd: ${found.label} with ID: ${found.id}, market_id: ${found.market_id}`);
+                break;
+              }
+            }
+          }
+          
+          if (similarOdd) {
+            console.log(`[placeBet] Using similar odd as fallback: ${similarOdd.id}`);
+            foundOdd = similarOdd;
+            foundMarket = liveOdds.find(section => 
+              section.options && section.options.some(o => o.id === similarOdd.id)
+            );
+          } else {
+            throw new CustomError(
+              `Invalid odd ID for live bet. Odd ID ${oddId} not found in current live odds. ${isStillLive ? 'Match is still live but odd may have been removed.' : 'Match may no longer be live.'}`,
+              400,
+              "INVALID_LIVE_ODD_ID"
+            );
+          }
+        }
       }
 
       // Check if the odd is suspended or stopped
@@ -520,22 +654,45 @@ class BetService {
       };
     }
 
-    // Step 0: Search all cached matches using the utility method
-    const allCachedMatches = FixtureOptimizationService.getAllCachedMatches();
-    matchData = allCachedMatches.find(
-      (fixture) => fixture.id == matchId || fixture.id === parseInt(matchId)
-    );
-    if (matchData) {
-      console.log(
-        `Using match data from all-cached-matches utility for match ${matchId}`
+    // For inplay bets, try to get match data from live matches cache first
+    if (inplay && global.liveFixturesService) {
+      const liveMatches = global.liveFixturesService.inplayMatchesCache.get('inplay_matches') || [];
+      const liveMatch = liveMatches.find(match => match.id == matchId || match.id === parseInt(matchId));
+      
+      if (liveMatch) {
+        console.log(`Using live match data from inplay cache for match ${matchId}`);
+        matchData = {
+          id: liveMatch.id,
+          starting_at: liveMatch.starting_at,
+          participants: liveMatch.participants || [],
+          state: liveMatch.state || {},
+          name: liveMatch.name,
+          league_id: liveMatch.league_id,
+          isLive: true
+        };
+      }
+    }
+    
+    // If not found in live cache or not inplay, search all cached matches using the utility method
+    if (!matchData) {
+      const allCachedMatches = FixtureOptimizationService.getAllCachedMatches();
+      matchData = allCachedMatches.find(
+        (fixture) => fixture.id == matchId || fixture.id === parseInt(matchId)
       );
-      console.log(
-        `[DEBUG] Raw starting_at from cached match: ${matchData.starting_at}`
-      );
-      console.log(
-        `[DEBUG] Type of starting_at: ${typeof matchData.starting_at}`
-      );
-    } else {
+      if (matchData) {
+        console.log(
+          `Using match data from all-cached-matches utility for match ${matchId}`
+        );
+        console.log(
+          `[DEBUG] Raw starting_at from cached match: ${matchData.starting_at}`
+        );
+        console.log(
+          `[DEBUG] Type of starting_at: ${typeof matchData.starting_at}`
+        );
+      }
+    }
+    
+    if (!matchData) {
       // Step 1: Check in-memory cache first
       matchData = FixtureOptimizationService.fixtureCache.get(cacheKey);
       if (
@@ -749,12 +906,38 @@ class BetService {
     if (inplay) {
       console.log(`[getMatchDataAndOdds] Processing inplay bet for match ${matchId}, odd ${oddId}`);
 
-      // Force a fresh fetch for betting to ensure we have the latest odds
-      console.log(`[getMatchDataAndOdds] Forcing fresh fetch of live odds for betting...`);
-      FixtureOptimizationService.liveFixturesService.liveOddsCache.del(matchId);
-
-      const liveOddsResult = await FixtureOptimizationService.liveFixturesService.ensureLiveOdds(matchId);
-      const liveOdds = liveOddsResult.betting_data || [];
+      // Use cached live odds data (already updated every second)
+      console.log(`[getMatchDataAndOdds] Using cached live odds data for betting...`);
+      
+      // Check cache status first
+      if (global.liveFixturesService) {
+        const cacheStatus = global.liveFixturesService.liveOddsCache.get(matchId);
+        console.log(`[getMatchDataAndOdds] Cache status for match ${matchId}:`, {
+          hasCache: !!cacheStatus,
+          cacheAge: cacheStatus?.cached_at ? Date.now() - cacheStatus.cached_at : null,
+          source: cacheStatus?.source || 'unknown',
+          bettingDataLength: cacheStatus?.betting_data?.length || 0
+        });
+      }
+      
+      const liveOdds = global.liveFixturesService 
+        ? global.liveFixturesService.getLiveOdds(matchId) || []
+        : [];
+      
+      console.log(`[getMatchDataAndOdds] Found ${liveOdds.length} betting sections for match ${matchId}`);
+      console.log(`[getMatchDataAndOdds] Looking for oddId: ${oddId}`);
+      
+      // Debug: Log all available odd IDs
+      const allOddIds = [];
+      liveOdds.forEach((section, sectionIndex) => {
+        if (section.options && Array.isArray(section.options)) {
+          section.options.forEach(option => {
+            allOddIds.push(option.id);
+            console.log(`[getMatchDataAndOdds] Section ${sectionIndex}: oddId=${option.id}, label=${option.label}, market_id=${option.market_id}`);
+          });
+        }
+      });
+      console.log(`[getMatchDataAndOdds] All available odd IDs:`, allOddIds);
 
       // Find the odd directly in the live odds data
       let foundOdd = null;
@@ -762,10 +945,33 @@ class BetService {
 
       // Search for the exact odd ID in all sections
       for (const section of liveOdds) {
+        // Try multiple comparison methods
         const odd = section.options?.find((o) => {
-          const optionId = parseInt(o.id);
-          const requestedId = parseInt(oddId);
-          return optionId === requestedId;
+          const optionId = o.id;
+          const requestedId = oddId;
+          
+          // Try exact match first
+          if (optionId === requestedId) {
+            console.log(`[getMatchDataAndOdds] ✅ EXACT MATCH: ${optionId} === ${requestedId}`);
+            return true;
+          }
+          
+          // Try number comparison
+          const optionIdNum = parseInt(optionId);
+          const requestedIdNum = parseInt(requestedId);
+          if (optionIdNum === requestedIdNum) {
+            console.log(`[getMatchDataAndOdds] ✅ NUMBER MATCH: ${optionIdNum} === ${requestedIdNum}`);
+            return true;
+          }
+          
+          // Try string comparison
+          if (optionId.toString() === requestedId.toString()) {
+            console.log(`[getMatchDataAndOdds] ✅ STRING MATCH: ${optionId.toString()} === ${requestedId.toString()}`);
+            return true;
+          }
+          
+          console.log(`[getMatchDataAndOdds] ❌ NO MATCH: ${optionId} (${typeof optionId}) !== ${requestedId} (${typeof requestedId})`);
+          return false;
         });
 
         if (odd) {
@@ -777,11 +983,112 @@ class BetService {
       }
 
       if (!foundOdd) {
-        throw new CustomError(
-          `Invalid odd ID for live bet. Odd ID ${oddId} not found in current live odds.`,
-          400,
-          "INVALID_LIVE_ODD_ID"
-        );
+        console.log(`[getMatchDataAndOdds] ❌ EXACT MATCH NOT FOUND for oddId: ${oddId}`);
+        console.log(`[getMatchDataAndOdds] Available odd IDs:`, allOddIds);
+        console.log(`[getMatchDataAndOdds] This shouldn't happen if SportsMonks doesn't change odd IDs!`);
+        
+        // Try to force refresh the odds and check again
+        if (global.liveFixturesService) {
+          console.log(`[getMatchDataAndOdds] Attempting to force refresh odds for match ${matchId}...`);
+          try {
+            // Check if match is still live before refreshing
+            const isLive = global.liveFixturesService.isMatchLive(matchId);
+            console.log(`[getMatchDataAndOdds] Match ${matchId} is live: ${isLive}`);
+            
+            if (!isLive) {
+              throw new CustomError(
+                `Match ${matchId} is no longer live. Cannot place inplay bet.`,
+                400,
+                "MATCH_NOT_LIVE"
+              );
+            }
+            
+            const refreshedOdds = await global.liveFixturesService.ensureLiveOdds(matchId);
+            const refreshedBettingData = refreshedOdds.betting_data || [];
+            
+            console.log(`[getMatchDataAndOdds] Refreshed odds found ${refreshedBettingData.length} sections`);
+            
+            // Log all refreshed odd IDs for debugging
+            const refreshedOddIds = [];
+            refreshedBettingData.forEach((section, sectionIndex) => {
+              if (section.options && Array.isArray(section.options)) {
+                section.options.forEach(option => {
+                  refreshedOddIds.push(option.id);
+                  console.log(`[getMatchDataAndOdds] Refreshed Section ${sectionIndex}: oddId=${option.id}, label=${option.label}, market_id=${option.market_id}`);
+                });
+              }
+            });
+            console.log(`[getMatchDataAndOdds] All refreshed odd IDs:`, refreshedOddIds);
+            
+            // Search in refreshed data
+            for (const section of refreshedBettingData) {
+              const refreshedOdd = section.options?.find((o) => {
+                const optionId = o.id;
+                const requestedId = oddId;
+                
+                if (optionId === requestedId || 
+                    parseInt(optionId) === parseInt(requestedId) ||
+                    optionId.toString() === requestedId.toString()) {
+                  console.log(`[getMatchDataAndOdds] ✅ FOUND IN REFRESHED DATA: ${optionId} === ${requestedId}`);
+                  return true;
+                }
+                return false;
+              });
+              
+              if (refreshedOdd) {
+                foundOdd = refreshedOdd;
+                foundMarket = section;
+                console.log(`[getMatchDataAndOdds] ✅ FOUND EXACT MATCH IN REFRESHED DATA: ${refreshedOdd.label} with ID: ${refreshedOdd.id}`);
+                break;
+              }
+            }
+          } catch (refreshError) {
+            console.log(`[getMatchDataAndOdds] Error refreshing odds:`, refreshError.message);
+          }
+        }
+        
+        if (!foundOdd) {
+          // Check if the match is still live
+          const isStillLive = global.liveFixturesService ? global.liveFixturesService.isMatchLive(matchId) : false;
+          console.log(`[getMatchDataAndOdds] Match ${matchId} is still live: ${isStillLive}`);
+          
+          // Try to find a similar odd with the same market_id and label
+          console.log(`[getMatchDataAndOdds] Attempting to find similar odd...`);
+          let similarOdd = null;
+          
+          for (const section of liveOdds) {
+            if (section.options && Array.isArray(section.options)) {
+              // Try to find by market_id and label
+              const found = section.options.find((o) => {
+                // Check if this is a similar odd (same market, similar label)
+                return o.market_id && o.label && 
+                       (o.label.toLowerCase().includes('home') || 
+                        o.label.toLowerCase().includes('away') || 
+                        o.label.toLowerCase().includes('draw'));
+              });
+              
+              if (found) {
+                similarOdd = found;
+                console.log(`[getMatchDataAndOdds] Found similar odd: ${found.label} with ID: ${found.id}, market_id: ${found.market_id}`);
+                break;
+              }
+            }
+          }
+          
+          if (similarOdd) {
+            console.log(`[getMatchDataAndOdds] Using similar odd as fallback: ${similarOdd.id}`);
+            foundOdd = similarOdd;
+            foundMarket = liveOdds.find(section => 
+              section.options && section.options.some(o => o.id === similarOdd.id)
+            );
+          } else {
+            throw new CustomError(
+              `Invalid odd ID for live bet. Odd ID ${oddId} not found in current live odds. ${isStillLive ? 'Match is still live but odd may have been removed.' : 'Match may no longer be live.'}`,
+              400,
+              "INVALID_LIVE_ODD_ID"
+            );
+          }
+        }
       }
 
       // Check if the odd is suspended or stopped
@@ -815,10 +1122,32 @@ class BetService {
     }
 
     // Get match data (same logic as placeBet)
-    const allCachedMatches = FixtureOptimizationService.getAllCachedMatches();
-    matchData = allCachedMatches.find(
-      (fixture) => fixture.id == matchId || fixture.id === parseInt(matchId)
-    );
+    // For inplay bets, try to get match data from live matches cache first
+    if (inplay && global.liveFixturesService) {
+      const liveMatches = global.liveFixturesService.inplayMatchesCache.get('inplay_matches') || [];
+      const liveMatch = liveMatches.find(match => match.id == matchId || match.id === parseInt(matchId));
+      
+      if (liveMatch) {
+        console.log(`[getMatchDataAndOdds] Using live match data from inplay cache for match ${matchId}`);
+        matchData = {
+          id: liveMatch.id,
+          starting_at: liveMatch.starting_at,
+          participants: liveMatch.participants || [],
+          state: liveMatch.state || {},
+          name: liveMatch.name,
+          league_id: liveMatch.league_id,
+          isLive: true
+        };
+      }
+    }
+    
+    // If not found in live cache or not inplay, search all cached matches using the utility method
+    if (!matchData) {
+      const allCachedMatches = FixtureOptimizationService.getAllCachedMatches();
+      matchData = allCachedMatches.find(
+        (fixture) => fixture.id == matchId || fixture.id === parseInt(matchId)
+      );
+    }
     
     if (!matchData) {
       matchData = FixtureOptimizationService.fixtureCache.get(cacheKey);

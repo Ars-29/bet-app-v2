@@ -71,7 +71,30 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                                     
                                     const isUsingLiveOdds = isInPlay && match.isLive && liveOdds && (liveOdds.home || liveOdds.draw || liveOdds.away);
                                     
+                                    // Helper function to get suspended status for an odd
+                                    const getSuspendedStatus = (oddKey) => {
+                                        if (isUsingLiveOdds && liveOdds[oddKey]) {
+                                            return liveOdds[oddKey].suspended || false;
+                                        }
+                                        if (displayOdds[oddKey] && typeof displayOdds[oddKey] === 'object') {
+                                            return displayOdds[oddKey].suspended || false;
+                                        }
+                                        return false;
+                                    };
 
+                                    // Helper function to get odd value
+                                    const getOddValue = (oddKey) => {
+                                        if (isUsingLiveOdds && liveOdds[oddKey]) {
+                                            return liveOdds[oddKey].value || liveOdds[oddKey];
+                                        }
+                                        if (displayOdds[oddKey]) {
+                                            if (typeof displayOdds[oddKey] === 'object' && displayOdds[oddKey].value !== undefined) {
+                                                return displayOdds[oddKey].value;
+                                            }
+                                            return displayOdds[oddKey];
+                                        }
+                                        return null;
+                                    };
                                     
                                     return (
                                         <>
@@ -79,40 +102,40 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                                             {(displayOdds.home || displayOdds['1']) && (
                                                 <Button
                                                     size="sm"
-                                                    className={getOddButtonClass({ suspended: false })}
-                                                    onClick={isOddClickable({ suspended: false })
-                                                        ? createBetHandler(match, 'Home', displayOdds.home || displayOdds['1']?.value, '1x2', null, { marketId: "1", label: "Home", name: `Win - ${match.team1 || match.participants?.[0]?.name || 'Team 1'}`, marketDescription: "Full Time Result" })
+                                                    className={getOddButtonClass({ suspended: getSuspendedStatus('home') || getSuspendedStatus('1') })}
+                                                    onClick={isOddClickable({ suspended: getSuspendedStatus('home') || getSuspendedStatus('1') })
+                                                        ? createBetHandler(match, 'Home', getOddValue('home') || getOddValue('1'), '1x2', (liveOdds.home?.oddId || displayOdds['1']?.oddId || null), { marketId: "1_home", label: "Home", name: `Win - ${match.team1 || match.participants?.[0]?.name || 'Team 1'}`, marketDescription: "Full Time Result" })
                                                         : undefined
                                                     }
-                                                    disabled={!isOddClickable({ suspended: false })}
+                                                    disabled={!isOddClickable({ suspended: getSuspendedStatus('home') || getSuspendedStatus('1') })}
                                                 >
-                                                    {displayOdds.home || displayOdds['1']?.value}
+                                                    {(getSuspendedStatus('home') || getSuspendedStatus('1')) ? '--' : (getOddValue('home') || getOddValue('1'))}
                                                 </Button>
                                             )}
                                             {(displayOdds.draw || displayOdds['X']) && (
                                                 <Button
                                                     size="sm"
-                                                    className={getOddButtonClass({ suspended: false })}
-                                                    onClick={isOddClickable({ suspended: false })
-                                                        ? createBetHandler(match, 'Draw', displayOdds.draw || displayOdds['X']?.value, '1x2', null, { marketId: "1", label: "Draw", name: `Draw - ${match.team1 || match.participants?.[0]?.name || 'Team 1'} vs ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })
+                                                    className={getOddButtonClass({ suspended: getSuspendedStatus('draw') || getSuspendedStatus('X') })}
+                                                    onClick={isOddClickable({ suspended: getSuspendedStatus('draw') || getSuspendedStatus('X') })
+                                                        ? createBetHandler(match, 'Draw', getOddValue('draw') || getOddValue('X'), '1x2', (liveOdds.draw?.oddId || displayOdds['X']?.oddId || null), { marketId: "1_draw", label: "Draw", name: `Draw - ${match.team1 || match.participants?.[0]?.name || 'Team 1'} vs ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })
                                                         : undefined
                                                     }
-                                                    disabled={!isOddClickable({ suspended: false })}
+                                                    disabled={!isOddClickable({ suspended: getSuspendedStatus('draw') || getSuspendedStatus('X') })}
                                                 >
-                                                    {displayOdds.draw || displayOdds['X']?.value}
+                                                    {(getSuspendedStatus('draw') || getSuspendedStatus('X')) ? '--' : (getOddValue('draw') || getOddValue('X'))}
                                                 </Button>
                                             )}
                                             {(displayOdds.away || displayOdds['2']) && (
                                                 <Button
                                                     size="sm"
-                                                    className={getOddButtonClass({ suspended: false })}
-                                                    onClick={isOddClickable({ suspended: false })
-                                                        ? createBetHandler(match, 'Away', displayOdds.away || displayOdds['2']?.value, '1x2', null, { marketId: "1", label: "Away", name: `Win - ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })
+                                                    className={getOddButtonClass({ suspended: getSuspendedStatus('away') || getSuspendedStatus('2') })}
+                                                    onClick={isOddClickable({ suspended: getSuspendedStatus('away') || getSuspendedStatus('2') })
+                                                        ? createBetHandler(match, 'Away', getOddValue('away') || getOddValue('2'), '1x2', (liveOdds.away?.oddId || displayOdds['2']?.oddId || null), { marketId: "1_away", label: "Away", name: `Win - ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })
                                                         : undefined
                                                     }
-                                                    disabled={!isOddClickable({ suspended: false })}
+                                                    disabled={!isOddClickable({ suspended: getSuspendedStatus('away') || getSuspendedStatus('2') })}
                                                 >
-                                                    {displayOdds.away || displayOdds['2']?.value}
+                                                    {(getSuspendedStatus('away') || getSuspendedStatus('2')) ? '--' : (getOddValue('away') || getOddValue('2'))}
                                                 </Button>
                                             )}
                                             {isUsingLiveOdds && (
@@ -201,9 +224,9 @@ const LeagueCard = ({ league, isInPlay = false, viewAllText = null }) => {
     const getOddButtonClass = (odd) => {
         const baseClass = "w-14 h-8 p-0 text-xs font-bold betting-button";
         if (!buttonsReady || (isInPlay && odd.suspended)) {
-            return `${baseClass} opacity-50 cursor-not-allowed bg-gray-300 hover:bg-gray-300`;
+            return `${baseClass} opacity-60 cursor-not-allowed bg-gray-400 hover:bg-gray-400`;
         }
-        return baseClass;
+        return `${baseClass} bg-emerald-600 hover:bg-emerald-700`;
     };
 
     return (
@@ -283,12 +306,20 @@ const LeagueCards = ({
     // Transform Redux data to match the expected format
     const transformReduxData = (data) => {
         
-        if (data ) {
+        if (data && Array.isArray(data)) {
             
+            // Check if data is already in league format or individual matches
+            const isLeagueFormat = data.length > 0 && data[0].matches && Array.isArray(data[0].matches);
             
-            return data?.map(leagueData => {
-                // Transform matches to match the expected format
-                const transformedMatches = leagueData.matches.map(match => {
+            if (isLeagueFormat) {
+                // League format: data is already grouped by leagues
+                return data?.map(leagueData => {
+                    if (!leagueData.matches || !Array.isArray(leagueData.matches)) {
+                        return null;
+                    }
+                    
+                    // Transform matches to match the expected format
+                    const transformedMatches = leagueData.matches.map(match => {
     
     
                     const teamNames = match.name?.split(' vs ') || ['Team A', 'Team B'];
@@ -392,8 +423,9 @@ const LeagueCards = ({
                         }
                     }
     
-                    // Skip match if no odds are available
-                    if (Object.keys(odds).length === 0) {
+                    // For in-play matches, show them even without odds
+                    // For other matches, skip if no odds are available
+                    if (!isInPlay && Object.keys(odds).length === 0) {
                         return null; // Don't include this match
                     }                    // Format the actual match time and determine if it's live
                     let displayTime = 'TBD'; // Default
@@ -448,9 +480,130 @@ const LeagueCards = ({
                     day: "Today",
                     matches: transformedMatches
                 };
-            });
-
-
+            }).filter(league => league !== null);
+            
+            } else {
+                // New format: data is individual matches, need to group by league
+                const leagueMap = new Map();
+                
+                data.forEach(match => {
+                    if (!match.id || !match.team1 || !match.team2) {
+                        return; // Skip invalid matches
+                    }
+                    
+                    const leagueId = match.league?.id || match.league_id || 'unknown';
+                    const leagueName = match.league?.name || `League ${leagueId}`;
+                    
+                    if (!leagueMap.has(leagueId)) {
+                        leagueMap.set(leagueId, {
+                            id: leagueId,
+                            name: leagueName,
+                            icon: "⚽",
+                            imageUrl: match.league?.imageUrl || null,
+                            day: "Today",
+                            matches: []
+                        });
+                    }
+                    
+                    // Transform the match
+                    const teamNames = match.name?.split(' vs ') || [match.team1, match.team2];
+                    const oddsData = match.odds || {};
+                    const odds = {};
+                    
+                    // Extract odds
+                    if (oddsData.home) {
+                        if (typeof oddsData.home === 'object' && oddsData.home.value !== undefined) {
+                            odds['1'] = { 
+                                value: Number(oddsData.home.value).toFixed(2), 
+                                oddId: oddsData.home.oddId || null,
+                                suspended: oddsData.home.suspended || false
+                            };
+                        } else if (typeof oddsData.home === 'number') {
+                            odds['1'] = { 
+                                value: Number(oddsData.home).toFixed(2), 
+                                oddId: null,
+                                suspended: false
+                            };
+                        }
+                    }
+                    if (oddsData.draw) {
+                        if (typeof oddsData.draw === 'object' && oddsData.draw.value !== undefined) {
+                            odds['X'] = { 
+                                value: Number(oddsData.draw.value).toFixed(2), 
+                                oddId: oddsData.draw.oddId || null,
+                                suspended: oddsData.draw.suspended || false
+                            };
+                        } else if (typeof oddsData.draw === 'number') {
+                            odds['X'] = { 
+                                value: Number(oddsData.draw).toFixed(2), 
+                                oddId: null,
+                                suspended: false
+                            };
+                        }
+                    }
+                    if (oddsData.away) {
+                        if (typeof oddsData.away === 'object' && oddsData.away.value !== undefined) {
+                            odds['2'] = { 
+                                value: Number(oddsData.away.value).toFixed(2), 
+                                oddId: oddsData.away.oddId || null,
+                                suspended: oddsData.away.suspended || false
+                            };
+                        } else if (typeof oddsData.away === 'number') {
+                            odds['2'] = { 
+                                value: Number(oddsData.away).toFixed(2), 
+                                oddId: null,
+                                suspended: false
+                            };
+                        }
+                    }
+                    
+                    // For in-play matches, show them even without odds
+                    // For other matches, skip if no odds are available
+                    if (!isInPlay && Object.keys(odds).length === 0) {
+                        return;
+                    }
+                    
+                    // Format time
+                    let displayTime = 'TBD';
+                    let isMatchLive = false;
+                    
+                    if (match.starting_at) {
+                        if (isInPlay) {
+                            const liveStateIds = [2, 3, 4, 22, 23, 24];
+                            const now = new Date();
+                            const startTime = new Date(match.starting_at + (match.starting_at.includes('Z') ? '' : ' UTC'));
+                            const timeSinceStart = now.getTime() - startTime.getTime();
+                            const minutesSinceStart = Math.floor(timeSinceStart / (1000 * 60));
+                            
+                            const hasLiveState = match.state_id && liveStateIds.includes(match.state_id);
+                            const isWithinTimeWindow = (timeSinceStart > 0 && minutesSinceStart <= 120);
+                            
+                            isMatchLive = hasLiveState || isWithinTimeWindow;
+                        }
+                        
+                        if (!isInPlay || !isMatchLive) {
+                            displayTime = formatToLocalTime(match.starting_at, { format: 'timeOnly' });
+                        }
+                    }
+                    
+                    const transformedMatch = {
+                        id: match.id,
+                        team1: teamNames[0],
+                        team2: teamNames[1],
+                        time: displayTime,
+                        odds: odds,
+                        clock: true,
+                        starting_at: match.starting_at,
+                        state_id: match.state_id,
+                        isLive: isMatchLive,
+                        timing: match.timing || null
+                    };
+                    
+                    leagueMap.get(leagueId).matches.push(transformedMatch);
+                });
+                
+                return Array.from(leagueMap.values()).filter(league => league.matches.length > 0);
+            }
         }
         return null;
      

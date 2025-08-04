@@ -63,7 +63,7 @@ class BetController {
       }
 
       // Check if the match is live
-      const isLive = FixtureOptimizationService.liveFixturesService.isMatchLive(matchId);
+      const isLive = global.liveFixturesService ? global.liveFixturesService.isMatchLive(matchId) : false;
       console.log(`Match ${matchId} is live: ${isLive}`);
 
       const result = await BetService.placeBet(userId, matchId, oddId, stake, betOption, isLive);
