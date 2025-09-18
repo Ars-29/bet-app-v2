@@ -66,7 +66,55 @@ class BetController {
       const isLive = global.liveFixturesService ? global.liveFixturesService.isMatchLive(matchId) : false;
       console.log(`Match ${matchId} is live: ${isLive}`);
 
-      const result = await BetService.placeBet(userId, matchId, oddId, stake, betOption, isLive);
+      // Optional: build Unibet-like metadata from request for parity (Phase 1)
+      const inferredMarketName = req.body.marketName || req.body.marketDescription || req.body?.betDetails?.market_name || req.body?.betDetails?.market_description;
+      const teamsString = typeof req.body.teams === 'string' ? req.body.teams : null;
+      let inferredHome = null, inferredAway = null;
+      if (teamsString && teamsString.includes(' vs ')) {
+        const [h, a] = teamsString.split(' vs ').map(s => s && s.trim());
+        inferredHome = h || null;
+        inferredAway = a || null;
+      }
+      const inferredHandicapFromDetails = (typeof req.body?.betDetails?.handicap === 'number') ? req.body.betDetails.handicap : (typeof req.body?.betDetails?.handicap === 'string' && !isNaN(Number(req.body.betDetails.handicap)) ? Number(req.body.betDetails.handicap) : undefined);
+      const inferredHandicapLine = (typeof inferredHandicapFromDetails === 'number') ? inferredHandicapFromDetails : req.body.handicapLine;
+      const inferredHandicapRaw = (typeof req.body.handicapRaw === 'number')
+        ? req.body.handicapRaw
+        : (typeof inferredHandicapLine === 'number' ? Math.round(inferredHandicapLine * 1000) : undefined);
+      const unibetMetaPayload = {
+        eventName: req.body.eventName || teamsString,
+        marketName: inferredMarketName,
+        criterionLabel: req.body.criterionLabel,
+        criterionEnglishLabel: req.body.criterionEnglishLabel,
+        outcomeEnglishLabel: req.body.outcomeEnglishLabel,
+        participant: req.body.participant,
+        participantId: req.body.participantId,
+        eventParticipantId: req.body.eventParticipantId,
+        betOfferTypeId: req.body.betOfferTypeId,
+        handicapRaw: inferredHandicapRaw,
+        handicapLine: inferredHandicapLine,
+        leagueId: req.body.leagueId,
+        leagueName: req.body.leagueName,
+        homeName: req.body.homeName || inferredHome,
+        awayName: req.body.awayName || inferredAway,
+        start: req.body.start || req.body.matchDate,
+        odds: (typeof req.body.odds === 'number') ? req.body.odds : Number(req.body.odds)
+      };
+
+      const result = await BetService.placeBet(
+        userId,
+        matchId,
+        oddId,
+        stake,
+        betOption,
+        isLive,
+        null,
+        unibetMetaPayload,
+        req.body.betDetails ? {
+          ...req.body.betDetails,
+          // Ensure value is numeric; if client sent string, coerce here
+          value: (typeof req.body.betDetails.value === 'number') ? req.body.betDetails.value : Number(req.body.betDetails.value)
+        } : null
+      );
       res.status(201).json({
         success: true,
         bet: result.bet,

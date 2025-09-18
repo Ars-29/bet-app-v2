@@ -157,6 +157,53 @@ class BetService {
     };
   }
 
+  // Build optional unibetMeta for parity with unibet-api placement
+  buildUnibetMetaFromPayload(payload = {}, context = {}) {
+    try {
+      const {
+        eventName,
+        marketName,
+        criterionLabel,
+        criterionEnglishLabel,
+        outcomeEnglishLabel,
+        participant,
+        participantId,
+        eventParticipantId,
+        betOfferTypeId,
+        handicapRaw,
+        handicapLine,
+        leagueId,
+        leagueName,
+        homeName,
+        awayName,
+        start
+      } = payload;
+
+      const meta = {
+        eventName: eventName ?? context.eventName ?? null,
+        marketName: marketName ?? context.marketName ?? null,
+        criterionLabel: criterionLabel ?? null,
+        criterionEnglishLabel: criterionEnglishLabel ?? null,
+        outcomeEnglishLabel: outcomeEnglishLabel ?? null,
+        participant: participant ?? null,
+        participantId: participantId ? String(participantId) : null,
+        eventParticipantId: eventParticipantId ? String(eventParticipantId) : null,
+        betOfferTypeId: betOfferTypeId != null ? String(betOfferTypeId) : null,
+        handicapRaw: typeof handicapRaw === 'number' ? handicapRaw : null,
+        handicapLine: typeof handicapLine === 'number' ? handicapLine : null,
+        leagueId: (leagueId ?? context.leagueId) != null ? String(leagueId ?? context.leagueId) : null,
+        leagueName: leagueName ?? context.leagueName ?? null,
+        homeName: homeName ?? context.homeName ?? null,
+        awayName: awayName ?? context.awayName ?? null,
+        start: start ? new Date(start) : (context.start ? new Date(context.start) : null)
+      };
+      return meta;
+    } catch (e) {
+      console.warn('[buildUnibetMetaFromPayload] Failed to build meta:', e?.message);
+      return undefined;
+    }
+  }
+
   // Helper method to calculate when bet outcome check should run (2h 5min after match start)
   calculateBetOutcomeCheckTime(matchStartTime) {
     return new Date(matchStartTime.getTime() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
@@ -298,7 +345,7 @@ class BetService {
     return parsedDate;
   }
 
-  async placeBet(userId, matchId, oddId, stake, betOption, inplay = false, combinationData = null) {
+  async placeBet(userId, matchId, oddId, stake, betOption, inplay = false, combinationData = null, unibetMetaPayload = undefined, clientBetDetails = undefined) {
     // Handle combination bets
     if (combinationData && Array.isArray(combinationData)) {
       console.log(`[placeBet] Processing combination bet with ${combinationData.length} legs`);
@@ -708,7 +755,34 @@ class BetService {
       }
     }
     
-    // If not found in live cache or not inplay, search all cached matches using the utility method
+    // If not found in live cache or not inplay, prefer Unibet V2 betOffers if available in cache/context
+    let unibetV2Data = undefined;
+    if (!matchData) {
+      try {
+        const v2 = global.fixtureOptimizationService?.fixtureCache?.get(`unibet_v2_${matchId}`);
+        if (v2?.data) {
+          unibetV2Data = v2;
+          // Prefer the first event with a matching id if present; otherwise fallback to first
+          const events = Array.isArray(v2.data.events) ? v2.data.events : [];
+          const event = events.find(e => String(e.id) === String(matchId)) || events[0];
+          // Attempt to resolve participants names from participants array
+          const participants = Array.isArray(event?.participants) ? event.participants : [];
+          const home = participants.find(p => (p.position || '').toLowerCase() === 'home') || participants[0];
+          const away = participants.find(p => (p.position || '').toLowerCase() === 'away') || participants[1];
+          matchData = {
+            id: matchId,
+            starting_at: event?.start || new Date().toISOString(),
+            participants: participants,
+            state: { state: event?.state },
+            name: event?.name || event?.englishName || (home?.name && away?.name ? `${home.name} vs ${away.name}` : undefined),
+            league: { id: event?.groupId, name: event?.group }
+          };
+          console.log(`[placeBet] Using Unibet V2 cache for match ${matchId}`);
+        }
+      } catch (e) { console.warn('[placeBet] Unibet V2 cache error:', e?.message); }
+    }
+
+    // Fallback to older all-cached-matches if still missing
     if (!matchData) {
       const allCachedMatches = FixtureOptimizationService.getAllCachedMatches();
       matchData = allCachedMatches.find(
@@ -757,39 +831,28 @@ class BetService {
             state: cachedOdds.state || {},
           };
         } else {
-          // Step 3: Fetch from SportsMonks API
+        // Step 3: As last resort, treat minimal payload as match context (Unibet only)
           console.log(
-            `Fetching match data for match ${matchId} from SportsMonks API`
+            `Using minimal Unibet context for match ${matchId} (no SportsMonk fallback)`
           );
-          const apiParams = {
-            filters: `fixtureIds:${matchId}`,
-            include: "odds;participants;state",
-            per_page: 1,
+          matchData = {
+            id: matchId,
+            starting_at: new Date().toISOString(),
+            participants: [],
+            state: {}
           };
-          const response =
-            await FixtureOptimizationService.getOptimizedFixtures(apiParams);
-          const matches = response.data || [];
-          if (!matches || matches.length === 0) {
-            throw new CustomError("Match not found", 404, "MATCH_NOT_FOUND");
-          }
-          matchData = matches.find(
-            (match) => match.id == matchId || match.id === parseInt(matchId)
-          );
-          if (!matchData) {
-            throw new CustomError("Match not found", 404, "MATCH_NOT_FOUND");
-          }
           // Update MongoDB cache
           await MatchOdds.findOneAndUpdate(
             { matchId: matchData.id },
             {
               matchId: matchData.id,
               starting_at: matchData.starting_at,
-              odds: matchData.odds.map((odd) => ({
+              odds: Array.isArray(matchData.odds) ? matchData.odds.map((odd) => ({
                 oddId: odd.id,
                 marketId: odd.market_id,
                 name: odd.name,
                 value: parseFloat(odd.value),
-              })),
+              })) : [],
               participants: matchData.participants || [],
               state: matchData.state || {},
               updatedAt: new Date(),
@@ -807,12 +870,61 @@ class BetService {
       }
     }
 
-    // If not an inplay bet, get odds from match data
+    // If not an inplay bet, get odds from match data; fallback to client-provided betDetails
     if (!inplay) {
       odds = matchData.odds?.find((odd) => odd.id === oddId);
+      if (!odds && clientBetDetails) {
+        const numericValue = Number(
+          clientBetDetails?.value ?? clientBetDetails?.odds ?? unibetMetaPayload?.odds
+        );
+        if (!Number.isFinite(numericValue)) {
+          throw new CustomError("Invalid odd value", 400, "INVALID_ODD_VALUE");
+        }
+        odds = {
+          id: oddId,
+          value: numericValue,
+          name: clientBetDetails.name || clientBetDetails.label,
+          market_id: clientBetDetails.market_id || 'unknown_market',
+          label: clientBetDetails.label,
+          total: clientBetDetails.total ?? null,
+          market_description: clientBetDetails.market_description || clientBetDetails.market_name || null,
+          handicap: clientBetDetails.handicap ?? null,
+        };
+      }
       if (!odds) {
         throw new CustomError("Invalid odd ID", 400, "INVALID_ODD_ID");
       }
+    }
+
+    // Extract extra Unibet metadata from V2 betOffers if available
+    let v2ExtraMeta = {};
+    try {
+      const betOffers = unibetV2Data?.data?.betOffers;
+      if (Array.isArray(betOffers)) {
+        for (const bo of betOffers) {
+          const oc = (bo.outcomes || []).find(o => String(o.id) === String(oddId));
+          if (oc) {
+            v2ExtraMeta = {
+              marketId: bo.id != null ? String(bo.id) : undefined,
+              marketName: bo.criterion?.label || bo.betOfferType?.name,
+              criterionLabel: bo.criterion?.label,
+              criterionEnglishLabel: bo.criterion?.englishLabel,
+              outcomeEnglishLabel: oc.englishLabel,
+              outcomeLabel: oc.label,
+              participant: oc.participant,
+              participantId: oc.participantId != null ? String(oc.participantId) : undefined,
+              eventParticipantId: oc.eventParticipantId != null ? String(oc.eventParticipantId) : undefined,
+              betOfferTypeId: bo.betOfferType?.id != null ? String(bo.betOfferType.id) : undefined,
+              handicapRaw: typeof oc.line === 'number' ? oc.line : undefined,
+              handicapLine: typeof oc.line === 'number' ? oc.line / 1000 : undefined,
+              // league fields already set via matchData
+            };
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[placeBet] Failed to enrich meta from V2 betOffers:', e?.message);
     }
 
     const user = await User.findById(userId);
@@ -868,6 +980,18 @@ class BetService {
       selection,
       inplay,
       betDetails,
+      // Optional unibet parity metadata for Phase 1
+      unibetMeta: this.buildUnibetMetaFromPayload(
+        { ...(unibetMetaPayload || {}), ...v2ExtraMeta },
+        {
+          eventName: matchData?.name || teams,
+          leagueId: matchData?.league?.id || matchData?.league_id,
+          leagueName: matchData?.league?.name,
+          homeName: matchData?.participants?.[0]?.name || (teams?.includes(' vs ') ? teams.split(' vs ')[0] : null),
+          awayName: matchData?.participants?.[1]?.name || (teams?.includes(' vs ') ? teams.split(' vs ')[1] : null),
+          start: matchData?.starting_at
+        }
+      ),
     });
 
     await bet.save();

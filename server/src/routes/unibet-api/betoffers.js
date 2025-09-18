@@ -51,6 +51,16 @@ router.get('/:eventId', async (req, res) => {
     });
 
     console.log(`✅ Successfully fetched bet offers for event: ${eventId}`);
+    try {
+      // Cache for later enrichment during bet placement
+      if (global.fixtureOptimizationService?.fixtureCache) {
+        global.fixtureOptimizationService.fixtureCache.set(
+          `unibet_v2_${eventId}`,
+          { data: response.data, cachedAt: Date.now() },
+          120
+        );
+      }
+    } catch (_) {}
     return res.json({
       success: true,
       eventId,

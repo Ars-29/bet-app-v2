@@ -47,11 +47,11 @@ const betSchema = new mongoose.Schema(
     },
     matchDate: {
       type: Date,
-      required: [true, "Match date is required"],
+      required: false,
     },
     estimatedMatchEnd: {
       type: Date,
-      required: [true, "Estimated match end time is required"],
+      required: false,
     },
     betOutcomeCheckTime: {
       type: Date,
@@ -60,12 +60,12 @@ const betSchema = new mongoose.Schema(
     },
     teams: {
       type: String,
-      required: [true, "Teams are required"],
+      required: false,
       trim: true,
     },
     selection: {
       type: String,
-      required: [true, "Selection is required"],
+      required: false,
       trim: true,
     },
     inplay: {
@@ -75,7 +75,7 @@ const betSchema = new mongoose.Schema(
     betDetails: {
       market_id: {
         type: String,
-        required: true,
+        required: false,
       },
       market_name: {
         type: String,
@@ -147,6 +147,25 @@ const betSchema = new mongoose.Schema(
       type: Number,
       required: false,
     },
+  // Optional Unibet parity metadata captured during placement (Phase 1)
+  unibetMeta: {
+    eventName: { type: String, default: null },
+    marketName: { type: String, default: null },
+    criterionLabel: { type: String, default: null },
+    criterionEnglishLabel: { type: String, default: null },
+    outcomeEnglishLabel: { type: String, default: null },
+    participant: { type: String, default: null },
+    participantId: { type: String, default: null },
+    eventParticipantId: { type: String, default: null },
+    betOfferTypeId: { type: String, default: null },
+    handicapRaw: { type: Number, default: null },
+    handicapLine: { type: Number, default: null },
+    leagueId: { type: String, default: null },
+    leagueName: { type: String, default: null },
+    homeName: { type: String, default: null },
+    awayName: { type: String, default: null },
+    start: { type: Date, default: null }
+  }
   },
   {
     timestamps: true,

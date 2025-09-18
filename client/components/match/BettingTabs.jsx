@@ -498,7 +498,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
             });
             if (flattened.length) renderedOptions = flattened;
         }
-
+        
         return (
             <div className={`grid ${gridClass} gap-1`}>
                 {/* Sort options for result markets to ensure Home, Draw, Away order */}
@@ -1424,7 +1424,7 @@ const BettingOptionButton = ({
                     <span>{teamName}</span>
                     {/* Show total only once: suppress if label already includes the number */}
                     {!String(label).includes(String(total)) && (
-                        <span className="bg-white/30 px-1 rounded text-[8px] min-[400px]:text-[9px]">{total}</span>
+                    <span className="bg-white/30 px-1 rounded text-[8px] min-[400px]:text-[9px]">{total}</span>
                     )}
                 </div>
             );
