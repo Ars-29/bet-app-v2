@@ -28,8 +28,56 @@ class BetController {
           );
         }
 
+        // Validate each leg has required fields
+        for (let i = 0; i < combinationData.length; i++) {
+          const leg = combinationData[i];
+          if (!leg.matchId || !leg.oddId || !leg.betOption) {
+            throw new CustomError(
+              `Missing required fields in leg ${i + 1}: matchId, oddId, betOption`,
+              400,
+              "INVALID_COMBINATION_LEG"
+            );
+          }
+        }
+
         console.log(`Processing combination bet with ${combinationData.length} legs`);
-        const result = await BetService.placeBet(userId, null, null, stake, null, false, combinationData);
+        
+        // Use the first leg's matchId as the primary matchId for the combination bet
+        const primaryMatchId = combinationData[0].matchId;
+        const primaryOddId = `combination_${Date.now()}`;
+        
+        // Create Unibet metadata for combination bet (similar to single bet)
+        const unibetMetaPayload = {
+          eventName: `Combination Bet (${combinationData.length} legs)`,
+          marketName: "Combination",
+          criterionLabel: "Multiple Markets",
+          criterionEnglishLabel: "Multiple Markets",
+          outcomeEnglishLabel: "Combination",
+          participant: null,
+          participantId: null,
+          eventParticipantId: null,
+          betOfferTypeId: "combination",
+          handicapRaw: null,
+          handicapLine: null,
+          leagueId: null,
+          leagueName: "Multiple Leagues",
+          homeName: "Multiple Teams",
+          awayName: "Multiple Teams",
+          start: combinationData[0].matchDate || new Date().toISOString(),
+          odds: combinationData.reduce((acc, leg) => acc * leg.odds, 1)
+        };
+
+        const result = await BetService.placeBet(
+          userId, 
+          primaryMatchId, 
+          primaryOddId, 
+          stake, 
+          `Combination Bet (${combinationData.length} legs)`, 
+          false, 
+          combinationData,
+          unibetMetaPayload,
+          null
+        );
         
         res.status(201).json({
           success: true,

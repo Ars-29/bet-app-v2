@@ -41,7 +41,21 @@ const betSlipSlice = createSlice({
       // Check if bet already exists (same oddId) or same market bet exists (same match + marketId)
       // For combination bets, we allow multiple selections from the same market (1X2)
       const existingBetIndex = state.bets.findIndex(
-        (bet) => bet.oddId === oddId || (bet.match.id === match.id && bet.marketId === marketId && !(typeof marketId === 'string' && marketId.includes('_')))
+        (bet) => {
+          // Same exact bet (same oddId) - always conflict
+          if (bet.oddId === oddId) return true;
+          
+          // Only check market conflicts if both bets have valid marketIds and they're the same
+          if (bet.match.id === match.id && 
+              bet.marketId && 
+              marketId && 
+              bet.marketId === marketId &&
+              !(typeof marketId === 'string' && marketId.includes('_'))) {
+            return true;
+          }
+          
+          return false;
+        }
       );
 
       // If same market bet exists, don't add it (only for non-combination markets)
@@ -50,7 +64,8 @@ const betSlipSlice = createSlice({
         if (existingBet.oddId === oddId) {
           // Same exact bet, update it
           console.log("Updating existing bet with same oddId");
-        } else if (!(typeof marketId === 'string' && marketId.includes('_'))) {
+        } else if (existingBet.marketId && marketId && existingBet.marketId === marketId && 
+                   !(typeof marketId === 'string' && marketId.includes('_'))) {
           // Same market bet exists for non-combination markets, don't add
           console.log("Same market bet already exists for this match, not adding");
           state.lastError = "You already have a bet on this market for this match";
@@ -476,9 +491,9 @@ export const placeBetThunk = createAsyncThunk(
         const combinationOddId = `combo_${Date.now()}`;
         const totalOdds = bets.reduce((acc, bet) => acc * bet.odds, 1);
         
-        // For combination bets, use proper combination identifiers
+        // For combination bets, use first leg's matchId as primary matchId
         const payload = {
-          matchId: "combination", // ✅ Use "combination" as matchId 
+          matchId: bets[0].match.id, // ✅ Use first leg's matchId instead of "combination"
           oddId: combinationOddId, // ✅ Generate unique combination oddId
           stake: combinationStake,
           betOption: `Combination Bet (${bets.length} legs)`, // ✅ Proper combination description

@@ -114,6 +114,32 @@ export default function BetManagement() {
     return bet.combination && Array.isArray(bet.combination) && bet.combination.length > 0;
   };
 
+  // Helper function to get the correct value for display
+  const getBetValue = (betDetails) => {
+    if (!betDetails) return "-";
+    
+    // If total is null/missing but handicap is present, use handicap
+    if ((betDetails.total === null || betDetails.total === undefined || betDetails.total === "") && 
+        betDetails.handicap !== null && betDetails.handicap !== undefined && betDetails.handicap !== "") {
+      return betDetails.handicap;
+    }
+    
+    // Otherwise use total
+    return betDetails.total || "-";
+  };
+
+  // Helper function to get the correct selection format
+  const getBetSelection = (betDetails, selection) => {
+    if (!betDetails) return selection || "-";
+    
+    // For markets with handicap, format with handicap value
+    if (betDetails.handicap !== null && betDetails.handicap !== undefined && betDetails.handicap !== "") {
+      return `${betDetails.label} ${betDetails.handicap} / ${betDetails.name}`;
+    }
+    
+    return selection || "-";
+  };
+
   // Filtering
   const filteredBets = useMemo(() => {
     return allBets.filter((bet) => {
@@ -337,18 +363,12 @@ export default function BetManagement() {
                       </TableCell>
                       <TableCell className="max-w-32">
                         <div className="truncate" title={leg.selection}>
-                          {leg.betDetails?.market_id === "37" 
-                            ? `${leg.betDetails?.label} ${leg.betDetails?.total} / ${leg.betDetails?.name}`
-                            : (leg.selection || "-")
-                          }
+                          {getBetSelection(leg.betDetails, leg.selection)}
                         </div>
                       </TableCell>
                       <TableCell className="max-w-20">
-                        <div className="truncate" title={leg.betDetails?.total}>
-                          {leg.betDetails?.market_id === "37" 
-                            ? leg.betDetails?.total
-                            : (leg.betDetails?.total || "-")
-                          }
+                        <div className="truncate" title={getBetValue(leg.betDetails)}>
+                          {getBetValue(leg.betDetails)}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1292,20 +1312,12 @@ export default function BetManagement() {
                             </TableCell>
                             <TableCell className="max-w-48">
                               <div className="truncate" title={isCombo ? "Multiple Selections" : bet.selection}>
-                                {isCombo ? "Multiple Selections" : (
-                                  bet.betDetails?.market_id === "37" 
-                                    ? `${bet.betDetails?.label} ${bet.betDetails?.total} / ${bet.betDetails?.name}`
-                                    : (bet.selection || "-")
-                                )}
+                                {isCombo ? "Multiple Selections" : getBetSelection(bet.betDetails, bet.selection)}
                               </div>
                             </TableCell>
                             <TableCell className="max-w-32">
-                              <div className="truncate" title={isCombo ? "N/A" : bet.betDetails?.total}>
-                                {isCombo ? "N/A" : (
-                                  bet.betDetails?.market_id === "37" 
-                                    ? bet.betDetails?.total
-                                    : (bet.betDetails?.total || "-")
-                                )}
+                              <div className="truncate" title={isCombo ? "N/A" : getBetValue(bet.betDetails)}>
+                                {isCombo ? "N/A" : getBetValue(bet.betDetails)}
                               </div>
                             </TableCell>
                             <TableCell>

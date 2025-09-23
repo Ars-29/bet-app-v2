@@ -17,6 +17,10 @@ router.post('/process', unibetCalcController.processAll);
 router.post('/process/:betId', unibetCalcController.processOne);
 router.post('/process/:betId/match/:matchId', unibetCalcController.processWithMatch);
 
+// Combination bet processing endpoints
+router.post('/process-combination/:betId', unibetCalcController.processCombinationBet);
+router.post('/process-all-combinations', unibetCalcController.processAllCombinations);
+
 // Status endpoint
 router.get('/status', unibetCalcController.getProcessingStatus);
 

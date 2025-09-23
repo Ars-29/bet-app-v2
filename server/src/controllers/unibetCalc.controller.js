@@ -13,12 +13,12 @@ export class UnibetCalcController {
         this.financeService = financeService;
     }
 
-    // Process all pending bets (batch processing)
+    // Process all pending bets (batch processing) - includes both single and combination bets
     processAll = async (req, res) => {
         try {
             const { limit = 200, onlyPending = true } = req.body;
             
-            console.log(`Starting batch processing: limit=${limit}, onlyPending=${onlyPending}`);
+            console.log(`[processAll] Starting batch processing: limit=${limit}, onlyPending=${onlyPending}`);
 
             // Get pending bets
             const query = onlyPending ? { status: 'pending' } : {};
@@ -26,31 +26,37 @@ export class UnibetCalcController {
                 .sort({ createdAt: 1 })
                 .limit(parseInt(limit));
 
-            console.log('bets%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%', bets);
             if (bets.length === 0) {
                 return res.json({
                     success: true,
                     message: 'No bets found for processing',
                     stats: {
                         total: 0,
-                        processed: 0,
+                        single: { processed: 0, won: 0, lost: 0, canceled: 0 },
+                        combination: { processed: 0, won: 0, lost: 0, canceled: 0 },
                         failed: 0,
-                        won: 0,
-                        lost: 0,
-                        canceled: 0
+                        errors: []
                     }
                 });
             }
 
-            console.log(`Found ${bets.length} bets to process`);
+            console.log(`[processAll] Found ${bets.length} bets to process`);
 
             const stats = {
                 total: bets.length,
-                processed: 0,
+                single: {
+                    processed: 0,
+                    won: 0,
+                    lost: 0,
+                    canceled: 0
+                },
+                combination: {
+                    processed: 0,
+                    won: 0,
+                    lost: 0,
+                    canceled: 0
+                },
                 failed: 0,
-                won: 0,
-                lost: 0,
-                canceled: 0,
                 errors: []
             };
 
@@ -59,35 +65,57 @@ export class UnibetCalcController {
             // Process each bet
             for (const bet of bets) {
                 try {
-                    const result = await this.processSingleBet(bet);
+                    let result;
+                    
+                    // Debug logging for bet type detection
+                    console.log(`[processAll] Bet ${bet._id} analysis:`, {
+                        hasCombination: !!bet.combination,
+                        combinationLength: bet.combination?.length || 0,
+                        betType: bet.betType,
+                        status: bet.status
+                    });
+                    
+                    // Check if it's a combination bet
+                    if (bet.combination && bet.combination.length > 0) {
+                        console.log(`[processAll] Processing combination bet ${bet._id} with ${bet.combination.length} legs`);
+                        result = await this.processCombinationBetInternal(bet);
+                        stats.combination.processed++;
+                        if (result.status === 'won') stats.combination.won++;
+                        else if (result.status === 'lost') stats.combination.lost++;
+                        else if (result.status === 'canceled') stats.combination.canceled++;
+                    } else {
+                        console.log(`[processAll] Processing single bet ${bet._id}`);
+                        result = await this.processSingleBet(bet);
+                        stats.single.processed++;
+                        if (result.status === 'won') stats.single.won++;
+                        else if (result.status === 'lost') stats.single.lost++;
+                        else if (result.status === 'canceled') stats.single.canceled++;
+                    }
+                    
                     results.push(result);
                     
-                    stats.processed++;
-                    if (result.status === 'won') stats.won++;
-                    else if (result.status === 'lost') stats.lost++;
-                    else if (result.status === 'canceled') stats.canceled++;
-                    
                 } catch (error) {
-                    console.error(`Error processing bet ${bet._id}:`, error);
+                    console.error(`[processAll] Error processing bet ${bet._id}:`, error);
                     stats.failed++;
                     stats.errors.push({
                         betId: bet._id,
+                        betType: bet.combination && bet.combination.length > 0 ? 'combination' : 'single',
                         error: error.message
                     });
                 }
             }
 
-            console.log(`Batch processing completed:`, stats);
+            console.log(`[processAll] Batch processing completed:`, stats);
 
             res.json({
                 success: true,
-                message: `Processed ${stats.processed} out of ${stats.total} bets`,
+                message: `Processed ${stats.single.processed + stats.combination.processed} out of ${stats.total} bets (${stats.single.processed} single, ${stats.combination.processed} combination)`,
                 stats: stats,
                 results: results.slice(0, 10) // Return first 10 results for review
             });
 
         } catch (error) {
-            console.error('Error in batch processing:', error);
+            console.error('[processAll] Error in batch processing:', error);
             res.status(500).json({
                 success: false,
                 message: 'Failed to process bets',
@@ -323,6 +351,324 @@ export class UnibetCalcController {
         } catch (error) {
             console.error(`Error updating balance for user ${userId}:`, error);
             // Don't throw error here as it would fail the entire bet processing
+        }
+    }
+
+    // Process combination bet using calculator
+    processCombinationBet = async (req, res) => {
+        try {
+            const { betId } = req.params;
+            
+            console.log(`Processing combination bet: ${betId}`);
+
+            const bet = await Bet.findById(betId);
+            if (!bet) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Bet not found'
+                });
+            }
+
+            if (!bet.combination || bet.combination.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Not a combination bet'
+                });
+            }
+
+            const result = await this.processCombinationBetInternal(bet);
+
+            res.json({
+                success: true,
+                message: 'Combination bet processed successfully',
+                result: result
+            });
+
+        } catch (error) {
+            console.error('Error processing combination bet:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to process combination bet',
+                error: error.message
+            });
+        }
+    };
+
+    // Process all pending combination bets
+    processAllCombinations = async (req, res) => {
+        try {
+            const { limit = 50 } = req.body;
+            
+            console.log(`Processing all pending combination bets: limit=${limit}`);
+
+            const pendingCombinationBets = await Bet.find({
+                status: 'pending',
+                combination: { $exists: true, $ne: [] }
+            })
+            .sort({ createdAt: 1 })
+            .limit(parseInt(limit));
+
+            if (pendingCombinationBets.length === 0) {
+                return res.json({
+                    success: true,
+                    message: 'No pending combination bets found',
+                    stats: {
+                        total: 0,
+                        processed: 0,
+                        failed: 0,
+                        won: 0,
+                        lost: 0,
+                        canceled: 0
+                    }
+                });
+            }
+
+            console.log(`Found ${pendingCombinationBets.length} combination bets to process`);
+
+            const stats = {
+                total: pendingCombinationBets.length,
+                processed: 0,
+                failed: 0,
+                won: 0,
+                lost: 0,
+                canceled: 0,
+                errors: []
+            };
+
+            const results = [];
+
+            // Process each combination bet
+            for (const bet of pendingCombinationBets) {
+                try {
+                    const result = await this.processCombinationBetInternal(bet);
+                    results.push(result);
+                    
+                    stats.processed++;
+                    if (result.status === 'won') stats.won++;
+                    else if (result.status === 'lost') stats.lost++;
+                    else if (result.status === 'canceled') stats.canceled++;
+                    
+                } catch (error) {
+                    console.error(`Error processing combination bet ${bet._id}:`, error);
+                    stats.failed++;
+                    stats.errors.push({
+                        betId: bet._id,
+                        error: error.message
+                    });
+                }
+            }
+
+            console.log(`Combination bet batch processing completed:`, stats);
+
+            res.json({
+                success: true,
+                message: `Processed ${stats.processed} out of ${stats.total} combination bets`,
+                stats: stats,
+                results: results.slice(0, 10) // Return first 10 results for review
+            });
+
+        } catch (error) {
+            console.error('Error in combination bet batch processing:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to process combination bets',
+                error: error.message
+            });
+        }
+    };
+
+    // Internal method to process a combination bet
+    async processCombinationBetInternal(bet) {
+        try {
+            console.log(`[processCombinationBetInternal] Processing combination bet ${bet._id} with ${bet.combination.length} legs`);
+            
+            // Validate combination bet for calculator
+            const validation = BetSchemaAdapter.validateCombinationBetForCalculator(bet);
+            if (!validation.isValid) {
+                throw new Error(`Combination bet validation failed: ${validation.errors.join(', ')}`);
+            }
+
+            // Adapt combination bet for calculator (returns array of calculator bets)
+            const calculatorBets = BetSchemaAdapter.adaptCombinationBetForCalculator(bet);
+            
+            console.log(`[processCombinationBetInternal] Adapted ${calculatorBets.length} legs for calculator`);
+
+            // Process each leg through calculator
+            const results = [];
+            for (let i = 0; i < calculatorBets.length; i++) {
+                const calculatorBet = calculatorBets[i];
+                const leg = bet.combination[i];
+                
+                console.log(`[processCombinationBetInternal] Processing leg ${i + 1}/${calculatorBets.length}: ${leg.betOption} @ ${leg.odds}`);
+                
+                try {
+                    // Process leg through calculator (don't update database for combination bet legs)
+                    const calculatorResult = await this.calculator.processBetWithMatchId(calculatorBet, calculatorBet.eventId, false);
+                    
+                    // Extract outcome from calculator result
+                    const legResult = {
+                        status: calculatorResult.outcome?.status || 'pending',
+                        payout: calculatorResult.outcome?.payout || 0,
+                        reason: calculatorResult.outcome?.reason || 'Leg processed',
+                        odds: leg.odds, // Include odds for payout calculation
+                        debugInfo: calculatorResult.debugInfo || {}
+                    };
+                    
+                    results.push(legResult);
+                    
+                    console.log(`[processCombinationBetInternal] Leg ${i + 1} result: ${legResult.status} (payout: ${legResult.payout})`);
+                    
+                } catch (error) {
+                    console.error(`[processCombinationBetInternal] Error processing leg ${i + 1}:`, error);
+                    
+                    // Add error result for this leg
+                    results.push({
+                        status: 'error',
+                        payout: 0,
+                        reason: `Leg processing failed: ${error.message}`,
+                        debugInfo: { error: error.message }
+                    });
+                }
+            }
+            
+            // Adapt results back to bet-app format
+            const updatedBet = BetSchemaAdapter.adaptCombinationCalculatorResult(results, bet);
+            
+            console.log(`[processCombinationBetInternal] Updating database for bet ${bet._id}:`, {
+                status: updatedBet.status,
+                payout: updatedBet.payout,
+                legs: updatedBet.combination.length
+            });
+            
+            console.log(`[processCombinationBetInternal] Updated bet object:`, JSON.stringify(updatedBet, null, 2));
+            
+            // Update bet in database - use $set to ensure proper update
+            const savedBet = await Bet.findByIdAndUpdate(
+                bet._id,
+                { 
+                    $set: {
+                        status: updatedBet.status,
+                        payout: updatedBet.payout,
+                        combination: updatedBet.combination,
+                        result: updatedBet.result,
+                        updatedAt: new Date()
+                    }
+                },
+                { new: true, runValidators: true }
+            );
+            
+            if (savedBet) {
+                console.log(`[processCombinationBetInternal] Database updated successfully:`, {
+                    status: savedBet.status,
+                    payout: savedBet.payout,
+                    updatedAt: savedBet.updatedAt
+                });
+            } else {
+                console.error(`[processCombinationBetInternal] Database update failed - no bet returned`);
+            }
+            
+            // Update user balance if combination bet is resolved
+            if (updatedBet.status !== 'pending') {
+                console.log(`[processCombinationBetInternal] Updating user balance for resolved bet`);
+                try {
+                    await this.updateUserBalanceForCombinationBet(savedBet);
+                    console.log(`[processCombinationBetInternal] User balance updated successfully`);
+                } catch (error) {
+                    console.error(`[processCombinationBetInternal] User balance update failed:`, error.message);
+                }
+            } else {
+                console.log(`[processCombinationBetInternal] Bet still pending, skipping balance update`);
+            }
+            
+            return {
+                betId: bet._id,
+                status: updatedBet.status,
+                payout: updatedBet.payout,
+                legs: updatedBet.combination.length,
+                wonLegs: updatedBet.result.wonLegs,
+                lostLegs: updatedBet.result.lostLegs,
+                canceledLegs: updatedBet.result.canceledLegs,
+                pendingLegs: updatedBet.result.pendingLegs,
+                reason: `Combination bet ${updatedBet.status}: ${updatedBet.result.wonLegs}/${updatedBet.combination.length} legs won`,
+                processedAt: new Date(),
+                legResults: results
+            };
+            
+        } catch (error) {
+            console.error(`[processCombinationBetInternal] Error processing combination bet ${bet._id}:`, error);
+            
+            // Update bet with error status
+            await Bet.findByIdAndUpdate(bet._id, {
+                status: 'error',
+                result: {
+                    status: 'error',
+                    reason: error.message,
+                    processedAt: new Date(),
+                    error: true,
+                    legs: bet.combination?.length || 0
+                },
+                updatedAt: new Date()
+            });
+
+            throw error;
+        }
+    }
+
+    // Update user balance for resolved combination bet
+    async updateUserBalanceForCombinationBet(bet) {
+        try {
+            console.log(`[updateUserBalanceForCombinationBet] Looking for user: ${bet.userId} (type: ${typeof bet.userId})`);
+            const user = await User.findById(bet.userId);
+            if (!user) {
+                console.error(`[updateUserBalanceForCombinationBet] User not found: ${bet.userId}`);
+                // Try to find user by string ID
+                const userByString = await User.findById(bet.userId.toString());
+                if (userByString) {
+                    console.log(`[updateUserBalanceForCombinationBet] Found user by string ID: ${userByString._id}`);
+                } else {
+                    console.error(`[updateUserBalanceForCombinationBet] User not found by string ID either`);
+                }
+                return;
+            }
+            
+            let balanceChange = 0;
+            let transactionType = '';
+
+            if (bet.status === 'won') {
+                // Add payout to balance (stake × product of all odds)
+                balanceChange = bet.payout;
+                transactionType = 'combination_bet_win';
+                console.log(`[updateUserBalanceForCombinationBet] Added ${bet.payout} to user ${bet.userId} balance (combination won)`);
+            } else if (bet.status === 'lost') {
+                // Balance already deducted during placement, no change needed
+                balanceChange = 0;
+                transactionType = 'combination_bet_loss';
+                console.log(`[updateUserBalanceForCombinationBet] Bet lost, no balance change for user ${bet.userId} (combination lost)`);
+            } else if (bet.status === 'canceled') {
+                // Refund stake (any leg canceled = whole combination canceled)
+                balanceChange = bet.stake;
+                transactionType = 'combination_bet_cancel';
+                console.log(`[updateUserBalanceForCombinationBet] Refunded ${bet.stake} to user ${bet.userId} balance (combination canceled)`);
+            }
+
+            // Update user balance directly using User model (same approach as calculator)
+            if (balanceChange !== 0) {
+                console.log(`[updateUserBalanceForCombinationBet] Updating user ${bet.userId} balance by +${balanceChange}`);
+                const updateResult = await User.findByIdAndUpdate(bet.userId, {
+                    $inc: { balance: balanceChange }
+                });
+                
+                if (updateResult) {
+                    console.log(`[updateUserBalanceForCombinationBet] Balance updated successfully for user ${bet.userId}`);
+                } else {
+                    console.error(`[updateUserBalanceForCombinationBet] Failed to update balance - user not found: ${bet.userId}`);
+                }
+            } else {
+                console.log(`[updateUserBalanceForCombinationBet] No balance change needed for user ${bet.userId}`);
+            }
+            
+        } catch (error) {
+            console.error(`[updateUserBalanceForCombinationBet] Error updating balance:`, error);
         }
     }
 

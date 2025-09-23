@@ -22,18 +22,28 @@ export const preventConflictingBet = async (req, res, next) => {
       console.log('[conflictingBet] Processing single bet');
     }
 
+    // Determine if this is a combination bet request (move this before the loop)
+    const isCombinationBetRequest = req.body.combinationData && Array.isArray(req.body.combinationData);
+
     // Check for missing required fields in any bet (with graceful market key inference)
     for (const bet of betsToCheck) {
-      const inferredMarketKey = bet.marketId || bet.betDetails?.market_id || bet.betDetails?.marketId || bet.betDetails?.market_description || bet.betDetails?.market_name || bet.betDetails?.label;
-      if (!userId || !bet.matchId || !inferredMarketKey) {
+      const inferredMarketKey = bet.marketId || bet.betDetails?.market_id || bet.betDetails?.marketId || bet.betDetails?.market_description || bet.betDetails?.market_name || bet.betDetails?.label || bet.betOption || bet.selection;
+      
+      if (!userId || !bet.matchId) {
         console.log('[conflictingBet] Missing required fields:', { userId, matchId: bet.matchId, marketId: inferredMarketKey });
         return res.status(400).json({ 
           success: false, 
-          message: 'Missing userId, matchId, or marketId for conflict check.' 
+          message: 'Missing userId or matchId for conflict check.' 
         });
       }
-      // Attach inferred key so we consistently use it below
-      bet.__marketKey = String(inferredMarketKey);
+      
+      // For combination bets, we'll use a more flexible market key
+      if (isCombinationBetRequest) {
+        // Use oddId as market identifier for combination bets since betDetails isn't available yet
+        bet.__marketKey = bet.oddId || bet.betOption || bet.selection || 'unknown';
+      } else {
+        bet.__marketKey = String(inferredMarketKey);
+      }
     }
 
     // Check for conflicts within the current request (same matchId + marketId in multiple bets)
@@ -55,19 +65,10 @@ export const preventConflictingBet = async (req, res, next) => {
       }
       seenCombos.add(comboKey);
       
-      // Check for duplicate match IDs in combination bets
-      if (seenMatchIds.has(matchId)) {
-        console.log('[conflictingBet] Duplicate match ID in combination bet:', matchId);
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Combination bets cannot contain the same match multiple times.' 
-        });
-      }
-      seenMatchIds.add(matchId);
+      // Allow combination bets from the same match (different markets)
+      // Only check for duplicate match + market combinations (handled above)
+      seenMatchIds.add(matchId); // Still add to track, but don't block
     }
-
-    // Determine if this is a combination bet request
-    const isCombinationBetRequest = req.body.combinationData && Array.isArray(req.body.combinationData);
 
     // Check for conflicts with existing pending bets in the DB
     for (const bet of betsToCheck) {
@@ -77,28 +78,16 @@ export const preventConflictingBet = async (req, res, next) => {
       console.log('[conflictingBet] Checking for conflicts with:', { matchId, marketKey, isCombinationBetRequest });
 
       if (isCombinationBetRequest) {
-        // For combination bets, only check conflicts with other combination bets that have the exact same leg
-        // Allow combination bets to coexist with single bets and other combination bets
+        // For combination bets, check for conflicts with existing combination bets that have the same oddId
+        // This is more reliable than trying to match betDetails that don't exist yet
         const existingCombinationBet = await Bet.findOne({
           userId,
-          matchId,
           status: 'pending',
           combination: { $exists: true, $ne: [] },
-          $or: [
-            { 'betDetails.market_id': marketKey },
-            { 'betDetails.market_description': bet.betDetails?.market_description },
-            { 'betDetails.market_name': bet.betDetails?.market_name }
-          ],
           'combination': {
             $elemMatch: {
               matchId: matchId,
-              $or: [
-                { 'betDetails.market_id': marketKey },
-                { 'betDetails.market_description': bet.betDetails?.market_description },
-                { 'betDetails.market_name': bet.betDetails?.market_name }
-              ],
-              'betDetails.label': bet.betDetails?.label,
-              'betDetails.name': bet.betDetails?.name
+              oddId: bet.oddId
             }
           }
         });

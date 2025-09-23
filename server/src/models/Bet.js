@@ -143,6 +143,25 @@ const betSchema = new mongoose.Schema(
         estimatedMatchEnd: { type: Date },
         betOutcomeCheckTime: { type: Date },
         teams: { type: String, trim: true },
+        // Unibet metadata for each leg (required for calculator)
+        unibetMeta: {
+          eventName: { type: String, default: null },
+          marketName: { type: String, default: null },
+          criterionLabel: { type: String, default: null },
+          criterionEnglishLabel: { type: String, default: null },
+          outcomeEnglishLabel: { type: String, default: null },
+          participant: { type: String, default: null },
+          participantId: { type: String, default: null },
+          eventParticipantId: { type: String, default: null },
+          betOfferTypeId: { type: String, default: null },
+          handicapRaw: { type: Number, default: null },
+          handicapLine: { type: Number, default: null },
+          leagueId: { type: String, default: null },
+          leagueName: { type: String, default: null },
+          homeName: { type: String, default: null },
+          awayName: { type: String, default: null },
+          start: { type: Date, default: null }
+        },
       }
     ],
     // Total odds for combination bet (product of all individual odds)

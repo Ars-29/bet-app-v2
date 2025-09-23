@@ -47,7 +47,8 @@ const LiveMatchCard = ({ match }) => {
                         </div>
                     )}
 
-                    <div className="flex gap-1">
+                    {/* Odds buttons hidden for now */}
+                    {/* <div className="flex gap-1">
                         {match.odds['1'] && (
                             <Button
                                 size={"sm"}
@@ -90,7 +91,7 @@ const LiveMatchCard = ({ match }) => {
                                 Odds not available
                             </div>
                         )}
-                    </div>
+                    {/* </div> */}
                 </div>
             </div>
         </Link>

@@ -1519,9 +1519,9 @@ const BettingOptionButton = ({
             ) &&
             typeof name === 'string' && name && name.toLowerCase() !== 'yes' && name.toLowerCase() !== 'no'
         ) {
-            // Compose: Player Name + threshold for Over/Under when present
-            if ((label === 'Over' || label === 'Under') && total) {
-                return <span>{name} — {label} {total}</span>;
+            // For Over/Under markets, show both player name and the full label (which contains the line data)
+            if (label && (label.toLowerCase().includes('over') || label.toLowerCase().includes('under'))) {
+                return <span>{name} - {label}</span>;
             }
             return <span>{name}</span>;
         }
@@ -1691,7 +1691,7 @@ const PlayerCardOption = ({ player, matchData }) => {
                             handicapValue={option.handicap}
                             halfIndicator={option.halfIndicator}
                             thresholds={option.thresholds}
-                            total={option.total}
+                            total={option.line ? (option.line / 1000).toFixed(1) : option.total}
                             name={player.name}
                             marketDescription={option.market_description || "Player's shots on target"}
                             suspended={Boolean(option.suspended) || Number.isNaN(Number(option.value))}

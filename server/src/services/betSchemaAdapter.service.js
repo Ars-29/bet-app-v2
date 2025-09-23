@@ -222,4 +222,213 @@ export class BetSchemaAdapter {
         
         return 'unknown';
     }
+
+    /**
+     * Convert combination bet to calculator-compatible format
+     * @param {Object} bet - bet-app Bet document with combination array
+     * @returns {Array} - Array of calculator-compatible bet objects (one per leg)
+     */
+    static adaptCombinationBetForCalculator(bet) {
+        if (!bet.combination || !Array.isArray(bet.combination)) {
+            throw new Error('Invalid combination bet: missing combination array');
+        }
+        
+        console.log(`[adaptCombinationBetForCalculator] Processing combination bet ${bet._id} with ${bet.combination.length} legs`);
+        
+        return bet.combination.map((leg, index) => {
+            // Create a single bet object for this leg using the leg's data
+            const legBet = {
+                // Core bet fields from the main combination bet
+                _id: bet._id,
+                userId: bet.userId,
+                status: bet.status,
+                createdAt: bet.createdAt,
+                updatedAt: bet.updatedAt,
+                betType: bet.betType,
+                
+                // Leg-specific data
+                matchId: leg.matchId,
+                oddId: leg.oddId,
+                betOption: leg.betOption,
+                odds: leg.odds,
+                stake: leg.stake,
+                betDetails: leg.betDetails,
+                unibetMeta: leg.unibetMeta, // Use leg's unibetMeta
+                teams: leg.teams,
+                selection: leg.selection,
+                inplay: leg.inplay,
+                matchDate: leg.matchDate,
+                estimatedMatchEnd: leg.estimatedMatchEnd,
+                betOutcomeCheckTime: leg.betOutcomeCheckTime
+            };
+            
+            console.log(`[adaptCombinationBetForCalculator] Processing leg ${index + 1}: ${leg.betOption} @ ${leg.odds} for match ${leg.matchId}`);
+            
+            // Use the existing single bet adapter
+            return this.adaptBetForCalculator(legBet);
+        });
+    }
+
+    /**
+     * Convert calculator results back to bet-app format for combination bets
+     * @param {Array} calculatorResults - Results from calculator for each leg
+     * @param {Object} originalBet - Original bet-app Bet document
+     * @returns {Object} - Updated bet-app Bet document
+     */
+    static adaptCombinationCalculatorResult(calculatorResults, originalBet) {
+        if (!originalBet.combination || !Array.isArray(originalBet.combination)) {
+            throw new Error('Invalid combination bet: missing combination array');
+        }
+        
+        if (calculatorResults.length !== originalBet.combination.length) {
+            throw new Error(`Mismatch: ${calculatorResults.length} results for ${originalBet.combination.length} legs`);
+        }
+        
+        console.log(`[adaptCombinationCalculatorResult] Processing ${calculatorResults.length} leg results for combination bet ${originalBet._id}`);
+        
+        // Update each leg with its calculator result
+        const updatedCombination = originalBet.combination.map((leg, index) => {
+            const result = calculatorResults[index];
+            
+            console.log(`[adaptCombinationCalculatorResult] Leg ${index + 1}: ${leg.betOption} → ${result.status} (payout: ${result.payout})`);
+            
+            return {
+                ...leg,
+                status: result.status,
+                payout: result.payout || 0,
+                odds: leg.odds, // Explicitly preserve odds for payout calculation
+                // Add result metadata
+                result: {
+                    status: result.status,
+                    payout: result.payout || 0,
+                    reason: result.reason,
+                    processedAt: new Date(),
+                    debugInfo: result.debugInfo || {},
+                    calculatorVersion: 'unibet-api-v1'
+                }
+            };
+        });
+        
+        // Calculate overall combination status using combination bet rules
+        const overallStatus = this.calculateCombinationStatus(updatedCombination);
+        const totalPayout = this.calculateCombinationPayout(updatedCombination, originalBet.stake);
+        
+        console.log(`[adaptCombinationCalculatorResult] Overall status: ${overallStatus}, Total payout: ${totalPayout}`);
+        
+        return {
+            ...originalBet,
+            combination: updatedCombination,
+            status: overallStatus,
+            payout: totalPayout,
+            result: {
+                status: overallStatus,
+                payout: totalPayout,
+                processedAt: new Date(),
+                legs: updatedCombination.length,
+                wonLegs: updatedCombination.filter(leg => leg.status === 'won').length,
+                lostLegs: updatedCombination.filter(leg => leg.status === 'lost').length,
+                canceledLegs: updatedCombination.filter(leg => leg.status === 'canceled').length,
+                pendingLegs: updatedCombination.filter(leg => leg.status === 'pending').length,
+                calculatorVersion: 'unibet-api-v1'
+            },
+            updatedAt: new Date()
+        };
+    }
+
+    /**
+     * Calculate overall combination bet status
+     * @param {Array} legs - Updated combination legs
+     * @returns {string} - Overall bet status
+     */
+    static calculateCombinationStatus(legs) {
+        // Handle both 'canceled' and 'cancelled' spellings from calculator
+        const hasCanceled = legs.some(leg => leg.status === 'canceled' || leg.status === 'cancelled');
+        const hasLost = legs.some(leg => leg.status === 'lost');
+        const hasPending = legs.some(leg => leg.status === 'pending');
+        
+        // Combination bet rules:
+        // - CANCELED: If any leg is canceled/cancelled
+        // - LOST: If any leg is lost (even if others are won)
+        // - PENDING: If any leg is still pending
+        // - WON: Only if ALL legs are won
+        
+        if (hasCanceled) return 'canceled';
+        if (hasLost) return 'lost';
+        if (hasPending) return 'pending';
+        return 'won'; // All legs won
+    }
+
+    /**
+     * Calculate total payout for combination bet
+     * @param {Array} legs - Updated combination legs
+     * @param {number} stake - Original stake
+     * @returns {number} - Total payout
+     */
+    static calculateCombinationPayout(legs, stake) {
+        // Handle both 'canceled' and 'cancelled' spellings from calculator
+        const hasCanceled = legs.some(leg => leg.status === 'canceled' || leg.status === 'cancelled');
+        const hasLost = legs.some(leg => leg.status === 'lost');
+        const allWon = legs.every(leg => leg.status === 'won');
+        
+        // Combination bet payout rules:
+        // - CANCELED: Refund stake
+        // - LOST: No payout (0)
+        // - WON: stake × (odd1 × odd2 × odd3 × ...) - product of all odds
+        
+        if (hasCanceled) return stake; // Refund
+        if (hasLost) return 0; // No payout
+        if (allWon) {
+            const totalOdds = legs.reduce((acc, leg) => acc * leg.odds, 1);
+            return stake * totalOdds; // Product of all odds
+        }
+        
+        return 0; // Default for pending
+    }
+
+    /**
+     * Validate combination bet for calculator processing
+     * @param {Object} bet - bet-app Bet document with combination array
+     * @returns {Object} - Validation result
+     */
+    static validateCombinationBetForCalculator(bet) {
+        const errors = [];
+        const warnings = [];
+        
+        if (!bet.combination || !Array.isArray(bet.combination)) {
+            errors.push('Missing or invalid combination array');
+            return { isValid: false, errors, warnings };
+        }
+        
+        if (bet.combination.length < 2) {
+            errors.push('Combination bet must have at least 2 legs');
+        }
+        
+        if (bet.combination.length > 10) {
+            errors.push('Combination bet cannot have more than 10 legs');
+        }
+        
+        // Validate each leg
+        bet.combination.forEach((leg, index) => {
+            const legValidation = this.validateBetForCalculator({
+                matchId: leg.matchId,
+                oddId: leg.oddId,
+                stake: leg.stake,
+                odds: leg.odds,
+                betDetails: leg.betDetails,
+                unibetMeta: leg.unibetMeta
+            });
+            
+            if (!legValidation.isValid) {
+                errors.push(`Leg ${index + 1}: ${legValidation.errors.join(', ')}`);
+            }
+            
+            warnings.push(...legValidation.warnings.map(w => `Leg ${index + 1}: ${w}`));
+        });
+        
+        return {
+            isValid: errors.length === 0,
+            errors,
+            warnings
+        };
+    }
 }

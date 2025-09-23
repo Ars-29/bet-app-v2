@@ -388,8 +388,140 @@ class BetService {
         const leg = combinationData[i];
         console.log(`[placeBet] Processing combination leg ${i + 1}: matchId=${leg.matchId}, oddId=${leg.oddId}`);
 
-        // Get match data and odds for this leg using the single bet logic
-        const { matchData, odds } = await this.getMatchDataAndOdds(leg.matchId, leg.oddId, leg.inplay || false);
+        // const { matchData, odds } = await this.getMatchDataAndOdds(leg.matchId, leg.oddId, leg.inplay || false);
+        // Use Unibet API approach (same as single bets) - NO SportsMonk API calls
+        let matchData;
+        let odds;
+        
+        // Use the same Unibet API approach as single bets
+        if (leg.inplay) {
+          // For live bets, use live odds cache
+          const liveOdds = global.liveFixturesService 
+            ? global.liveFixturesService.getLiveOdds(leg.matchId) || []
+            : [];
+          
+          let foundOdd = null;
+          for (const section of liveOdds) {
+            if (section.options && Array.isArray(section.options)) {
+              foundOdd = section.options.find(option => 
+                option.id == leg.oddId || option.id === parseInt(leg.oddId)
+              );
+              if (foundOdd) break;
+            }
+          }
+          
+          if (!foundOdd) {
+            throw new CustomError(
+              `Live odd ${leg.oddId} not found for match ${leg.matchId}`,
+              400,
+              "ODD_NOT_FOUND"
+            );
+          }
+          
+          odds = {
+            id: foundOdd.id,
+            value: foundOdd.value,
+            name: foundOdd.name || foundOdd.label,
+            market_id: foundOdd.marketId || foundOdd.market_id,
+            label: foundOdd.label,
+          };
+          
+          // Get match data from live cache
+          const liveMatch = global.liveFixturesService?.getLiveMatch(leg.matchId);
+          matchData = {
+            id: leg.matchId,
+            starting_at: liveMatch?.starting_at || new Date().toISOString(),
+            participants: liveMatch?.participants || [],
+            state: liveMatch?.state || {},
+            name: liveMatch?.name,
+            league_id: liveMatch?.league_id,
+            isLive: true
+          };
+        } else {
+          // For non-live bets, use Unibet V2 cache (same as single bets)
+          try {
+            const v2 = global.fixtureOptimizationService?.fixtureCache?.get(`unibet_v2_${leg.matchId}`);
+            if (v2?.data) {
+              const events = Array.isArray(v2.data.events) ? v2.data.events : [];
+              const event = events.find(e => String(e.id) === String(leg.matchId)) || events[0];
+              const participants = Array.isArray(event?.participants) ? event.participants : [];
+              const home = participants.find(p => (p.position || '').toLowerCase() === 'home') || participants[0];
+              const away = participants.find(p => (p.position || '').toLowerCase() === 'away') || participants[1];
+              
+              matchData = {
+                id: leg.matchId,
+                starting_at: event?.start || new Date().toISOString(),
+                participants: participants,
+                state: { state: event?.state },
+                name: event?.name || event?.englishName || (home?.name && away?.name ? `${home.name} vs ${away.name}` : undefined),
+                league: { id: event?.groupId, name: event?.group }
+              };
+              
+              // Find odds from Unibet V2 data
+              const betOffers = Array.isArray(v2.data.betOffers) ? v2.data.betOffers : [];
+              const matchingBetOffer = betOffers.find(offer => 
+                offer.outcomes && offer.outcomes.some(outcome => 
+                  outcome.id == leg.oddId || outcome.id === parseInt(leg.oddId)
+                )
+              );
+              
+              if (matchingBetOffer) {
+                const outcome = matchingBetOffer.outcomes.find(outcome => 
+                  outcome.id == leg.oddId || outcome.id === parseInt(leg.oddId)
+                );
+                odds = {
+                  id: outcome.id,
+                  value: outcome.odds,
+                  name: outcome.label,
+                  market_id: matchingBetOffer.criterion?.id || matchingBetOffer.id,
+                  label: outcome.label,
+                };
+              } else {
+                // Fallback: use odds from leg data (sent from frontend)
+                odds = {
+                  id: leg.oddId,
+                  value: leg.odds,
+                  name: leg.betOption || leg.selection,
+                  market_id: leg.marketId || "unknown",
+                  label: leg.betOption || leg.selection,
+                };
+              }
+            } else {
+              // Fallback: use minimal Unibet context (same as single bets)
+              matchData = {
+                id: leg.matchId,
+                starting_at: leg.matchDate || new Date().toISOString(),
+                participants: [],
+                state: {}
+              };
+              
+              odds = {
+                id: leg.oddId,
+                value: leg.odds,
+                name: leg.betOption || leg.selection,
+                market_id: leg.marketId || "unknown",
+                label: leg.betOption || leg.selection,
+              };
+            }
+          } catch (e) {
+            console.warn('[placeBet] Unibet V2 cache error for combination leg:', e?.message);
+            // Fallback to minimal context
+            matchData = {
+              id: leg.matchId,
+              starting_at: leg.matchDate || new Date().toISOString(),
+              participants: [],
+              state: {}
+            };
+            
+            odds = {
+              id: leg.oddId,
+              value: leg.odds,
+              name: leg.betOption || leg.selection,
+              market_id: leg.marketId || "unknown",
+              label: leg.betOption || leg.selection,
+            };
+          }
+        }
         
         // Create bet details for this leg
         const betDetails = this.createBetDetails(odds, odds.market_id);
@@ -398,6 +530,38 @@ class BetService {
         const matchDate = this.parseMatchStartTime(matchData.starting_at);
         const betOutcomeCheckTime = this.calculateBetOutcomeCheckTime(matchDate);
         const estimatedMatchEnd = new Date(matchDate.getTime() + 105 * 60 * 1000);
+
+        // Create unibetMeta for this leg using frontend data (same as single bets)
+        // The frontend already extracts and sends unibetMetadata, so use it directly
+        const legUnibetMeta = this.buildUnibetMetaFromPayload(
+          {
+            // Use frontend unibetMetadata first (extracted by extractUnibetMetadata function)
+            eventName: leg.eventName || leg.teams || `${matchData.participants?.[0]?.name || 'Home'} vs ${matchData.participants?.[1]?.name || 'Away'}`,
+            marketName: leg.marketName || leg.marketDescription || betDetails.market_name || betDetails.market_description || "Unknown Market",
+            criterionLabel: leg.criterionLabel || betDetails.label || leg.betOption,
+            criterionEnglishLabel: leg.criterionEnglishLabel || betDetails.market_description || betDetails.market_name,
+            outcomeEnglishLabel: leg.outcomeEnglishLabel || leg.betOption || leg.selection,
+            participant: leg.participant || this.extractParticipantFromBetOption(leg.betOption, matchData),
+            participantId: leg.participantId || null,
+            eventParticipantId: leg.eventParticipantId || null,
+            betOfferTypeId: leg.betOfferTypeId || betDetails.market_id,
+            handicapRaw: leg.handicapRaw || (betDetails.handicap ? parseFloat(betDetails.handicap) * 1000 : null),
+            handicapLine: leg.handicapLine || betDetails.handicap || null,
+            leagueId: leg.leagueId || matchData.league?.id || matchData.league_id,
+            leagueName: leg.leagueName || matchData.league?.name,
+            homeName: leg.homeName || matchData.participants?.[0]?.name || this.extractHomeTeam(leg.teams),
+            awayName: leg.awayName || matchData.participants?.[1]?.name || this.extractAwayTeam(leg.teams),
+            start: leg.start || leg.matchDate || matchData.starting_at,
+            odds: parseFloat(odds.value)
+          },
+          {
+            eventName: leg.teams || `${matchData.participants?.[0]?.name || 'Home'} vs ${matchData.participants?.[1]?.name || 'Away'}`,
+            leagueId: matchData.league?.id || matchData.league_id,
+            leagueName: matchData.league?.name,
+            homeName: matchData.participants?.[0]?.name || this.extractHomeTeam(leg.teams),
+            awayName: matchData.participants?.[1]?.name || this.extractAwayTeam(leg.teams)
+          }
+        );
 
         // Create leg object for combination array
         const processedLeg = {
@@ -414,7 +578,8 @@ class BetService {
           matchDate,
           estimatedMatchEnd,
           betOutcomeCheckTime,
-          teams: this.getTeamsFromMatchData(matchData, leg.teams)
+          teams: this.getTeamsFromMatchData(matchData, leg.teams),
+          unibetMeta: legUnibetMeta // ✅ Add unibetMeta to each leg
         };
 
         processedLegs.push(processedLeg);
@@ -2486,6 +2651,32 @@ class BetService {
       console.error("Error fetching completed combination bets:", error);
       throw new CustomError("Failed to fetch completed combination bets", 500, "FETCH_FAILED");
     }
+  }
+
+  // Helper methods for combination bet unibetMeta
+  extractParticipantFromBetOption(betOption, matchData) {
+    if (!betOption || !matchData) return null;
+    
+    const betOptionLower = betOption.toLowerCase();
+    if (betOptionLower.includes('home') || betOptionLower === '1') {
+      return matchData.participants?.[0]?.name || 'Home';
+    } else if (betOptionLower.includes('away') || betOptionLower === '2') {
+      return matchData.participants?.[1]?.name || 'Away';
+    } else if (betOptionLower.includes('draw') || betOptionLower === 'x') {
+      return 'Draw';
+    }
+    
+    return betOption;
+  }
+
+  extractHomeTeam(teamsString) {
+    if (!teamsString || !teamsString.includes(' vs ')) return null;
+    return teamsString.split(' vs ')[0]?.trim() || null;
+  }
+
+  extractAwayTeam(teamsString) {
+    if (!teamsString || !teamsString.includes(' vs ')) return null;
+    return teamsString.split(' vs ')[1]?.trim() || null;
   }
 }
 
