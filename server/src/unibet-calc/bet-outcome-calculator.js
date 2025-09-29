@@ -262,13 +262,13 @@ export default class BetOutcomeCalculator {
             // Fallback: fetch fresh data
             console.log(`📡 FALLBACK: Fetching fresh Fotmob data for ${dateStr}`);
             try {
-                const freshData = await this.fotmob.getMatchesByDate(dateStr);
-                if (freshData) {
-                    console.log(`✅ Fresh data fetched: ${freshData.leagues?.length || 0} leagues`);
-                } else {
-                    console.log(`❌ Failed to fetch fresh data`);
-                }
-                return freshData;
+            const freshData = await this.fotmob.getMatchesByDate(dateStr);
+            if (freshData) {
+                console.log(`✅ Fresh data fetched: ${freshData.leagues?.length || 0} leagues`);
+            } else {
+                console.log(`❌ Failed to fetch fresh data`);
+            }
+            return freshData;
             } catch (fotmobError) {
                 console.error(`❌ FOTMOB API ERROR:`, fotmobError.message);
                 
@@ -1398,7 +1398,7 @@ export default class BetOutcomeCalculator {
                     }
                     
                     // Get team goals in the time window
-                    const goals = getGoalsInWindow(matchDetails, start, end);
+                const goals = getGoalsInWindow(matchDetails, start, end);
                     const teamGoals = goals.filter(goal => {
                         if (isHome) {
                             return goal.teamId === matchDetails.general?.homeTeam?.id;
@@ -1430,15 +1430,15 @@ export default class BetOutcomeCalculator {
                     line = typeof bet.handicapLine === 'number' ? bet.handicapLine / 1000
                           : (typeof bet.handicapRaw === 'number' ? bet.handicapRaw / 1000000 : null);
                     
-                    if (line === null || Number.isNaN(line)) {
-                        return { status: 'cancelled', reason: 'Interval Total Goals requires a valid line', debugInfo: { missing: 'handicapLine' } };
-                    }
+                if (line === null || Number.isNaN(line)) {
+                    return { status: 'cancelled', reason: 'Interval Total Goals requires a valid line', debugInfo: { missing: 'handicapLine' } };
+                }
                     
                     selection = String(bet.outcomeLabel || '').toLowerCase();
-                    if (total > line && selection.includes('over')) status = 'won';
-                    else if (total < line && selection.includes('under')) status = 'won';
-                    else if (total === line) status = 'void';
-                    else status = 'lost';
+                if (total > line && selection.includes('over')) status = 'won';
+                else if (total < line && selection.includes('under')) status = 'won';
+                else if (total === line) status = 'void';
+                else status = 'lost';
                     
                     reason = `Interval Total Goals ${start}-${end} ${selection} ${line}: total=${total} → ${status}`;
                 }

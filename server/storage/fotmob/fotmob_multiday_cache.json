@@ -45,49 +45,6 @@
         "localRank": 16
       },
       {
-        "ccode": "ESP",
-        "id": 87,
-        "primaryId": 87,
-        "name": "LaLiga",
-        "matches": [
-          {
-            "id": 4837179,
-            "leagueId": 87,
-            "time": "29.09.2025 21:00",
-            "home": {
-              "id": 10267,
-              "score": 0,
-              "name": "Valencia",
-              "longName": "Valencia"
-            },
-            "away": {
-              "id": 8670,
-              "score": 0,
-              "name": "Real Oviedo",
-              "longName": "Real Oviedo"
-            },
-            "eliminatedTeamId": null,
-            "statusId": 1,
-            "tournamentStage": "7",
-            "status": {
-              "utcTime": "2025-09-29T19:00:00.000Z",
-              "finished": false,
-              "started": false,
-              "cancelled": false,
-              "halfs": {
-                "firstHalfStarted": "29.09.2025 21:00:00"
-              },
-              "periodLength": 45
-            },
-            "timeTS": 1759172400000
-          }
-        ],
-        "internalRank": 10,
-        "liveRank": 100,
-        "simpleLeague": false,
-        "localRank": 19
-      },
-      {
         "ccode": "ITA",
         "id": 55,
         "primaryId": 55,
@@ -359,17 +316,27 @@
               "longName": "Amed Sportif"
             },
             "eliminatedTeamId": null,
-            "statusId": 1,
+            "statusId": 2,
             "tournamentStage": "8",
             "status": {
               "utcTime": "2025-09-29T14:00:00.000Z",
               "finished": false,
-              "started": false,
+              "started": true,
               "cancelled": false,
+              "scoreStr": "0 - 0",
               "halfs": {
-                "firstHalfStarted": "29.09.2025 16:00:00"
+                "firstHalfStarted": "29.09.2025 16:01:36"
               },
-              "periodLength": 45
+              "periodLength": 45,
+              "ongoing": true,
+              "liveTime": {
+                "short": "15’",
+                "shortKey": "",
+                "long": "14:47",
+                "longKey": "",
+                "maxTime": 45,
+                "addedTime": 0
+              }
             },
             "timeTS": 1759154400000
           },
@@ -478,9 +445,9 @@
               "periodLength": 45,
               "ongoing": true,
               "liveTime": {
-                "short": "68’",
+                "short": "89’",
                 "shortKey": "",
-                "long": "67:29",
+                "long": "88:03",
                 "longKey": "",
                 "maxTime": 90,
                 "addedTime": 0
@@ -882,13 +849,13 @@
             "time": "29.09.2025 15:45",
             "home": {
               "id": 102153,
-              "score": 0,
+              "score": 1,
               "name": "Nasaf Qarshi",
               "longName": "Nasaf Qarshi"
             },
             "away": {
               "id": 2529,
-              "score": 0,
+              "score": 1,
               "name": "Al Hilal",
               "longName": "Al Hilal"
             },
@@ -900,16 +867,16 @@
               "finished": false,
               "started": true,
               "cancelled": false,
-              "scoreStr": "0 - 0",
+              "scoreStr": "1 - 1",
               "halfs": {
                 "firstHalfStarted": "29.09.2025 15:46:28"
               },
               "periodLength": 45,
               "ongoing": true,
               "liveTime": {
-                "short": "10’",
+                "short": "30’",
                 "shortKey": "",
-                "long": "9:21",
+                "long": "29:55",
                 "longKey": "",
                 "maxTime": 45,
                 "addedTime": 0
@@ -1605,29 +1572,27 @@
               "redCards": 1
             },
             "eliminatedTeamId": null,
-            "statusId": 3,
+            "statusId": 6,
             "tournamentStage": "12",
             "status": {
               "utcTime": "2025-09-29T12:00:00.000Z",
-              "finished": false,
+              "finished": true,
               "started": true,
               "cancelled": false,
               "scoreStr": "1 - 1",
+              "reason": {
+                "short": "FT",
+                "shortKey": "fulltime_short",
+                "long": "Full-Time",
+                "longKey": "finished"
+              },
               "numberOfAwayRedCards": 1,
               "halfs": {
                 "firstHalfStarted": "29.09.2025 14:03:08",
                 "secondHalfStarted": "29.09.2025 15:06:48"
               },
               "periodLength": 45,
-              "ongoing": true,
-              "liveTime": {
-                "short": "95’",
-                "shortKey": "",
-                "long": "94:01",
-                "longKey": "",
-                "maxTime": 90,
-                "addedTime": 0
-              }
+              "awarded": false
             },
             "timeTS": 1759147200000
           },
@@ -1643,7 +1608,7 @@
             },
             "away": {
               "id": 49700,
-              "score": 0,
+              "score": 1,
               "name": "SKA-Khabarovsk",
               "longName": "SKA-Khabarovsk"
             },
@@ -1655,16 +1620,16 @@
               "finished": false,
               "started": true,
               "cancelled": false,
-              "scoreStr": "0 - 0",
+              "scoreStr": "0 - 1",
               "halfs": {
                 "firstHalfStarted": "29.09.2025 15:33:45"
               },
               "periodLength": 45,
               "ongoing": true,
               "liveTime": {
-                "short": "23’",
+                "short": "43’",
                 "shortKey": "",
-                "long": "22:04",
+                "long": "42:38",
                 "longKey": "",
                 "maxTime": 45,
                 "addedTime": 0
@@ -2808,17 +2773,27 @@
               "longName": "Ceramica Cleopatra"
             },
             "eliminatedTeamId": null,
-            "statusId": 1,
+            "statusId": 2,
             "tournamentStage": "9",
             "status": {
               "utcTime": "2025-09-29T14:00:00.000Z",
               "finished": false,
-              "started": false,
+              "started": true,
               "cancelled": false,
+              "scoreStr": "0 - 0",
               "halfs": {
-                "firstHalfStarted": "29.09.2025 16:00:00"
+                "firstHalfStarted": "29.09.2025 16:00:26"
               },
-              "periodLength": 45
+              "periodLength": 45,
+              "ongoing": true,
+              "liveTime": {
+                "short": "16’",
+                "shortKey": "",
+                "long": "15:57",
+                "longKey": "",
+                "maxTime": 45,
+                "addedTime": 0
+              }
             },
             "timeTS": 1759154400000
           },
@@ -2839,17 +2814,27 @@
               "longName": "National Bank"
             },
             "eliminatedTeamId": null,
-            "statusId": 1,
+            "statusId": 2,
             "tournamentStage": "9",
             "status": {
               "utcTime": "2025-09-29T14:00:00.000Z",
               "finished": false,
-              "started": false,
+              "started": true,
               "cancelled": false,
+              "scoreStr": "0 - 0",
               "halfs": {
-                "firstHalfStarted": "29.09.2025 16:00:00"
+                "firstHalfStarted": "29.09.2025 16:02:09"
               },
-              "periodLength": 45
+              "periodLength": 45,
+              "ongoing": true,
+              "liveTime": {
+                "short": "15’",
+                "shortKey": "",
+                "long": "14:14",
+                "longKey": "",
+                "maxTime": 45,
+                "addedTime": 0
+              }
             },
             "timeTS": 1759154400000
           },
@@ -3530,7 +3515,7 @@
               "longName": "FK Vardar Skopje"
             },
             "eliminatedTeamId": null,
-            "statusId": 10,
+            "statusId": 3,
             "tournamentStage": "8",
             "status": {
               "utcTime": "2025-09-29T13:00:00.000Z",
@@ -3539,16 +3524,17 @@
               "cancelled": false,
               "scoreStr": "0 - 0",
               "halfs": {
-                "firstHalfStarted": "29.09.2025 15:00:58"
+                "firstHalfStarted": "29.09.2025 15:00:58",
+                "secondHalfStarted": "29.09.2025 16:04:24"
               },
               "periodLength": 45,
               "ongoing": true,
               "liveTime": {
-                "short": "HT",
-                "shortKey": "halftime_short",
-                "long": "Half-Time",
-                "longKey": "pause_match",
-                "maxTime": 45,
+                "short": "57’",
+                "shortKey": "",
+                "long": "56:59",
+                "longKey": "",
+                "maxTime": 90,
                 "addedTime": 0
               }
             },
@@ -3571,7 +3557,7 @@
               "longName": "Pelister"
             },
             "eliminatedTeamId": null,
-            "statusId": 10,
+            "statusId": 3,
             "tournamentStage": "8",
             "status": {
               "utcTime": "2025-09-29T13:00:00.000Z",
@@ -3580,16 +3566,17 @@
               "cancelled": false,
               "scoreStr": "0 - 0",
               "halfs": {
-                "firstHalfStarted": "29.09.2025 15:00:58"
+                "firstHalfStarted": "29.09.2025 15:00:58",
+                "secondHalfStarted": "29.09.2025 16:01:13"
               },
               "periodLength": 45,
               "ongoing": true,
               "liveTime": {
-                "short": "HT",
-                "shortKey": "halftime_short",
-                "long": "Half-Time",
-                "longKey": "pause_match",
-                "maxTime": 45,
+                "short": "61’",
+                "shortKey": "",
+                "long": "60:10",
+                "longKey": "",
+                "maxTime": 90,
                 "addedTime": 0
               }
             },
@@ -3623,28 +3610,26 @@
               "longName": "Borussia Mönchengladbach II"
             },
             "eliminatedTeamId": null,
-            "statusId": 3,
+            "statusId": 6,
             "tournamentStage": "10",
             "status": {
               "utcTime": "2025-09-29T12:00:00.000Z",
-              "finished": false,
+              "finished": true,
               "started": true,
               "cancelled": false,
               "scoreStr": "1 - 1",
+              "reason": {
+                "short": "FT",
+                "shortKey": "fulltime_short",
+                "long": "Full-Time",
+                "longKey": "finished"
+              },
               "halfs": {
                 "firstHalfStarted": "29.09.2025 14:01:13",
                 "secondHalfStarted": "29.09.2025 15:04:58"
               },
               "periodLength": 45,
-              "ongoing": true,
-              "liveTime": {
-                "short": "96’",
-                "shortKey": "",
-                "long": "95:51",
-                "longKey": "",
-                "maxTime": 90,
-                "addedTime": 0
-              }
+              "awarded": false
             },
             "timeTS": 1759147200000
           }
@@ -3666,7 +3651,7 @@
             "time": "29.09.2025 16:00",
             "home": {
               "id": 653822,
-              "score": 0,
+              "score": 1,
               "name": "Ludogorets Razgrad II",
               "longName": "Ludogorets Razgrad II"
             },
@@ -3677,17 +3662,27 @@
               "longName": "Pirin Blagoevgrad"
             },
             "eliminatedTeamId": null,
-            "statusId": 1,
+            "statusId": 2,
             "tournamentStage": "10",
             "status": {
               "utcTime": "2025-09-29T14:00:00.000Z",
               "finished": false,
-              "started": false,
+              "started": true,
               "cancelled": false,
+              "scoreStr": "1 - 0",
               "halfs": {
-                "firstHalfStarted": "29.09.2025 16:00:00"
+                "firstHalfStarted": "29.09.2025 16:00:46"
               },
-              "periodLength": 45
+              "periodLength": 45,
+              "ongoing": true,
+              "liveTime": {
+                "short": "16’",
+                "shortKey": "",
+                "long": "15:37",
+                "longKey": "",
+                "maxTime": 45,
+                "addedTime": 0
+              }
             },
             "timeTS": 1759154400000
           },
@@ -4124,17 +4119,27 @@
               "longName": "Kavala"
             },
             "eliminatedTeamId": null,
-            "statusId": 1,
+            "statusId": 2,
             "tournamentStage": "3",
             "status": {
               "utcTime": "2025-09-29T14:00:00.000Z",
               "finished": false,
-              "started": false,
+              "started": true,
               "cancelled": false,
+              "scoreStr": "0 - 0",
               "halfs": {
-                "firstHalfStarted": "29.09.2025 16:00:00"
+                "firstHalfStarted": "29.09.2025 16:02:56"
               },
-              "periodLength": 45
+              "periodLength": 45,
+              "ongoing": true,
+              "liveTime": {
+                "short": "14’",
+                "shortKey": "",
+                "long": "13:27",
+                "longKey": "",
+                "maxTime": 45,
+                "addedTime": 0
+              }
             },
             "timeTS": 1759154400000
           }
@@ -5225,6 +5230,49 @@
         "liveRank": 1000,
         "simpleLeague": false,
         "localRank": 5
+      },
+      {
+        "ccode": "ESP",
+        "id": 87,
+        "primaryId": 87,
+        "name": "LaLiga",
+        "matches": [
+          {
+            "id": 4837179,
+            "leagueId": 87,
+            "time": "30.09.2025 20:00",
+            "home": {
+              "id": 10267,
+              "score": 0,
+              "name": "Valencia",
+              "longName": "Valencia"
+            },
+            "away": {
+              "id": 8670,
+              "score": 0,
+              "name": "Real Oviedo",
+              "longName": "Real Oviedo"
+            },
+            "eliminatedTeamId": null,
+            "statusId": 1,
+            "tournamentStage": "7",
+            "status": {
+              "utcTime": "2025-09-30T18:00:00.000Z",
+              "finished": false,
+              "started": false,
+              "cancelled": false,
+              "halfs": {
+                "firstHalfStarted": "30.09.2025 20:00:00"
+              },
+              "periodLength": 45
+            },
+            "timeTS": 1759255200000
+          }
+        ],
+        "internalRank": 10,
+        "liveRank": 100,
+        "simpleLeague": false,
+        "localRank": 19
       },
       {
         "ccode": "USA",
