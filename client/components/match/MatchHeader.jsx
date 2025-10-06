@@ -2,6 +2,7 @@
 import { useRef, useState, useEffect } from "react"
 import { ChevronLeft, ChevronDown, Clock } from "lucide-react"
 import MatchDropdown from "./MatchDropdown"
+import LiveMatchClock from "./LiveMatchClock"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@radix-ui/react-avatar"
 import { Button } from "@/components/ui/button"
@@ -20,64 +21,14 @@ const isMatchLive = (match) => {
     return matchTime <= now && now < matchEnd;
 };
 
-// Live Timer Component
-const LiveTimer = ({ matchStart, isLive }) => {
-    const [elapsedTime, setElapsedTime] = useState(0);
-    const [currentPeriod, setCurrentPeriod] = useState('1st Half');
-
-    useEffect(() => {
-        if (!isLive || !matchStart) return;
-
-        const updateTimer = () => {
-            const now = new Date();
-            let matchTime;
-            if (matchStart.includes('T')) {
-                matchTime = new Date(matchStart.endsWith('Z') ? matchStart : matchStart + 'Z');
-            } else {
-                matchTime = new Date(matchStart.replace(' ', 'T') + 'Z');
-            }
-            
-            const elapsed = Math.floor((now.getTime() - matchTime.getTime()) / 1000);
-            setElapsedTime(Math.max(0, elapsed));
-            
-            // Determine period based on elapsed time
-            if (elapsed < 45) {
-                setCurrentPeriod('1st Half');
-            } else if (elapsed < 60) {
-                setCurrentPeriod('Half Time');
-            } else if (elapsed < 105) {
-                setCurrentPeriod('2nd Half');
-            } else if (elapsed < 120) {
-                setCurrentPeriod('Added Time');
-            } else {
-                setCurrentPeriod('Full Time');
-            }
-        };
-
-        // Update immediately
-        updateTimer();
-        
-        // Update every second
-        const interval = setInterval(updateTimer, 1000);
-        
-        return () => clearInterval(interval);
-    }, [isLive, matchStart]);
-
-    if (!isLive) return null;
-
-    const minutes = Math.floor(elapsedTime / 60);
-    const seconds = elapsedTime % 60;
-    const displayTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-
+// Live Timer Component - Now using LiveMatchClock
+const LiveTimer = ({ matchId, isLive, onScoreUpdate }) => {
     return (
-        <div className="space-y-1">
-            <div className="text-2xl font-bold text-red-600 animate-pulse">
-                {displayTime}
-            </div>
-            <div className="text-xs text-gray-500">
-                {currentPeriod}
-            </div>
-        </div>
+        <LiveMatchClock 
+            matchId={matchId} 
+            isLive={isLive} 
+            onScoreUpdate={onScoreUpdate}
+        />
     );
 };
 
@@ -101,8 +52,9 @@ const parseTeamsFromName = (matchName) => {
     return { homeTeam: null, awayTeam: null };
 };
 
-const MatchHeader = ({ matchData }) => {
+const MatchHeader = ({ matchData, onScoreUpdate }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+    const [currentScore, setCurrentScore] = useState('0-0')
     const triggetRef = useRef(null)
     const router = useRouter()
 
@@ -140,9 +92,46 @@ const MatchHeader = ({ matchData }) => {
     
     // Get live data if available
     const liveData = matchData.liveData;
-    const score = liveData?.score || '0-0';
+    const score = currentScore;
     const period = liveData?.period || '1st Half';
     const minute = liveData?.minute || '0';
+
+    // Handle score updates from live data
+    const handleScoreUpdate = (scoreData) => {
+        console.log('📊 handleScoreUpdate called with:', scoreData);
+        const homeScore = scoreData?.home ?? '0';
+        const awayScore = scoreData?.away ?? '0';
+        const newScore = `${homeScore} - ${awayScore}`;
+        console.log('📊 Setting new score:', newScore);
+        setCurrentScore(newScore);
+        if (onScoreUpdate) {
+            onScoreUpdate(scoreData);
+        }
+    };
+
+    // Initialize score from matchData
+    useEffect(() => {
+        console.log('📊 Initializing score from matchData:', matchData);
+        console.log('📊 matchData.liveData:', matchData.liveData);
+        console.log('📊 matchData.liveData?.score:', matchData.liveData?.score);
+        
+        if (matchData.liveData?.score) {
+            const scoreData = matchData.liveData.score;
+            const homeScore = scoreData?.home ?? '0';
+            const awayScore = scoreData?.away ?? '0';
+            const newScore = `${homeScore} - ${awayScore}`;
+            console.log('📊 Initial score set:', newScore);
+            setCurrentScore(newScore);
+        } else {
+            console.log('📊 No live data score, setting default: 0 - 0');
+            setCurrentScore('0 - 0');
+        }
+    }, [matchData.liveData?.score]);
+
+    // Debug current score state
+    useEffect(() => {
+        console.log('📊 Current score state changed:', currentScore);
+    }, [currentScore]);
 
     return (
         <div className="bg-white rounded-lg shadow-sm border p-4 mb-4">
@@ -166,7 +155,7 @@ const MatchHeader = ({ matchData }) => {
                 </div>
                 <div className="flex items-center justify-center text-sm mb-2">
                     {isLive ? (
-                        <div className="flex items-center text-red-600 font-bold animate-pulse">
+                        <div className="flex items-center text-red-600 animate-pulse">
                             <div className="w-2 h-2 bg-red-600 rounded-full mr-2 animate-pulse"></div>
                             LIVE
                         </div>
@@ -183,7 +172,7 @@ const MatchHeader = ({ matchData }) => {
             <div className="flex items-center justify-between">
                 {/* Home team */}
                 <div className="flex-1 text-center">
-                    <div className="text-lg font-semibold text-gray-800">
+                    <div className="text-xl font-bold text-gray-800">
                         {homeTeam}
                     </div>
                 </div>
@@ -192,21 +181,21 @@ const MatchHeader = ({ matchData }) => {
                 <div className="flex-1 text-center">
                     {isLive ? (
                         <div className="space-y-1">
-                            <div className="text-2xl font-bold text-gray-800">
+                            <div className="text-4xl font-bold text-gray-800">
                                 {score}
                             </div>
-                            <LiveTimer matchStart={matchData.start} isLive={isLive} />
+                            <LiveTimer matchId={matchData.id} isLive={isLive} onScoreUpdate={handleScoreUpdate} />
                         </div>
                     ) : (
-                        <div className="text-sm text-gray-500">
-                            {matchTime}
+                        <div className="text-4xl font-bold text-gray-800">
+                            {score}
                         </div>
                     )}
                 </div>
 
                 {/* Away team */}
                 <div className="flex-1 text-center">
-                    <div className="text-lg font-semibold text-gray-800">
+                    <div className="text-xl font-bold text-gray-800">
                         {awayTeam}
                     </div>
                 </div>

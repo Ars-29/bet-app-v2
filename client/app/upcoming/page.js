@@ -6,6 +6,7 @@ import MatchListPage from "@/components/shared/MatchListPage";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchLiveMatches, selectUpcomingMatchesGrouped, selectLiveMatchesLoading, selectLiveMatchesError } from "@/lib/features/matches/liveMatchesSlice";
 import { formatToLocalTime } from '@/lib/utils';
+import { getFotmobLogoByUnibetId } from '@/lib/leagueUtils';
 
 const UpcomingMatchesPage = () => {
   const upcomingMatchesRaw = useSelector(selectUpcomingMatchesGrouped);
@@ -18,15 +19,20 @@ const UpcomingMatchesPage = () => {
   }, [dispatch]);
 
   // Transform Unibet API data to match MatchListPage expected format
-  const upcomingMatches = upcomingMatchesRaw?.map(leagueData => ({
-    id: leagueData.league || Math.random().toString(36).substr(2, 9),
-    name: leagueData.league || 'Unknown League',
-    league: {
-      id: leagueData.league,
-      name: leagueData.league,
-      imageUrl: null, // Unibet API doesn't provide league images
-    },
-    icon: "⚽",
+  const upcomingMatches = upcomingMatchesRaw?.map(leagueData => {
+    // Get groupId from the first match to use for Fotmob logo
+    const firstMatch = leagueData.matches?.[0];
+    const groupId = firstMatch?.groupId;
+    
+    return {
+      id: leagueData.league || Math.random().toString(36).substr(2, 9),
+      name: leagueData.league || 'Unknown League',
+      league: {
+        id: leagueData.league,
+        name: leagueData.league,
+        imageUrl: getFotmobLogoByUnibetId(groupId) || null,
+      },
+      icon: "⚽",
     matches: (leagueData.matches || []).map(match => {
       // Extract team names from Unibet API format
       const team1 = match.homeName || match.team1 || 'Home Team';
@@ -91,7 +97,8 @@ const UpcomingMatchesPage = () => {
       };
     }),
     matchCount: leagueData.matches?.length || 0,
-  })) || [];
+    };
+  }) || [];
 
   const formatUpcomingTime = (startTime, match) => {
     if (!startTime) return "TBD";

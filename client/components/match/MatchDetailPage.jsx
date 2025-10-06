@@ -418,7 +418,9 @@ const MatchDetailPage = ({ matchId }) => {
             {/* Main content - adjusts width when sidebar expands */}
             <div className="lg:mr-80 xl:mr-96">
                 <div className="lg:p-2 xl:p-4">
-                    <MatchHeader matchData={displayMatchData} />
+                    <MatchHeader matchData={displayMatchData} onScoreUpdate={(scoreData) => {
+                        console.log('📊 Score updated:', scoreData);
+                    }} />
                     <BettingTabs 
                         matchData={{ 
                             ...displayMatchData, 

@@ -7,6 +7,7 @@ import MatchCard from './MatchCard';
 import FootballDailySkeleton from '../Skeletons/FootballDailySkeleton';
 import { selectFootballDaily, selectHomeLoading } from '@/lib/features/home/homeSlice';
 import { formatMatchTime } from '@/lib/utils';
+import { getFotmobLogoByUnibetId } from '@/lib/leagueUtils';
 
 // Helper function to transform API data to MatchCard format
 const transformApiMatchToDisplayFormat = (apiMatch, league) => {
@@ -46,11 +47,13 @@ const transformApiMatchToDisplayFormat = (apiMatch, league) => {
         displayTime = `Tomorrow ${timeStr}`;
     }
 
+
+
     return {
         id: apiMatch.id,
         league: {
             name: league.name,
-            imageUrl: league.imageUrl
+            imageUrl: getFotmobLogoByUnibetId(league.id) || league.imageUrl || '/api/placeholder/20/20'
         },
         team1: teamNames[0],
         team2: teamNames[1],
@@ -64,6 +67,8 @@ const transformApiMatchToDisplayFormat = (apiMatch, league) => {
 const FootballDaily = () => {
     const footballDaily = useSelector(selectFootballDaily);
     const loading = useSelector(selectHomeLoading);
+
+
 
     // Show skeleton while loading
     if (loading) {
@@ -91,16 +96,18 @@ const FootballDaily = () => {
                 <Link href="#" className="text-green-600 hover:underline text-sm">View All</Link>
             </div>
 
-            {footballDaily.map((leagueGroup, index) => (
-                <div key={leagueGroup.league?.id || index} className="mb-6">
-                    <div className="flex items-center mb-3">
-                        {leagueGroup.league?.imageUrl && (
-                            <img
-                                src={leagueGroup.league.imageUrl}
-                                alt={leagueGroup.league.name}
-                                className="w-6 h-6 mr-2 object-contain"
-                            />
-                        )}
+            {footballDaily.map((leagueGroup, index) => {
+                
+                return (
+                    <div key={leagueGroup.league?.id || index} className="mb-6">
+                        <div className="flex items-center mb-3">
+                            {(getFotmobLogoByUnibetId(leagueGroup.league?.id) || leagueGroup.league?.imageUrl) && (
+                                <img
+                                    src={getFotmobLogoByUnibetId(leagueGroup.league?.id) || leagueGroup.league?.imageUrl}
+                                    alt={leagueGroup.league.name}
+                                    className="w-6 h-6 mr-2 object-contain"
+                                />
+                            )}
                         <h3 className="text-lg font-semibold text-gray-700">
                             {leagueGroup.league?.name || 'Unknown League'}
                         </h3>
@@ -115,7 +122,8 @@ const FootballDaily = () => {
                         ))}
                     </div>
                 </div>
-            ))}
+                );
+            })}
         </div>
     );
 };

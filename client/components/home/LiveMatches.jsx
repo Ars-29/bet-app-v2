@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux';
 import LiveMatchCard from './LiveMatchCard';
 import TopPicksSkeleton from '../Skeletons/TopPicksSkeleton';
 import { selectLiveMatchesRaw, selectLiveMatchesLoading, selectLiveMatchesWarning, selectLiveMatchesCacheAge } from '@/lib/features/matches/liveMatchesSlice';
+import { getFotmobLogoByUnibetId } from '@/lib/leagueUtils';
 
 // Helper function to transform Unibet API data to MatchCard format
 const transformLiveMatchData = (apiMatch) => {
@@ -82,11 +83,19 @@ const transformLiveMatchData = (apiMatch) => {
         }
     }
 
+    // Debug: Log the live match data
+    console.log('🔍 LiveMatches Data:', {
+        groupId: apiMatch.groupId,
+        leagueName: apiMatch.leagueName,
+        fotmobUrl: getFotmobLogoByUnibetId(apiMatch.groupId),
+        fullApiMatch: apiMatch
+    });
+
     return {
         id: apiMatch.id,
         league: {
             name: apiMatch.leagueName || 'Live Match',
-            imageUrl: '/api/placeholder/20/20' // Default placeholder
+            imageUrl: getFotmobLogoByUnibetId(apiMatch.groupId) || '/api/placeholder/20/20'
         },
         team1: homeTeam,
         team2: awayTeam,

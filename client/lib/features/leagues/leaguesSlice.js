@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import apiClient from "@/config/axios";
+import { getFotmobLogoByUnibetId } from '@/lib/leagueUtils';
 
 // Fallback leagues data
 const fallbackLeagues = [
@@ -148,7 +149,8 @@ export const fetchMatchesByLeague = createAsyncThunk(
         league: {
           id: league.id,
           url: league.url,
-          name: leagueName
+          name: leagueName,
+          imageUrl: getFotmobLogoByUnibetId(league.id) || null
         }, 
         matches: transformedMatches 
       };

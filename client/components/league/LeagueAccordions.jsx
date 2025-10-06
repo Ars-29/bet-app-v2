@@ -7,6 +7,7 @@ import { useBetting } from '@/hooks/useBetting';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { getFotmobLogoByUnibetId } from '@/lib/leagueUtils';
 
 const LeagueAccordions = ({ matches }) => {
     const { createBetHandler } = useBetting();
@@ -142,18 +143,28 @@ const LeagueAccordions = ({ matches }) => {
     };
 
     return (
-        <div className="space-y-3 bg-white h-full p-3">
+        <div className="space-y-3 bg-white h-full p-3 mb-6">
             {matchGroups && matchGroups.length > 0 ? (
                 <Accordion type="multiple" className="space-y-2">
                     {matchGroups.map((group) => (
                         <AccordionItem
+                            style={{border: '1px solid rgb(243, 243, 244)'}}
                             key={group.id}
                             value={group.id}
                             className="bg-white border border-gray-200 overflow-hidden duration-200"
                         >
                             <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-gray-50/50 transition-colors duration-200 [&[data-state=open]]:bg-gray-50/80">
                                 <div className="flex items-center justify-between w-full">
-                                    <h4 className="text-sm font-semibold text-gray-900">{group.name}</h4>
+                                    <div className="flex items-center gap-3">
+                                        {getFotmobLogoByUnibetId(group.id) && (
+                                            <img 
+                                                src={getFotmobLogoByUnibetId(group.id)} 
+                                                alt={group.name} 
+                                                className="w-6 h-6 object-contain" 
+                                            />
+                                        )}
+                                        <h4 className="text-sm font-semibold text-gray-900">{group.name}</h4>
+                                    </div>
                                     <span className="text-xs text-gray-500">{group.matches.length} matches</span>
                                 </div>
                             </AccordionTrigger>

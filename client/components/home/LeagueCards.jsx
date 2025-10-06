@@ -13,6 +13,7 @@ import LeagueCardsSkeleton from '../Skeletons/LeagueCardsSkeleton';
 import { useSelector } from 'react-redux';
 import { selectIsConnected } from '@/lib/features/websocket/websocketSlice';
 import { useLiveOdds } from '@/hooks/useLiveOdds';
+import { getFotmobLogoByUnibetId } from '@/lib/leagueUtils';
 
 // Match Item Component
 const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButtonClass, isOddClickable, hideOdds = false }) => {
@@ -257,8 +258,12 @@ const LeagueCard = ({ league, isInPlay = false, viewAllText = null, hideOdds = f
             <div className="border-b border-gray-200 p-4 bg-gray-50 flex-shrink-0">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        {league.imageUrl ? (
-                            <img src={league.imageUrl} alt={league.name} className="w-6 h-6 object-contain" />
+                        {(league.imageUrl) ? (
+                            <img 
+                                src={league.imageUrl} 
+                                alt={league.name} 
+                                className="w-6 h-6 object-contain" 
+                            />
                         ) : (
                             <span className="text-lg">{league.icon}</span>
                         )}
@@ -524,11 +529,15 @@ const LeagueCards = ({
                     };
                 }).filter(match => match !== null); // Filter out null matches
     
+                // Get groupId from the first match to use for Fotmob logo
+                const firstMatch = leagueData.matches?.[0];
+                const groupId = firstMatch?.groupId;
+                
                 return {
                     id: leagueData.league.id || leagueData.league, // Handle both object and string formats
                     name: leagueData.league.name || leagueData.league, // Handle both object and string formats
                     icon: "⚽", // Default icon
-                    imageUrl: leagueData.league.imageUrl || null,
+                    imageUrl: getFotmobLogoByUnibetId(groupId) || leagueData.league.imageUrl || null,
                     day: "Today",
                     matches: transformedMatches
                 };
@@ -551,7 +560,7 @@ const LeagueCards = ({
                             id: leagueId,
                             name: leagueName,
                             icon: "⚽",
-                            imageUrl: match.league?.imageUrl || null,
+                            imageUrl: getFotmobLogoByUnibetId(match.groupId) || match.league?.imageUrl || null,
                             day: "Today",
                             matches: []
                         });

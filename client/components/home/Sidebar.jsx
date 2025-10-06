@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
+import { getFotmobLogoByUnibetId } from '@/lib/leagueUtils';
 
 
 
@@ -541,10 +542,10 @@ const Sidebar = () => {
                                                                 title={league.name}
                                                             >
                                                                 <div className="flex items-center min-w-0">
-                                                                    {league.image_path ? (
+                                                                    {(getFotmobLogoByUnibetId(league.id) || getFotmobLogoByUnibetId(league.id) || league.image_path) ? (
                                                                         <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
                                                                             <img
-                                                                                src={league.image_path}
+                                                                                src={getFotmobLogoByUnibetId(league.id) || getFotmobLogoByUnibetId(league.id) || league.image_path}
                                                                                 alt={league.name}
                                                                                 className="w-5 h-5 object-contain"
                                                                                 onError={e => { e.target.style.display = 'none'; }}
@@ -593,10 +594,19 @@ const Sidebar = () => {
                                                                                 title={league.name}
                                                                             >
                                                                                 <div className="flex items-center min-w-0 py-0">
-                                                                                    {league.image_path ? (
+                                                                                    {getFotmobLogoByUnibetId(league.id) || league.fotmobId ? (
                                                                                         <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
                                                                                             <img
-                                                                                                src={league.image_path}
+                                                                                                src={getFotmobLogoByUnibetId(league.id) || `https://images.fotmob.com/image_resources/logo/leaguelogo/${league.fotmobId}.png`}
+                                                                                                alt={league.name}
+                                                                                                className="w-5 h-5 object-contain"
+                                                                                                onError={e => { e.target.style.display = 'none'; }}
+                                                                                            />
+                                                                                        </span>
+                                                                                    ) : getFotmobLogoByUnibetId(league.id) || league.image_path ? (
+                                                                                        <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
+                                                                                            <img
+                                                                                                src={getFotmobLogoByUnibetId(league.id) || league.image_path}
                                                                                                 alt={league.name}
                                                                                                 className="w-5 h-5 object-contain"
                                                                                                 onError={e => { e.target.style.display = 'none'; }}
@@ -679,10 +689,19 @@ const Sidebar = () => {
                                                                                         title={league.name}
                                                                                     >
                                                                                         <div className="flex items-center min-w-0 py-0">
-                                                                                            {league.image_path ? (
+                                                                                            {getFotmobLogoByUnibetId(league.id) || league.fotmobId ? (
                                                                                                 <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
                                                                                                     <img
-                                                                                                        src={league.image_path}
+                                                                                                        src={getFotmobLogoByUnibetId(league.id) || `https://images.fotmob.com/image_resources/logo/leaguelogo/${league.fotmobId}.png`}
+                                                                                                        alt={league.name}
+                                                                                                        className="w-5 h-5 object-contain"
+                                                                                                        onError={e => { e.target.style.display = 'none'; }}
+                                                                                                    />
+                                                                                                </span>
+                                                                                            ) : getFotmobLogoByUnibetId(league.id) || league.image_path ? (
+                                                                                                <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
+                                                                                                    <img
+                                                                                                        src={getFotmobLogoByUnibetId(league.id) || league.image_path}
                                                                                                         alt={league.name}
                                                                                                         className="w-5 h-5 object-contain"
                                                                                                         onError={e => { e.target.style.display = 'none'; }}
@@ -733,10 +752,19 @@ const Sidebar = () => {
                                                                                 title={league.name}
                                                                             >
                                                                                 <div className="flex items-center min-w-0 py-0">
-                                                                                    {league.image_path ? (
+                                                                                    {getFotmobLogoByUnibetId(league.id) || league.fotmobId ? (
                                                                                         <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
                                                                                             <img
-                                                                                                src={league.image_path}
+                                                                                                src={getFotmobLogoByUnibetId(league.id) || `https://images.fotmob.com/image_resources/logo/leaguelogo/${league.fotmobId}.png`}
+                                                                                                alt={league.name}
+                                                                                                className="w-5 h-5 object-contain"
+                                                                                                onError={e => { e.target.style.display = 'none'; }}
+                                                                                            />
+                                                                                        </span>
+                                                                                    ) : getFotmobLogoByUnibetId(league.id) || league.image_path ? (
+                                                                                        <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
+                                                                                            <img
+                                                                                                src={getFotmobLogoByUnibetId(league.id) || league.image_path}
                                                                                                 alt={league.name}
                                                                                                 className="w-5 h-5 object-contain"
                                                                                                 onError={e => { e.target.style.display = 'none'; }}
@@ -790,10 +818,19 @@ const Sidebar = () => {
                                                                     title={league.name}
                                                                 >
                                                                     <div className="flex items-center min-w-0">
-                                                                        {league.image_path ? (
+                                                                        {getFotmobLogoByUnibetId(league.id) || league.fotmobId ? (
                                                                             <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
                                                                                 <img
-                                                                                    src={league.image_path}
+                                                                                    src={getFotmobLogoByUnibetId(league.id) || `https://images.fotmob.com/image_resources/logo/leaguelogo/${league.fotmobId}.png`}
+                                                                                    alt={league.name}
+                                                                                    className="w-5 h-5 object-contain"
+                                                                                    onError={e => { e.target.style.display = 'none'; }}
+                                                                                />
+                                                                            </span>
+                                                                        ) : getFotmobLogoByUnibetId(league.id) || league.image_path ? (
+                                                                            <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
+                                                                                <img
+                                                                                    src={getFotmobLogoByUnibetId(league.id) || league.image_path}
                                                                                     alt={league.name}
                                                                                     className="w-5 h-5 object-contain"
                                                                                     onError={e => { e.target.style.display = 'none'; }}
@@ -820,10 +857,19 @@ const Sidebar = () => {
                                                             title={league.name}
                                                         >
                                                             <div className="flex items-center min-w-0">
-                                                                {league.image_path ? (
+                                                                {getFotmobLogoByUnibetId(league.id) || league.fotmobId ? (
                                                                     <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
                                                                         <img
-                                                                            src={league.image_path}
+                                                                            src={getFotmobLogoByUnibetId(league.id) || `https://images.fotmob.com/image_resources/logo/leaguelogo/${league.fotmobId}.png`}
+                                                                            alt={league.name}
+                                                                            className="w-5 h-5 object-contain"
+                                                                            onError={e => { e.target.style.display = 'none'; }}
+                                                                        />
+                                                                    </span>
+                                                                ) : getFotmobLogoByUnibetId(league.id) || league.image_path ? (
+                                                                    <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
+                                                                        <img
+                                                                            src={getFotmobLogoByUnibetId(league.id) || league.image_path}
                                                                             alt={league.name}
                                                                             className="w-5 h-5 object-contain"
                                                                             onError={e => { e.target.style.display = 'none'; }}
@@ -889,10 +935,10 @@ const Sidebar = () => {
                                             className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
                                             title={league.name}
                                         >
-                                            {league.image_path ? (
+                                            {(getFotmobLogoByUnibetId(league.id) || getFotmobLogoByUnibetId(league.id) || league.image_path) ? (
                                                 <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6">
                                                     <img
-                                                        src={league.image_path}
+                                                        src={getFotmobLogoByUnibetId(league.id) || getFotmobLogoByUnibetId(league.id) || league.image_path}
                                                         alt={league.name}
                                                         className="w-6 h-6 object-contain"
                                                         onError={(e) => {

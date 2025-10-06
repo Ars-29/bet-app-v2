@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { fetchLiveMatches, silentUpdateLiveMatches, selectLiveMatchesGrouped, selectLiveMatchesLoading, selectLiveMatchesError } from '@/lib/features/matches/liveMatchesSlice';
 import MatchListPage from '@/components/shared/MatchListPage';
 import LiveTimer from '@/components/home/LiveTimer';
+import { getFotmobLogoByUnibetId } from '@/lib/leagueUtils';
 
 const InPlayPage = () => {
     const liveMatchesRaw = useSelector(selectLiveMatchesGrouped);
@@ -79,15 +80,20 @@ const InPlayPage = () => {
             return [];
         }
         
-        return liveMatchesRaw.map(leagueData => ({
-            id: leagueData.league || Math.random().toString(36).substr(2, 9),
-            name: leagueData.league || 'Unknown League',
-            league: {
-                id: leagueData.league,
-                name: leagueData.league,
-                imageUrl: null, // Unibet API doesn't provide league images
-            },
-            icon: "⚽",
+        return liveMatchesRaw.map(leagueData => {
+            // Get groupId from the first match to use for Fotmob logo
+            const firstMatch = leagueData.matches?.[0];
+            const groupId = firstMatch?.groupId;
+            
+            return {
+                id: leagueData.league || Math.random().toString(36).substr(2, 9),
+                name: leagueData.league || 'Unknown League',
+                league: {
+                    id: leagueData.league,
+                    name: leagueData.league,
+                    imageUrl: getFotmobLogoByUnibetId(groupId) || null,
+                },
+                icon: "⚽",
             matches: (leagueData.matches || []).map(match => {
                 // Extract team names from Unibet API format
                 const team1 = match.homeName || match.team1 || 'Home Team';
@@ -152,7 +158,8 @@ const InPlayPage = () => {
                 };
             }),
             matchCount: leagueData.matches?.length || 0,
-        }));
+            };
+        });
     }, [liveMatchesRaw]);
 
     const inPlayConfig = {
