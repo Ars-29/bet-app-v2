@@ -120,7 +120,7 @@ export class FotmobController {
                 });
             }
 
-            const days = req.body.days || 7; // Default 7 days
+            const days = req.body.days || 20; // Default 20 days (21 total including yesterday)
             const startDate = new Date();
             const cacheData = {};
 

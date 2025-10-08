@@ -342,9 +342,9 @@ agenda.define("refreshFotmobMultidayCache", async (job) => {
     
     const fotmobController = new FotmobController();
     
-    // Refresh multi-day cache (7 days)
+    // Refresh multi-day cache (20 days + yesterday = 21 days total)
     await fotmobController.refreshMultidayCache({
-      body: { days: 7 }
+      body: { days: 20 }
     }, {
       json: (data) => {
         console.log(`[Agenda] FotMob cache refresh completed:`, data);

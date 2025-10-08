@@ -37,6 +37,16 @@ const betSlipSlice = createSlice({
 
       console.log("Adding bet with payload:", action.payload);
       console.log("MarketId type and value:", typeof marketId, marketId);
+      
+      // 🔍 Debug: Log the match data being processed
+      console.log('🔍 Bet Slip - Processing match data:', {
+        matchId: match.id,
+        team1: match.team1,
+        team2: match.team2,
+        homeName: match.homeName,
+        awayName: match.awayName,
+        participants: match.participants
+      });
 
       // Check if bet already exists (same oddId) or same market bet exists (same match + marketId)
       // For combination bets, we allow multiple selections from the same market (1X2)
@@ -93,8 +103,11 @@ const betSlipSlice = createSlice({
         id: `${match.id}-${oddId}-${Date.now()}`,
         match: {
           id: match.id,
-          team1: match.team1 || (match.participants && match.participants[0] ? match.participants[0].name : 'Team 1'),
-          team2: match.team2 || (match.participants && match.participants[1] ? match.participants[1].name : 'Team 2'),
+          // ✅ Fix team assignment by checking home/away property instead of array index
+          team1: match.team1 || match.homeName || (match.participants ? 
+            (match.participants.find(p => p.home === true)?.name || match.participants[0]?.name) : 'Team 1'),
+          team2: match.team2 || match.awayName || (match.participants ? 
+            (match.participants.find(p => p.home === false)?.name || match.participants[1]?.name) : 'Team 2'),
           competition: match.competition || match.league?.name || "Football",
           time: match.time || match.startTime || (match.starting_at ? match.starting_at.split(' ')[1].slice(0, 5) : ''),
           isLive: match.isLive || false,
@@ -117,6 +130,19 @@ const betSlipSlice = createSlice({
         inplay, // ✅ Add inplay flag for combination bets
         ...rest
       };
+
+      // 🔍 Debug: Log the final bet object that will be stored
+      console.log('🔍 Bet Slip - Final bet object created:', {
+        id: newBet.id,
+        match: {
+          id: newBet.match.id,
+          team1: newBet.match.team1,
+          team2: newBet.match.team2,
+          name: newBet.match.name
+        },
+        selection: newBet.selection,
+        odds: newBet.odds
+      });
 
       if (existingBetIndex >= 0 && state.bets[existingBetIndex].oddId === oddId) {
         // Update existing bet with same oddId
@@ -290,6 +316,52 @@ export const selectTotalStake = (state) => state.betSlip.totalStake;
 export const selectPotentialReturn = (state) => state.betSlip.potentialReturn;
 export const selectLastError = (state) => state.betSlip.lastError;
 
+// Helper function to get match data from multiple sources (match detail page or league page)
+const getMatchDataFromState = (matchId, matchesState, leaguesState) => {
+  // First try to get from match details (individual match page)
+  let matchData = matchesState.matchDetailsV2?.[matchId]?.matchData;
+  
+  if (matchData) {
+    console.log(`[getMatchDataFromState] Found match data in matchDetailsV2 for ${matchId}`);
+    return matchData;
+  }
+  
+  // If not found, try to get from league data (league page)
+  for (const leagueId in leaguesState.matchesByLeague) {
+    const leagueData = leaguesState.matchesByLeague[leagueId];
+    if (leagueData && leagueData.matches && Array.isArray(leagueData.matches)) {
+      const leagueMatch = leagueData.matches.find(match => match.id === matchId);
+      if (leagueMatch) {
+        console.log(`[getMatchDataFromState] Found match data in league ${leagueId} for ${matchId}`);
+        // Transform league match data to match the expected format
+        return {
+          data: {
+            groupId: leagueMatch.groupId,
+            group: leagueMatch.group,
+            betOffers: leagueMatch.betOffers || [],
+            events: [{
+              id: leagueMatch.id,
+              name: leagueMatch.name,
+              englishName: leagueMatch.englishName,
+              homeName: leagueMatch.homeName,
+              awayName: leagueMatch.awayName,
+              start: leagueMatch.start,
+              state: leagueMatch.state,
+              sport: leagueMatch.sport,
+              groupId: leagueMatch.groupId,
+              group: leagueMatch.group,
+              participants: leagueMatch.participants
+            }]
+          }
+        };
+      }
+    }
+  }
+  
+  console.warn(`[getMatchDataFromState] No match data found for ${matchId} in any source`);
+  return null;
+};
+
 // Helper function to extract Unibet metadata from match data
 const extractUnibetMetadata = (bet, matchData) => {
   console.log('🔍 Debug matchData structure:', {
@@ -311,56 +383,99 @@ const extractUnibetMetadata = (bet, matchData) => {
     eventsGroup: matchData?.data?.events?.[0]?.group
   });
   
-  if (!matchData?.data?.betOffers || !Array.isArray(matchData.data.betOffers)) {
-    console.warn('No betOffers data available for metadata extraction');
-    return {};
+  // Determine correct participant for base metadata
+  let baseParticipant = bet.selection || bet.label;
+  if (bet.selection === 'Home' || bet.selection === '1') {
+    baseParticipant = bet.match.team1;
+  } else if (bet.selection === 'Away' || bet.selection === '2') {
+    baseParticipant = bet.match.team2;
   }
 
-  // Find the bet offer that matches this bet
-  const betOffer = matchData.data.betOffers.find(offer => 
-    offer.outcomes?.some(outcome => outcome.id === bet.oddId)
-  );
-
-  if (!betOffer) {
-    console.warn(`No bet offer found for oddId: ${bet.oddId}`);
-    return {};
-  }
-
-  // Find the specific outcome
-  const outcome = betOffer.outcomes?.find(outcome => outcome.id === bet.oddId);
-  
-  if (!outcome) {
-    console.warn(`No outcome found for oddId: ${bet.oddId}`);
-    return {};
-  }
-
-  console.log('Extracted metadata:', {
-    betOffer: betOffer.criterion?.label,
-    outcome: outcome.label,
-    leagueId: matchData.data.groupId,
-    leagueName: matchData.data.group,
-    fullMatchData: matchData
-  });
-
-  // Extract metadata
-  return {
+  // Base metadata that we can always extract
+  const baseMetadata = {
     eventName: `${bet.match.team1} vs ${bet.match.team2}`,
-    marketName: betOffer.criterion?.label || betOffer.betOfferType?.name || bet.marketDescription,
-    criterionLabel: betOffer.criterion?.label || null,
-    criterionEnglishLabel: betOffer.criterion?.englishLabel || null,
-    outcomeEnglishLabel: outcome.englishLabel || outcome.label,
-    participant: outcome.participant || null,
-    participantId: outcome.participantId || null,
-    eventParticipantId: outcome.eventParticipantId || null,
-    betOfferTypeId: betOffer.betOfferType?.id || null,
-    handicapRaw: outcome.line ? Math.round(outcome.line * 1000) : null,
-    handicapLine: outcome.line || null,
-    leagueId: matchData.data.groupId || matchData.data.event?.groupId || matchData.data.events?.[0]?.groupId || null,
-    leagueName: matchData.data.group || matchData.data.event?.group || matchData.data.events?.[0]?.group || null,
+    marketName: bet.marketDescription || "Unknown Market",
+    criterionLabel: bet.selection || bet.label,
+    criterionEnglishLabel: bet.selection || bet.label,
+    outcomeEnglishLabel: bet.selection || bet.label,
+    participant: baseParticipant,
+    participantId: null,
+    eventParticipantId: null,
+    betOfferTypeId: null,
+    handicapRaw: null,
+    handicapLine: null,
+    leagueId: matchData?.data?.groupId || matchData?.data?.events?.[0]?.groupId || null,
+    leagueName: matchData?.data?.group || matchData?.data?.events?.[0]?.group || null,
     homeName: bet.match.team1,
     awayName: bet.match.team2,
-    start: bet.match.starting_at
+    // ✅ Get start time from multiple sources: bet object, match data events, or match data root
+    start: bet.match.starting_at || matchData?.data?.events?.[0]?.start || matchData?.data?.start || null
   };
+
+  // If we have betOffers data, try to extract more detailed metadata
+  if (matchData?.data?.betOffers && Array.isArray(matchData.data.betOffers)) {
+    // Find the bet offer that matches this bet
+    const betOffer = matchData.data.betOffers.find(offer => 
+      offer.outcomes?.some(outcome => outcome.id === bet.oddId)
+    );
+
+    if (betOffer) {
+      // Find the specific outcome
+      const outcome = betOffer.outcomes?.find(outcome => outcome.id === bet.oddId);
+      
+      if (outcome) {
+        console.log('Extracted detailed metadata:', {
+          betOffer: betOffer.criterion?.label,
+          outcome: outcome.label,
+          leagueId: matchData.data.groupId,
+          leagueName: matchData.data.group
+        });
+
+        // Determine correct participant based on bet selection
+        let correctParticipant = outcome.participant || bet.selection;
+        let correctParticipantId = outcome.participantId || null;
+        
+        // Fix participant assignment for Home/Away bets
+        if (bet.selection === 'Home' || bet.selection === '1') {
+          correctParticipant = bet.match.team1 || baseMetadata.homeName;
+          // Try to find participant ID for home team
+          if (matchData?.data?.events?.[0]?.participants?.[0]?.id) {
+            correctParticipantId = matchData.data.events[0].participants[0].id;
+          }
+        } else if (bet.selection === 'Away' || bet.selection === '2') {
+          correctParticipant = bet.match.team2 || baseMetadata.awayName;
+          // Try to find participant ID for away team
+          if (matchData?.data?.events?.[0]?.participants?.[1]?.id) {
+            correctParticipantId = matchData.data.events[0].participants[1].id;
+          }
+        }
+
+        // Override with detailed metadata if available
+        return {
+          ...baseMetadata,
+          marketName: betOffer.criterion?.label || betOffer.betOfferType?.name || bet.marketDescription,
+          criterionLabel: betOffer.criterion?.label || bet.selection,
+          criterionEnglishLabel: betOffer.criterion?.englishLabel || bet.selection,
+          outcomeEnglishLabel: outcome.englishLabel || outcome.label,
+          participant: correctParticipant,
+          participantId: correctParticipantId,
+          eventParticipantId: outcome.eventParticipantId || null,
+          betOfferTypeId: betOffer.betOfferType?.id || null,
+          handicapRaw: outcome.line ? Math.round(outcome.line * 1000) : null,
+          handicapLine: outcome.line || null
+        };
+      } else {
+        console.warn(`No outcome found for oddId: ${bet.oddId}`);
+      }
+    } else {
+      console.warn(`No bet offer found for oddId: ${bet.oddId}`);
+    }
+  } else {
+    console.warn('No betOffers data available for metadata extraction, using base metadata');
+  }
+
+  console.log('Using base metadata:', baseMetadata);
+  return baseMetadata;
 };
 
 // Thunk to place bets (supports both singles and combination bets)
@@ -375,6 +490,7 @@ export const placeBetThunk = createAsyncThunk(
     
     // Get match data from Redux state for Unibet metadata extraction
     const matchesState = getState().matches;
+    const leaguesState = getState().leagues;
     
     try {
       const results = [];
@@ -388,8 +504,8 @@ export const placeBetThunk = createAsyncThunk(
             continue; // skip invalid
           }
           
-          // Extract Unibet metadata from match data
-          const matchData = matchesState.matchDetailsV2?.[bet.match.id]?.matchData;
+          // Extract Unibet metadata from match data (try multiple sources)
+          const matchData = getMatchDataFromState(bet.match.id, matchesState, leaguesState);
           const unibetMetadata = extractUnibetMetadata(bet, matchData);
           
           console.log('Unibet metadata extracted:', unibetMetadata);
@@ -449,9 +565,24 @@ export const placeBetThunk = createAsyncThunk(
         const combinationData = bets.map(bet => {
           const label = bet.label || bet.selection;
           
-          // Extract Unibet metadata from match data for each leg
-          const matchData = matchesState.matchDetailsV2?.[bet.match.id]?.matchData;
+          // Extract Unibet metadata from match data for each leg (try multiple sources)
+          console.log(`[placeBet] Processing leg for match ${bet.match.id}:`, {
+            matchId: bet.match.id,
+            team1: bet.match.team1,
+            team2: bet.match.team2,
+            starting_at: bet.match.starting_at
+          });
+          
+          const matchData = getMatchDataFromState(bet.match.id, matchesState, leaguesState);
+          console.log(`[placeBet] Match data found for ${bet.match.id}:`, {
+            hasMatchData: !!matchData,
+            hasData: !!matchData?.data,
+            groupId: matchData?.data?.groupId,
+            group: matchData?.data?.group
+          });
+          
           const unibetMetadata = extractUnibetMetadata(bet, matchData);
+          console.log(`[placeBet] Unibet metadata extracted for ${bet.match.id}:`, unibetMetadata);
           
           return {
             matchId: bet.match.id,
@@ -482,7 +613,7 @@ export const placeBetThunk = createAsyncThunk(
               matchStartTime: bet.match.starting_at,
               matchEndTime: bet.match.estimatedMatchEnd || (bet.match.starting_at ? new Date(new Date(bet.match.starting_at).getTime() + 120 * 60 * 1000).toISOString() : null)
             }),
-            // Add Unibet metadata for enrichment
+            // ✅ Spread unibetMeta fields at root level for backend compatibility
             ...unibetMetadata
           };
         });

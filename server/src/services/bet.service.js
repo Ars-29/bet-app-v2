@@ -1005,9 +1005,18 @@ class BetService {
           console.log(
             `Using minimal Unibet context for match ${matchId} (no SportsMonk fallback)`
           );
+          
+          // Use the correct match date from frontend data instead of current time
+          const correctMatchDate = unibetMetaPayload?.start || 
+                                 clientBetDetails?.matchDate || 
+                                 clientBetDetails?.startTime ||
+                                 new Date().toISOString();
+          
+          console.log(`[DEBUG] Using match date from frontend: ${correctMatchDate}`);
+          
           matchData = {
             id: matchId,
-            starting_at: new Date().toISOString(),
+            starting_at: correctMatchDate,
             participants: [],
             state: {}
           };
