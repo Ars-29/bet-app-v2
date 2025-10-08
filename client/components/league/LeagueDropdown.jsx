@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { X, ChevronLeft } from 'lucide-react';
 import LeagueIcon from '@/components/ui/LeagueIcon';
+import { getFotmobLogoByUnibetId } from '@/lib/leagueUtils';
 
 const LeagueDropdown = ({ leagues, isOpen, onClose, currentLeagueId, triggerRef }) => {
     const dropdownRef = useRef(null);
@@ -74,9 +75,9 @@ const LeagueDropdown = ({ leagues, isOpen, onClose, currentLeagueId, triggerRef 
                                 <div className="p-4 bg-gray-800">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-3">
-                                            {league.image_path ? (
+                                            {(getFotmobLogoByUnibetId(league.id) || league.image_path) ? (
                                                 <img 
-                                                    src={league.image_path} 
+                                                    src={getFotmobLogoByUnibetId(league.id) || league.image_path} 
                                                     alt={league.name} 
                                                     className="h-6 w-6 object-contain"
                                                 />

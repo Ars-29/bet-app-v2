@@ -84,8 +84,19 @@ const MatchHeader = ({ matchData, onScoreUpdate }) => {
         awayTeam = parsedAway || 'Away';
     }
 
-    // Get league name
+    // Get league name and country
     const leagueName = matchData.league?.name || matchData.league || 'Unknown League';
+    const country = matchData?.parentName || '';
+    const displayLeagueName = country ? `${leagueName} (${country})` : leagueName;
+    
+    // Debug logging
+    console.log('🔍 MatchHeader Debug:', {
+        matchData,
+        leagueName,
+        country,
+        parentName: matchData?.parentName,
+        displayLeagueName
+    });
 
     // Get match time/score
     const matchTime = matchData.start ? formatToLocalTime(matchData.start) : 'TBD';
@@ -150,18 +161,18 @@ const MatchHeader = ({ matchData, onScoreUpdate }) => {
 
             {/* Match info */}
             <div className="text-center mb-4">
-                <div className="text-sm text-gray-600 mb-2">
-                    {leagueName}
+                <div className="text-sm font-medium text-gray-600 mb-2">
+                    {displayLeagueName}
                 </div>
-                <div className="flex items-center justify-center text-sm mb-2">
+                <div className="flex items-center justify-center text-xs text-gray-500 mb-2">
                     {isLive ? (
                         <div className="flex items-center text-red-600 animate-pulse">
                             <div className="w-2 h-2 bg-red-600 rounded-full mr-2 animate-pulse"></div>
                             LIVE
                         </div>
                     ) : (
-                        <div className="flex items-center text-gray-500">
-                            <Clock className="h-4 w-4 mr-1" />
+                        <div className="flex items-center text-gray-400">
+                            <Clock className="h-3 w-3 mr-1" />
                             {matchTime}
                         </div>
                     )}

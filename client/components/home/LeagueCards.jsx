@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Tv } from 'lucide-react';
 import { useBetting } from '@/hooks/useBetting';
 import leaguesData, { getLiveLeagues } from '@/data/dummayLeagues';
 import { formatToLocalTime, formatMatchTime } from '@/lib/utils';
@@ -14,16 +14,34 @@ import { useSelector } from 'react-redux';
 import { selectIsConnected } from '@/lib/features/websocket/websocketSlice';
 import { useLiveOdds } from '@/hooks/useLiveOdds';
 import { getFotmobLogoByUnibetId } from '@/lib/leagueUtils';
+import LiveMatchTimer from '@/components/shared/LiveMatchTimer';
 
 // Match Item Component
 const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButtonClass, isOddClickable, hideOdds = false }) => {
     const liveOdds = useLiveOdds(match.id);
     
+    console.log('🔍 MatchItem received match:', match.id, 'kambiLiveData:', match.kambiLiveData, 'isInPlay:', isInPlay);
+    
     return (
         <div>
             <div className='flex justify-between mt-2'>
-                <div className="text-xs text-gray-600">
-                    {isInPlay && match.isLive ? (
+                <div className="text-xs text-gray-600 flex items-center gap-1">
+                    {/* TV icon for live matches */}
+                    {(match.kambiLiveData?.matchClock || (isInPlay && match.isLive)) && (
+                        <Tv className="w-3 h-3 text-red-600" />
+                    )}
+                    {/* Live time with client-side timer */}
+                    {match.kambiLiveData?.matchClock ? (
+                        <LiveMatchTimer 
+                            matchId={match.id}
+                            initialTime={{
+                                minute: match.kambiLiveData.matchClock.minute || 0,
+                                second: match.kambiLiveData.matchClock.second || 0
+                            }}
+                            initialPeriod={match.kambiLiveData.matchClock.period || '1st half'}
+                            isRunning={match.kambiLiveData.matchClock.running || false}
+                        />
+                    ) : isInPlay && match.isLive ? (
                         <LiveTimer 
                             startingAt={match.starting_at} 
                             timing={match.timing} 
@@ -47,21 +65,37 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                     ) : ''}
                 </div>
             </div>
+            
             <Link href={`/matches/${match.id}`}>
                 <div className="cursor-pointer hover:bg-gray-50 -mx-4 px-4 py-1 rounded">
                     <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                            <div className="text-[12px] mb-1 flex items-center gap-2" title={match.team1 || match.homeName}>
-                                <span>
-                                    {(match.team1 || match.homeName || '').length > 6 ? `${(match.team1 || match.homeName || '').slice(0, 18)}...` : (match.team1 || match.homeName || '')}
-                                </span>
+                        <div className="flex-1 min-w-0">
+                            <div className="text-[12px] mb-1 truncate" title={match.team1 || match.homeName}>
+                                {(match.team1 || match.homeName || '').length > 15 ? `${(match.team1 || match.homeName || '').slice(0, 15)}...` : (match.team1 || match.homeName || '')}
                             </div>
-                            <div className="text-[12px] flex items-center gap-2" title={match.team2 || match.awayName}>
-                                <span>
-                                    {(match.team2 || match.awayName || '').length > 6 ? `${(match.team2 || match.awayName || '').slice(0, 18)}...` : (match.team2 || match.awayName || '')}
-                                </span>
+                            <div className="text-[12px] truncate" title={match.team2 || match.awayName}>
+                                {(match.team2 || match.awayName || '').length > 15 ? `${(match.team2 || match.awayName || '').slice(0, 15)}...` : (match.team2 || match.awayName || '')}
                             </div>
                         </div>
+                        
+                        {/* Live score display from Kambi API - vertically on the right */}
+                        {match.kambiLiveData?.score ? (
+                            <div className="text-sm font-bold text-gray-800 text-right mr-2">
+                                <div>{match.kambiLiveData.score.home || '0'}</div>
+                                <div>{match.kambiLiveData.score.away || '0'}</div>
+                            </div>
+                        ) : match.liveData?.score ? (
+                            <div className="text-sm font-bold text-gray-800 text-right mr-2">
+                                <div>{match.liveData.score.split(' - ')[0] || '0'}</div>
+                                <div>{match.liveData.score.split(' - ')[1] || '0'}</div>
+                            </div>
+                        ) : isInPlay && match.isLive ? (
+                            <div className="text-sm font-bold text-gray-800 text-right mr-2">
+                                <div>0</div>
+                                <div>0</div>
+                            </div>
+                        ) : null}
+                        
                         <div className="flex items-center flex-shrink-0">
                             {!hideOdds && (
                                 <div className="flex gap-1">
@@ -120,46 +154,45 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                                     
                                     return (
                                         <>
-                                            {/* Handle both formats: live odds (home/draw/away) and transformed odds (1/X/2) */}
-                                            {(displayOdds.home || displayOdds['1']) && (
-                                                <Button
-                                                    size="sm"
-                                                    className={getOddButtonClass({ suspended: getSuspendedStatus('home') || getSuspendedStatus('1') })}
-                                                    onClick={isOddClickable({ suspended: getSuspendedStatus('home') || getSuspendedStatus('1') })
-                                                        ? createBetHandler(match, 'Home', getOddValue('home') || getOddValue('1'), '1x2', (liveOdds.home?.oddId || displayOdds['1']?.oddId || null), { marketId: "1_home", label: "Home", name: `Win - ${match.team1 || match.participants?.[0]?.name || 'Team 1'}`, marketDescription: "Full Time Result" })
-                                                        : undefined
-                                                    }
-                                                    disabled={!isOddClickable({ suspended: getSuspendedStatus('home') || getSuspendedStatus('1') })}
-                                                >
-                                                    {(getSuspendedStatus('home') || getSuspendedStatus('1')) ? '--' : (getOddValue('home') || getOddValue('1'))}
-                                                </Button>
-                                            )}
-                                            {(displayOdds.draw || displayOdds['X']) && (
-                                                <Button
-                                                    size="sm"
-                                                    className={getOddButtonClass({ suspended: getSuspendedStatus('draw') || getSuspendedStatus('X') })}
-                                                    onClick={isOddClickable({ suspended: getSuspendedStatus('draw') || getSuspendedStatus('X') })
-                                                        ? createBetHandler(match, 'Draw', getOddValue('draw') || getOddValue('X'), '1x2', (liveOdds.draw?.oddId || displayOdds['X']?.oddId || null), { marketId: "1_draw", label: "Draw", name: `Draw - ${match.team1 || match.participants?.[0]?.name || 'Team 1'} vs ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })
-                                                        : undefined
-                                                    }
-                                                    disabled={!isOddClickable({ suspended: getSuspendedStatus('draw') || getSuspendedStatus('X') })}
-                                                >
-                                                    {(getSuspendedStatus('draw') || getSuspendedStatus('X')) ? '--' : (getOddValue('draw') || getOddValue('X'))}
-                                                </Button>
-                                            )}
-                                            {(displayOdds.away || displayOdds['2']) && (
-                                                <Button
-                                                    size="sm"
-                                                    className={getOddButtonClass({ suspended: getSuspendedStatus('away') || getSuspendedStatus('2') })}
-                                                    onClick={isOddClickable({ suspended: getSuspendedStatus('away') || getSuspendedStatus('2') })
-                                                        ? createBetHandler(match, 'Away', getOddValue('away') || getOddValue('2'), '1x2', (liveOdds.away?.oddId || displayOdds['2']?.oddId || null), { marketId: "1_away", label: "Away", name: `Win - ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })
-                                                        : undefined
-                                                    }
-                                                    disabled={!isOddClickable({ suspended: getSuspendedStatus('away') || getSuspendedStatus('2') })}
-                                                >
-                                                    {(getSuspendedStatus('away') || getSuspendedStatus('2')) ? '--' : (getOddValue('away') || getOddValue('2'))}
-                                                </Button>
-                                            )}
+                                            {/* Always render all three buttons to maintain fixed layout */}
+                                            {/* Home/1 Button */}
+                                            <Button
+                                                size="sm"
+                                                className={getOddButtonClass({ suspended: getSuspendedStatus('home') || getSuspendedStatus('1') || !(displayOdds.home || displayOdds['1']) })}
+                                                onClick={isOddClickable({ suspended: getSuspendedStatus('home') || getSuspendedStatus('1') || !(displayOdds.home || displayOdds['1']) })
+                                                    ? createBetHandler(match, 'Home', getOddValue('home') || getOddValue('1'), '1x2', (liveOdds.home?.oddId || displayOdds['1']?.oddId || null), { marketId: "1_home", label: "Home", name: `Win - ${match.team1 || match.participants?.[0]?.name || 'Team 1'}`, marketDescription: "Full Time Result" })
+                                                    : undefined
+                                                }
+                                                disabled={!isOddClickable({ suspended: getSuspendedStatus('home') || getSuspendedStatus('1') || !(displayOdds.home || displayOdds['1']) })}
+                                            >
+                                                {(getSuspendedStatus('home') || getSuspendedStatus('1') || !(displayOdds.home || displayOdds['1'])) ? '--' : (getOddValue('home') || getOddValue('1'))}
+                                            </Button>
+                                            
+                                            {/* Draw/X Button */}
+                                            <Button
+                                                size="sm"
+                                                className={getOddButtonClass({ suspended: getSuspendedStatus('draw') || getSuspendedStatus('X') || !(displayOdds.draw || displayOdds['X']) })}
+                                                onClick={isOddClickable({ suspended: getSuspendedStatus('draw') || getSuspendedStatus('X') || !(displayOdds.draw || displayOdds['X']) })
+                                                    ? createBetHandler(match, 'Draw', getOddValue('draw') || getOddValue('X'), '1x2', (liveOdds.draw?.oddId || displayOdds['X']?.oddId || null), { marketId: "1_draw", label: "Draw", name: `Draw - ${match.team1 || match.participants?.[0]?.name || 'Team 1'} vs ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })
+                                                    : undefined
+                                                }
+                                                disabled={!isOddClickable({ suspended: getSuspendedStatus('draw') || getSuspendedStatus('X') || !(displayOdds.draw || displayOdds['X']) })}
+                                            >
+                                                {(getSuspendedStatus('draw') || getSuspendedStatus('X') || !(displayOdds.draw || displayOdds['X'])) ? '--' : (getOddValue('draw') || getOddValue('X'))}
+                                            </Button>
+                                            
+                                            {/* Away/2 Button */}
+                                            <Button
+                                                size="sm"
+                                                className={getOddButtonClass({ suspended: getSuspendedStatus('away') || getSuspendedStatus('2') || !(displayOdds.away || displayOdds['2']) })}
+                                                onClick={isOddClickable({ suspended: getSuspendedStatus('away') || getSuspendedStatus('2') || !(displayOdds.away || displayOdds['2']) })
+                                                    ? createBetHandler(match, 'Away', getOddValue('away') || getOddValue('2'), '1x2', (liveOdds.away?.oddId || displayOdds['2']?.oddId || null), { marketId: "1_away", label: "Away", name: `Win - ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })
+                                                    : undefined
+                                                }
+                                                disabled={!isOddClickable({ suspended: getSuspendedStatus('away') || getSuspendedStatus('2') || !(displayOdds.away || displayOdds['2']) })}
+                                            >
+                                                {(getSuspendedStatus('away') || getSuspendedStatus('2') || !(displayOdds.away || displayOdds['2'])) ? '--' : (getOddValue('away') || getOddValue('2'))}
+                                            </Button>
                                             {isUsingLiveOdds && (
                                                 <div className="text-xs text-green-500 ml-1">
                                                     🔄
@@ -336,6 +369,7 @@ const LeagueCards = ({
 
     // Transform Redux data to match the expected format
     const transformReduxData = (data) => {
+        console.log('🔍 LeagueCards transformReduxData input:', data);
         
         if (data && Array.isArray(data)) {
             
@@ -351,6 +385,7 @@ const LeagueCards = ({
                     
                     // Transform matches to match the expected format
                     const transformedMatches = leagueData.matches.map(match => {
+                        console.log('🔍 LeagueCards processing match:', match.id, 'kambiLiveData:', match.kambiLiveData);
     
     
                     // Handle both formats: Unibet API (homeName/awayName) and old format (name with ' vs ')
@@ -371,9 +406,22 @@ const LeagueCards = ({
 
     
                     // Check for odds in different possible locations
-                    // Unibet API uses mainBetOffer, old format uses odds_main/odds
+                    // Priority: liveOdds (Kambi API) > mainBetOffer (Unibet API) > old format
                     let oddsData = {};
-                    if (match.mainBetOffer && match.mainBetOffer.outcomes) {
+                    if (match.liveOdds && match.liveOdds.outcomes) {
+                        // Kambi API format - extract from liveOdds.outcomes
+                        console.log('🎲 LeagueCards: Found liveOdds for match', match.id, match.liveOdds);
+                        const outcomes = match.liveOdds.outcomes;
+                        const homeOdds = outcomes.find(o => o.label === '1')?.odds;
+                        const drawOdds = outcomes.find(o => o.label === 'X')?.odds;
+                        const awayOdds = outcomes.find(o => o.label === '2')?.odds;
+                        
+                        oddsData = {
+                            home: homeOdds ? homeOdds / 1000 : null, // Divide by 1000 to get decimal odds
+                            draw: drawOdds ? drawOdds / 1000 : null,
+                            away: awayOdds ? awayOdds / 1000 : null
+                        };
+                    } else if (match.mainBetOffer && match.mainBetOffer.outcomes) {
                         // Unibet API format - extract from mainBetOffer.outcomes
                         const outcomes = match.mainBetOffer.outcomes;
                         const homeOdds = outcomes.find(o => o.label === '1')?.odds;
@@ -525,16 +573,27 @@ const LeagueCards = ({
                         starting_at: match.starting_at || match.start, // Handle both formats
                         state_id: match.state_id || (match.state === 'STARTED' ? 2 : 1), // Map Unibet state to state_id
                         isLive: isMatchLive, // Add live flag
-                        timing: match.timing || null // Include timing info from backend if available
+                        timing: match.timing || null, // Include timing info from backend if available
+                        kambiLiveData: match.kambiLiveData, // Preserve Kambi live data for timer and score
+                        liveData: match.liveData // Preserve other live data
                     };
                 }).filter(match => match !== null); // Filter out null matches
     
-                // Get groupId from the first match to use for Fotmob logo
+                // Get groupId from the first match to use for Fotmob logo and as league ID
                 const firstMatch = leagueData.matches?.[0];
                 const groupId = firstMatch?.groupId;
                 
+                // Use groupId as the league ID (this is the actual Unibet league ID)
+                const leagueId = groupId || leagueData.league.id || leagueData.league;
+                console.log('🔍 LeagueCards: Generated league data:', {
+                    leagueId: leagueId,
+                    leagueName: leagueData.league.name || leagueData.league,
+                    groupId: groupId,
+                    matchesCount: transformedMatches.length
+                });
+                
                 return {
-                    id: leagueData.league.id || leagueData.league, // Handle both object and string formats
+                    id: leagueId, // Use groupId (Unibet league ID) as the primary ID
                     name: leagueData.league.name || leagueData.league, // Handle both object and string formats
                     icon: "⚽", // Default icon
                     imageUrl: getFotmobLogoByUnibetId(groupId) || leagueData.league.imageUrl || null,
@@ -657,7 +716,9 @@ const LeagueCards = ({
                         starting_at: match.starting_at,
                         state_id: match.state_id,
                         isLive: isMatchLive,
-                        timing: match.timing || null
+                        timing: match.timing || null,
+                        kambiLiveData: match.kambiLiveData, // Preserve Kambi live data for timer and score
+                        liveData: match.liveData // Preserve other live data
                     };
                     
                     leagueMap.get(leagueId).matches.push(transformedMatch);

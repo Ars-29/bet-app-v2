@@ -145,7 +145,7 @@ const LeagueAccordions = ({ matches }) => {
     return (
         <div className="space-y-3 bg-white h-full p-3 mb-6">
             {matchGroups && matchGroups.length > 0 ? (
-                <Accordion type="multiple" className="space-y-2">
+                <Accordion type="multiple" className="space-y-2" defaultValue={matchGroups.map(group => group.id)}>
                     {matchGroups.map((group) => (
                         <AccordionItem
                             style={{border: '1px solid rgb(243, 243, 244)'}}

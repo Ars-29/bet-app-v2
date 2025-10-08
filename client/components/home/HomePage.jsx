@@ -34,20 +34,21 @@ const HomePage = () => {
         dispatch(fetchLiveMatches());
     }, [dispatch]);
 
-    // Set up polling for live matches data (5 seconds)
+    // Set up polling for live matches data (1 second - same as MatchDetailPage)
     useEffect(() => {
-        // Start polling every 5 seconds for live matches
+        // Start polling every 1 second for live matches (same as match detail page)
         const startPolling = () => {
             pollingIntervalRef.current = setInterval(() => {
+                if (typeof document !== 'undefined' && document.hidden) return; // pause when tab hidden
                 console.log('🔄 Home page polling live matches data...');
                 dispatch(silentUpdateLiveMatches());
-            }, 5000); // Poll every 5 seconds
+            }, 1000); // Poll every 1 second (same as MatchDetailPage)
         };
 
         // Start polling after initial load
         const timeoutId = setTimeout(() => {
             startPolling();
-        }, 2000); // Wait 2 seconds after initial load
+        }, 1000); // Wait 1 second after initial load
 
         // Cleanup function
         return () => {
@@ -147,7 +148,7 @@ const HomePage = () => {
                             useReduxData={true}
                             reduxData={liveMatches}
                             loading={false}
-                            hideOdds={true}
+                            hideOdds={false}
                         />
                     </div>
 

@@ -1103,7 +1103,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
     // All tab: use accordion
     if (isAllTab) {
         return (
-            <Accordion type="multiple" className="space-y-2">
+            <Accordion type="multiple" className="space-y-2" defaultValue={groupedMarkets.map(category => category.id)}>
                 {groupedMarkets.map((category) => (
                     <AccordionItem key={category.id} value={category.id} className="bg-white border border-gray-200 overflow-hidden duration-200">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-gray-50/50 transition-colors duration-200 [&[data-state=open]]:bg-gray-50/80">

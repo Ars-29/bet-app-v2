@@ -281,32 +281,68 @@ const Sidebar = () => {
     // Group leagues by country and filter by search
     const groupedLeagues = useMemo(() => {
         if (!popularLeagues || !Array.isArray(popularLeagues)) return {};
-        const filtered = search.trim().length > 0
-            ? popularLeagues.filter(l => l.name.toLowerCase().includes(search.toLowerCase()))
-            : popularLeagues;
+        
         const groups = {};
-        filtered.forEach(league => {
-            // Get country name from the league data
-            let countryName = league.country?.name || league.country?.official_name;
-            
-            // If no country name or empty, put in 'other' group
-            if (!countryName || countryName.trim() === '') {
-                countryName = 'Other';
-            }
-            
-            // Use country name as the key (normalized)
-            const countryId = countryName.toLowerCase().replace(/\s+/g, '-');
-            
-            if (!groups[countryId]) {
-                groups[countryId] = {
-                    name: countryName,
-                    id: countryId,
-                    flag: league.country?.image_path || league.country?.image,
-                    leagues: []
-                };
-            }
-            groups[countryId].leagues.push(league);
-        });
+        const searchTerm = search.trim().toLowerCase();
+        
+        if (searchTerm.length > 0) {
+            // Search mode: filter accordions based on country name or league name
+            popularLeagues.forEach(league => {
+                // Get country name from the league data
+                let countryName = league.country?.name || league.country?.official_name;
+                
+                // If no country name or empty, put in 'other' group
+                if (!countryName || countryName.trim() === '') {
+                    countryName = 'Other';
+                }
+                
+                const countryNameLower = countryName.toLowerCase();
+                const leagueNameLower = league.name.toLowerCase();
+                
+                // Check if search matches country name OR league name
+                const countryMatches = countryNameLower.includes(searchTerm);
+                const leagueMatches = leagueNameLower.includes(searchTerm);
+                
+                if (countryMatches || leagueMatches) {
+                    // Use country name as the key (normalized)
+                    const countryId = countryName.toLowerCase().replace(/\s+/g, '-');
+                    
+                    if (!groups[countryId]) {
+                        groups[countryId] = {
+                            name: countryName,
+                            id: countryId,
+                            flag: league.country?.image_path || league.country?.image,
+                            leagues: []
+                        };
+                    }
+                    groups[countryId].leagues.push(league);
+                }
+            });
+        } else {
+            // No search: show all leagues grouped by country
+            popularLeagues.forEach(league => {
+                // Get country name from the league data
+                let countryName = league.country?.name || league.country?.official_name;
+                
+                // If no country name or empty, put in 'other' group
+                if (!countryName || countryName.trim() === '') {
+                    countryName = 'Other';
+                }
+                
+                // Use country name as the key (normalized)
+                const countryId = countryName.toLowerCase().replace(/\s+/g, '-');
+                
+                if (!groups[countryId]) {
+                    groups[countryId] = {
+                        name: countryName,
+                        id: countryId,
+                        flag: league.country?.image_path || league.country?.image,
+                        leagues: []
+                    };
+                }
+                groups[countryId].leagues.push(league);
+            });
+        }
         return groups;
     }, [popularLeagues, search]);
 
@@ -498,7 +534,7 @@ const Sidebar = () => {
                                         type="text"
                                         value={search}
                                         onChange={e => setSearch(e.target.value)}
-                                        placeholder="Search leagues..."
+                                        placeholder="Search leagues & countries..."
                                         className="w-full  pl-8 pr-7 py-1 text-xs rounded bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm border border-gray-600"
                                         style={{ boxSizing: 'border-box' }}
                                     />
@@ -528,38 +564,73 @@ const Sidebar = () => {
                                         </div>
                                     ) : (
                                         <div>
-                                            {getFlatSearchedLeagues && search.trim() ? (
-                                                getFlatSearchedLeagues.length === 0 ? (
+                                            {search.trim() ? (
+                                                Object.keys(groupedLeagues).length === 0 ? (
                                                     <div className="text-xs text-gray-400 px-4 py-2">No leagues found.</div>
                                                 ) : (
-                                                    getFlatSearchedLeagues.map(league => {
-                                                        const leagueHref = league.id === 'odds-boost' ? '/' : `/leagues/${league.id}`;
-                                                        return (
-                                                            <Link
-                                                                key={league.id}
-                                                                href={leagueHref}
-                                                                className="flex items-center justify-between py-2 px-4 rounded cursor-pointer group transition-colors hover:bg-gray-700 focus:bg-gray-700 border-l-2 border-transparent hover:border-blue-400 focus:border-blue-400 w-[95%] mx-auto mb-1"
-                                                                title={league.name}
+                                                    Object.values(groupedLeagues).map(country => (
+                                                        <div key={country.id} className="mb-2">
+                                                            <div
+                                                                className="flex items-center justify-between py-1 px-2 bg-gray-700 rounded cursor-pointer select-none transition-colors hover:bg-gray-600 group"
+                                                                onClick={() => setExpandedCountries(prev => ({ ...prev, [country.id]: !expandedCountries[country.id] }))}
+                                                                tabIndex={0}
+                                                                role="button"
+                                                                aria-expanded={expandedCountries[country.id]}
                                                             >
-                                                                <div className="flex items-center min-w-0">
-                                                                    {(getFotmobLogoByUnibetId(league.id) || getFotmobLogoByUnibetId(league.id) || league.image_path) ? (
-                                                                        <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
-                                                                            <img
-                                                                                src={getFotmobLogoByUnibetId(league.id) || getFotmobLogoByUnibetId(league.id) || league.image_path}
-                                                                                alt={league.name}
-                                                                                className="w-5 h-5 object-contain"
-                                                                                onError={e => { e.target.style.display = 'none'; }}
-                                                                            />
-                                                                        </span>
-                                                                    ) : league.icon ? (
-                                                                        <span className="text-green-400 text-sm mr-2">{league.icon}</span>
-                                                                    ) : null}
-                                                                    <span className="text-xs truncate max-w-[120px]" title={league.name}>{league.name}</span>
+                                                                <div className="flex items-center">
+                                                                    {country.name === 'International' ? (
+                                                                        <Globe className="w-4 h-4 mr-2 text-blue-400" />
+                                                                    ) : (
+                                                                        <ReactCountryFlag
+                                                                            countryCode={getCountryFlag(country.name)}
+                                                                            svg
+                                                                            style={{
+                                                                                width: '20px',
+                                                                                height: '16px',
+                                                                                borderRadius: '2px'
+                                                                            }}
+                                                                        />
+                                                                    )}
+                                                                    <span className="font-semibold text-xs truncate max-w-[120px]" title={country.name}>
+                                                                        {country.name}
+                                                                    </span>
                                                                 </div>
-                                                                <span className="text-xs text-gray-400 font-bold">{league.id}</span>
-                                                            </Link>
-                                                        );
-                                                    })
+                                                                <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${expandedCountries[country.id] ? 'rotate-90' : ''}`} />
+                                                            </div>
+                                                            {expandedCountries[country.id] && (
+                                                                <div className="mt-2">
+                                                                    {country.leagues.map(league => {
+                                                                        const leagueHref = league.id === 'odds-boost' ? '/' : `/leagues/${league.id}`;
+                                                                        return (
+                                                                            <Link
+                                                                                key={league.id}
+                                                                                href={leagueHref}
+                                                                                className="flex items-center justify-between py-1 px-5 rounded cursor-pointer group transition-colors hover:bg-gray-700 focus:bg-gray-700 border-l-2 border-transparent hover:border-blue-400 mt-1 focus:border-blue-400 w-[95%] mx-auto"
+                                                                                title={league.name}
+                                                                            >
+                                                                                <div className="flex items-center min-w-0 py-0">
+                                                                                    {(getFotmobLogoByUnibetId(league.id) || league.fotmobId || league.image_path) ? (
+                                                                                        <span className="bg-white rounded-full border border-gray-200 flex items-center justify-center w-6 h-6 mr-2">
+                                                                                            <img
+                                                                                                src={getFotmobLogoByUnibetId(league.id) || `https://images.fotmob.com/image_resources/logo/leaguelogo/${league.fotmobId}.png` || league.image_path}
+                                                                                                alt={league.name}
+                                                                                                className="w-5 h-5 object-contain"
+                                                                                                onError={e => { e.target.style.display = 'none'; }}
+                                                                                            />
+                                                                                        </span>
+                                                                                    ) : league.icon ? (
+                                                                                        <span className="text-green-400 text-sm mr-2">{league.icon}</span>
+                                                                                    ) : null}
+                                                                                    <span className="text-xs truncate max-w-[120px]" title={league.name}>{league.name}</span>
+                                                                                </div>
+                                                                                <span className="text-xs text-gray-400 font-bold">{league.id}</span>
+                                                                            </Link>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))
                                                 )
                                             ) : (
                                                 <>

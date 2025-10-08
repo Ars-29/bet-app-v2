@@ -21,6 +21,7 @@ const LeagueDetailPage = ({ leagueId }) => {
         "both-teams": "Both Teams to Score"
     };
     useEffect(() => {
+        console.log('🔍 LeagueDetailPage: Fetching matches for leagueId:', leagueId);
         dispatch(fetchMatchesByLeague(leagueId));
     }, [dispatch, leagueId])
 

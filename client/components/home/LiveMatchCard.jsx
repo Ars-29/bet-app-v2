@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useBetting } from '@/hooks/useBetting';
+import LiveMatchTimer from '@/components/shared/LiveMatchTimer';
+import { Tv } from 'lucide-react';
 
 const LiveMatchCard = ({ match }) => {
     const { createBetHandler } = useBetting();
@@ -12,43 +14,64 @@ const LiveMatchCard = ({ match }) => {
     return (
         <Link href={`/matches/${match.id}`}>
             <div className="bg-white border border-gray-200 cursor-pointer rounded-none shadow-none relative">
-                {/* Live indicator */}
-                {match.isLive && (
-                    <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                        LIVE
-                    </div>
-                )}
-                
                 <div className="p-4">
-                    <div className='flex align-center gap-2 justify-start mb-2'>
-                        <img src={`${match.league.imageUrl}`} className='w-4 h-4' alt="" />
-                        <div className="text-xs text-gray-500">{match.league.name}</div>
-                    </div>
-
-                    <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1">
-                            <div className="font-medium text-sm mb-1">{match.team1}</div>
-                            <div className="font-medium text-sm">{match.team2}</div>
+                    <div className='flex align-center gap-2 justify-between mb-2'>
+                        <div className="flex items-center gap-2">
+                            <img src={`${match.league.imageUrl}`} className='w-4 h-4' alt="" />
+                            <div className="text-xs text-gray-500">
+                                {match.league.country ? `${match.league.name} (${match.league.country})` : match.league.name}
+                            </div>
                         </div>
-                        <div className="text-right text-xs text-gray-500">
+                        {/* Timer in place of live tag */}
+                        {match.kambiLiveData?.matchClock ? (
                             <div className="flex items-center gap-1">
+                                <Tv className="w-3 h-3 text-red-600" />
+                                <LiveMatchTimer 
+                                    matchId={match.id}
+                                    initialTime={{
+                                        minute: match.kambiLiveData.matchClock.minute || 0,
+                                        second: match.kambiLiveData.matchClock.second || 0
+                                    }}
+                                    initialPeriod={match.kambiLiveData.matchClock.period || '1st half'}
+                                    isRunning={match.kambiLiveData.matchClock.running || false}
+                                />
+                            </div>
+                        ) : (
+                            <div className="text-xs text-gray-500">
                                 {match.clock && <span>⏰</span>}
                                 <span>{match.date}</span>
                             </div>
-                            <div className="text-red-600 font-medium">{match.time}</div>
-                        </div>
+                        )}
                     </div>
 
-                    {/* Live score display */}
-                    {match.liveData?.score && (
-                        <div className="text-center mb-3">
-                            <div className="text-lg font-bold text-gray-800">{match.liveData.score}</div>
+                    <div className="flex justify-between items-center mb-3">
+                        {/* Team names on left, score on right */}
+                        <div className="flex-1 min-w-0">
+                            <div className="text-sm mb-1 truncate">{match.team1}</div>
+                            <div className="text-sm truncate">{match.team2}</div>
                         </div>
-                    )}
+                        
+                        {/* Live score display from Kambi API - vertically on the right */}
+                        {match.kambiLiveData?.score ? (
+                            <div className="text-lg font-bold text-gray-800 text-right">
+                                <div>{match.kambiLiveData.score.home}</div>
+                                <div>{match.kambiLiveData.score.away}</div>
+                            </div>
+                        ) : match.liveData?.score ? (
+                            <div className="text-lg font-bold text-gray-800 text-right">
+                                <div>{match.liveData.score.split(' - ')[0] || '0'}</div>
+                                <div>{match.liveData.score.split(' - ')[1] || '0'}</div>
+                            </div>
+                        ) : (
+                            <div className="text-lg font-bold text-gray-800 text-right">
+                                <div>0</div>
+                                <div>0</div>
+                            </div>
+                        )}
+                    </div>
 
-                    {/* Odds buttons hidden for now */}
-                    {/* <div className="flex gap-1">
+                    {/* Odds buttons */}
+                    <div className="flex gap-1">
                         {match.odds['1'] && (
                             <Button
                                 size={"sm"}
@@ -91,7 +114,7 @@ const LiveMatchCard = ({ match }) => {
                                 Odds not available
                             </div>
                         )}
-                    {/* </div> */}
+                    </div>
                 </div>
             </div>
         </Link>

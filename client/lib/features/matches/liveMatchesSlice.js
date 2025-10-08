@@ -10,30 +10,44 @@ export const fetchLiveMatches = createAsyncThunk(
       // Transform the response to match the expected format
       const { matches, upcomingMatches, totalMatches, lastUpdated, warning, cacheAge } = response.data;
       
+      console.log('🔍 Redux slice received matches:', matches.length, 'first match kambiLiveData:', matches[0]?.kambiLiveData);
+      
       // Group live matches by league for the frontend
       const groupedMatches = {};
       matches.forEach(match => {
+        // Create unique league identifier by combining league name and country
         const leagueName = match.leagueName || 'Football';
-        if (!groupedMatches[leagueName]) {
-          groupedMatches[leagueName] = {
-            league: leagueName,
+        const country = match.parentName || 'Unknown';
+        const uniqueLeagueKey = `${leagueName} (${country})`;
+        
+        if (!groupedMatches[uniqueLeagueKey]) {
+          groupedMatches[uniqueLeagueKey] = {
+            league: uniqueLeagueKey, // Use the unique key as display name
+            leagueName: leagueName,  // Keep original league name
+            country: country,        // Keep country info
             matches: []
           };
         }
-        groupedMatches[leagueName].matches.push(match);
+        groupedMatches[uniqueLeagueKey].matches.push(match);
       });
 
       // Group upcoming matches by league for the frontend
       const upcomingGroupedMatches = {};
       upcomingMatches.forEach(match => {
+        // Create unique league identifier by combining league name and country
         const leagueName = match.leagueName || 'Football';
-        if (!upcomingGroupedMatches[leagueName]) {
-          upcomingGroupedMatches[leagueName] = {
-            league: leagueName,
+        const country = match.parentName || 'Unknown';
+        const uniqueLeagueKey = `${leagueName} (${country})`;
+        
+        if (!upcomingGroupedMatches[uniqueLeagueKey]) {
+          upcomingGroupedMatches[uniqueLeagueKey] = {
+            league: uniqueLeagueKey, // Use the unique key as display name
+            leagueName: leagueName,  // Keep original league name
+            country: country,        // Keep country info
             matches: []
           };
         }
-        upcomingGroupedMatches[leagueName].matches.push(match);
+        upcomingGroupedMatches[uniqueLeagueKey].matches.push(match);
       });
       
       return {
@@ -60,33 +74,45 @@ export const silentUpdateLiveMatches = createAsyncThunk(
   "liveMatches/silentUpdateLiveMatches",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await apiClient.get("/v2/live-matches");
+      const response = await apiClient.get("/v2/live-matches?force=true");
       const { matches, upcomingMatches, totalMatches, lastUpdated } = response.data;
       
       // Group live matches by league for the frontend
       const groupedMatches = {};
       matches.forEach(match => {
+        // Create unique league identifier by combining league name and country
         const leagueName = match.leagueName || 'Football';
-        if (!groupedMatches[leagueName]) {
-          groupedMatches[leagueName] = {
-            league: leagueName,
+        const country = match.parentName || 'Unknown';
+        const uniqueLeagueKey = `${leagueName} (${country})`;
+        
+        if (!groupedMatches[uniqueLeagueKey]) {
+          groupedMatches[uniqueLeagueKey] = {
+            league: uniqueLeagueKey, // Use the unique key as display name
+            leagueName: leagueName,  // Keep original league name
+            country: country,        // Keep country info
             matches: []
           };
         }
-        groupedMatches[leagueName].matches.push(match);
+        groupedMatches[uniqueLeagueKey].matches.push(match);
       });
 
       // Group upcoming matches by league for the frontend
       const upcomingGroupedMatches = {};
       upcomingMatches.forEach(match => {
+        // Create unique league identifier by combining league name and country
         const leagueName = match.leagueName || 'Football';
-        if (!upcomingGroupedMatches[leagueName]) {
-          upcomingGroupedMatches[leagueName] = {
-            league: leagueName,
+        const country = match.parentName || 'Unknown';
+        const uniqueLeagueKey = `${leagueName} (${country})`;
+        
+        if (!upcomingGroupedMatches[uniqueLeagueKey]) {
+          upcomingGroupedMatches[uniqueLeagueKey] = {
+            league: uniqueLeagueKey, // Use the unique key as display name
+            leagueName: leagueName,  // Keep original league name
+            country: country,        // Keep country info
             matches: []
           };
         }
-        upcomingGroupedMatches[leagueName].matches.push(match);
+        upcomingGroupedMatches[uniqueLeagueKey].matches.push(match);
       });
       
       return {

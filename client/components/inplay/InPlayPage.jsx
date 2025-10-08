@@ -20,20 +20,21 @@ const InPlayPage = () => {
         dispatch(fetchLiveMatches());
     }, [dispatch]);
 
-    // Set up polling for live matches data (5 seconds)
+    // Set up polling for live matches data (1 second - same as MatchDetailPage)
     useEffect(() => {
-        // Start polling every 5 seconds for live matches
+        // Start polling every 1 second for live matches (same as match detail page)
         const startPolling = () => {
             pollingIntervalRef.current = setInterval(() => {
+                if (typeof document !== 'undefined' && document.hidden) return; // pause when tab hidden
                 console.log('🔄 In-Play page polling live matches data...');
                 dispatch(silentUpdateLiveMatches());
-            }, 5000); // Poll every 5 seconds
+            }, 1000); // Poll every 1 second (same as MatchDetailPage)
         };
 
         // Start polling after initial load
         const timeoutId = setTimeout(() => {
             startPolling();
-        }, 2000); // Wait 2 seconds after initial load
+        }, 1000); // Wait 1 second after initial load
 
         // Cleanup function
         return () => {
@@ -61,7 +62,7 @@ const InPlayPage = () => {
                     pollingIntervalRef.current = setInterval(() => {
                         console.log('🔄 In-Play page resuming live matches polling...');
                         dispatch(silentUpdateLiveMatches());
-                    }, 5000);
+                    }, 1000); // 1 second interval
                     console.log('▶️ In-Play page polling resumed - tab visible');
                 }
             }
@@ -99,9 +100,37 @@ const InPlayPage = () => {
                 const team1 = match.homeName || match.team1 || 'Home Team';
                 const team2 = match.awayName || match.team2 || 'Away Team';
                 
-                // Extract odds from Unibet API format
+                // Extract odds - prioritize liveOdds (Kambi API) over mainBetOffer (Unibet API)
                 let odds = {};
-                if (match.mainBetOffer && match.mainBetOffer.outcomes) {
+                if (match.liveOdds && match.liveOdds.outcomes) {
+                    // Kambi API format - extract from liveOdds.outcomes
+                    console.log('🎲 InPlayPage: Found liveOdds for match', match.id, match.liveOdds);
+                    match.liveOdds.outcomes.forEach(outcome => {
+                        // Convert Kambi API odds format (divide by 1000)
+                        const convertedOdds = (parseFloat(outcome.odds) / 1000).toFixed(2);
+                        
+                        if (outcome.label === '1') {
+                            odds.home = {
+                                value: convertedOdds,
+                                oddId: outcome.id || outcome.outcomeId,
+                                suspended: false
+                            };
+                        } else if (outcome.label === 'X') {
+                            odds.draw = {
+                                value: convertedOdds,
+                                oddId: outcome.id || outcome.outcomeId,
+                                suspended: false
+                            };
+                        } else if (outcome.label === '2') {
+                            odds.away = {
+                                value: convertedOdds,
+                                oddId: outcome.id || outcome.outcomeId,
+                                suspended: false
+                            };
+                        }
+                    });
+                } else if (match.mainBetOffer && match.mainBetOffer.outcomes) {
+                    // Unibet API format - extract from mainBetOffer.outcomes
                     match.mainBetOffer.outcomes.forEach(outcome => {
                         // Convert Unibet API odds format (divide by 1000)
                         const convertedOdds = outcome.oddsDecimal || (parseFloat(outcome.odds) / 1000).toFixed(2);
@@ -152,6 +181,7 @@ const InPlayPage = () => {
                     starting_at: startTime,
                     odds: odds,
                     isLive: true, // Live matches are live
+                    kambiLiveData: match.kambiLiveData, // Include Kambi live data
                     league: {
                         name: leagueData.league
                     }
@@ -171,7 +201,7 @@ const InPlayPage = () => {
         retryFunction: () => dispatch(fetchLiveMatches()),
         matchTimeComponent: LiveTimer, // Use LiveTimer component for real-time updates
         PageIcon: Clock,
-        hideOdds: true, // Hide odds buttons on In-Play page
+        hideOdds: false, // Show odds buttons on In-Play page
         noMatchesConfig: {
             title: 'No Live Matches',
             message: 'There are no live matches available at the moment. Check back later for live games.',

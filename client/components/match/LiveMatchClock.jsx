@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, Tv } from 'lucide-react';
 import apiClient from '@/config/axios';
 
 const LiveMatchClock = ({ matchId, isLive = false, initialLiveData = null, onScoreUpdate }) => {
@@ -148,7 +148,6 @@ const LiveMatchClock = ({ matchId, isLive = false, initialLiveData = null, onSco
                     
                     let newSecond = prev.second + 1;
                     let newMinute = prev.minute;
-                    let newPeriod = prev.period;
                     
                     // Handle minute rollover
                     if (newSecond >= 60) {
@@ -156,21 +155,12 @@ const LiveMatchClock = ({ matchId, isLive = false, initialLiveData = null, onSco
                         newMinute = prev.minute + 1;
                     }
                     
-                    // Handle period changes (basic logic)
-                    if (newMinute >= 45 && prev.period === '1st half') {
-                        newPeriod = 'Half Time';
-                    } else if (newMinute >= 90 && prev.period === '2nd half') {
-                        newPeriod = 'Full Time';
-                    } else if (newMinute >= 46 && prev.period === 'Half Time') {
-                        newPeriod = '2nd half';
-                        newMinute = 45; // Reset to 45 for second half
-                    }
-                    
+                    // Only update time, let API handle period changes
                     return {
                         ...prev,
                         minute: newMinute,
-                        second: newSecond,
-                        period: newPeriod
+                        second: newSecond
+                        // Don't change period - let API handle this
                     };
                 });
             }, 1000);
@@ -227,14 +217,22 @@ const LiveMatchClock = ({ matchId, isLive = false, initialLiveData = null, onSco
         }
     };
 
+    // Only show period if running is true, or if it's not "2nd half"
+    const shouldShowPeriod = isRunning || currentTime.period !== '2nd half';
+
     return (
         <div className="flex flex-col items-center justify-center">
-            <div className={`text-lg font-bold ${getPeriodColor(currentTime.period)}`}>
-                {formatTime(currentTime.minute, currentTime.second)}
+            <div className="flex items-center gap-1">
+                <Tv className="w-4 h-4 text-red-600" />
+                <div className={`text-lg font-bold ${getPeriodColor(currentTime.period)}`}>
+                    {formatTime(currentTime.minute, currentTime.second)}
+                </div>
             </div>
-            <div className="text-xs text-gray-500 mt-1">
-                {currentTime.period}
-            </div>
+            {shouldShowPeriod && (
+                <div className="text-xs text-gray-500 mt-1">
+                    {currentTime.period}
+                </div>
+            )}
         </div>
     );
 };

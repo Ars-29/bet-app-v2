@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import LiveMatchCard from './LiveMatchCard';
 import TopPicksSkeleton from '../Skeletons/TopPicksSkeleton';
-import { selectLiveMatchesRaw, selectLiveMatchesLoading, selectLiveMatchesWarning, selectLiveMatchesCacheAge } from '@/lib/features/matches/liveMatchesSlice';
+import { selectLiveMatchesRaw, selectLiveMatchesLoading, selectLiveMatchesWarning, selectLiveMatchesCacheAge, fetchLiveMatches, silentUpdateLiveMatches } from '@/lib/features/matches/liveMatchesSlice';
 import { getFotmobLogoByUnibetId } from '@/lib/leagueUtils';
 
 // Helper function to transform Unibet API data to MatchCard format
@@ -14,11 +14,31 @@ const transformLiveMatchData = (apiMatch) => {
     const homeTeam = apiMatch.homeName || apiMatch.participants?.find(p => p.position === 'home')?.name || 'Home Team';
     const awayTeam = apiMatch.awayName || apiMatch.participants?.find(p => p.position === 'away')?.name || 'Away Team';
     
-    // Extract odds from betOffers if available
+    // Extract odds from liveOdds (new Kambi API integration)
     const odds = {};
     
-    // Check if match has betOffers with odds
-    if (apiMatch.betOffers && Array.isArray(apiMatch.betOffers)) {
+    if (apiMatch.liveOdds && apiMatch.liveOdds.outcomes) {
+        apiMatch.liveOdds.outcomes.forEach(outcome => {
+            const label = outcome.label?.toString().toLowerCase();
+            const value = parseFloat(outcome.odds);
+            
+            if (!isNaN(value)) {
+                // Convert Kambi API odds format (divide by 1000)
+                const convertedValue = (value / 1000).toFixed(2);
+                
+                if (label === '1') {
+                    odds['1'] = { value: convertedValue, oddId: outcome.id, status: outcome.status };
+                } else if (label === 'x') {
+                    odds['X'] = { value: convertedValue, oddId: outcome.id, status: outcome.status };
+                } else if (label === '2') {
+                    odds['2'] = { value: convertedValue, oddId: outcome.id, status: outcome.status };
+                }
+            }
+        });
+    }
+    
+    // Fallback: Check if match has betOffers with odds (old format)
+    if (Object.keys(odds).length === 0 && apiMatch.betOffers && Array.isArray(apiMatch.betOffers)) {
         // Look for Full Time Result market (marketId: 1)
         const fullTimeResultMarket = apiMatch.betOffers.find(offer => 
             offer.marketId === 1 || 
@@ -47,8 +67,8 @@ const transformLiveMatchData = (apiMatch) => {
         }
     }
     
-    // Check mainBetOffer as fallback
-    if (apiMatch.mainBetOffer && apiMatch.mainBetOffer.outcomes) {
+    // Fallback: Check mainBetOffer (old format)
+    if (Object.keys(odds).length === 0 && apiMatch.mainBetOffer && apiMatch.mainBetOffer.outcomes) {
         apiMatch.mainBetOffer.outcomes.forEach(outcome => {
             const label = outcome.label?.toString().toLowerCase();
             const value = parseFloat(outcome.odds);
@@ -88,6 +108,9 @@ const transformLiveMatchData = (apiMatch) => {
         groupId: apiMatch.groupId,
         leagueName: apiMatch.leagueName,
         fotmobUrl: getFotmobLogoByUnibetId(apiMatch.groupId),
+        liveOdds: apiMatch.liveOdds,
+        kambiLiveData: apiMatch.kambiLiveData,
+        extractedOdds: odds,
         fullApiMatch: apiMatch
     });
 
@@ -95,6 +118,7 @@ const transformLiveMatchData = (apiMatch) => {
         id: apiMatch.id,
         league: {
             name: apiMatch.leagueName || 'Live Match',
+            country: apiMatch.parentName || '',
             imageUrl: getFotmobLogoByUnibetId(apiMatch.groupId) || '/api/placeholder/20/20'
         },
         team1: homeTeam,
@@ -104,29 +128,52 @@ const transformLiveMatchData = (apiMatch) => {
         odds: odds,
         clock: true,
         isLive: true,
-        liveData: apiMatch.liveData
+        liveData: apiMatch.liveData,
+        kambiLiveData: apiMatch.kambiLiveData // Include Kambi live data for timer and score
     };
 };
 
 const LiveMatches = () => {
+    const dispatch = useDispatch();
     const liveMatchesData = useSelector(selectLiveMatchesRaw);
     const loading = useSelector(selectLiveMatchesLoading);
     const warning = useSelector(selectLiveMatchesWarning);
     const cacheAge = useSelector(selectLiveMatchesCacheAge);
+
+    // Auto-refresh live odds every 2 seconds
+    useEffect(() => {
+        // Initial fetch with loading state
+        dispatch(fetchLiveMatches());
+        
+        // Set up interval to refresh every 2 seconds with silent updates
+        const refreshInterval = setInterval(() => {
+            console.log('🔄 Auto-refreshing live matches and odds...');
+            dispatch(silentUpdateLiveMatches());
+        }, 2000); // 2 seconds
+
+        // Cleanup interval on unmount
+        return () => {
+            clearInterval(refreshInterval);
+        };
+    }, [dispatch]);
+
+    // Debug: Log when liveMatchesData changes
+    useEffect(() => {
+        console.log('📊 LiveMatchesData updated:', {
+            totalMatches: liveMatchesData.length,
+            firstMatchOdds: liveMatchesData[0]?.liveOdds,
+            timestamp: new Date().toLocaleTimeString()
+        });
+    }, [liveMatchesData]);
 
     // Show skeleton while loading
     if (loading) {
         return <TopPicksSkeleton />;
     }
 
-    // Transform API data to MatchCard format and filter out matches without valid odds
+    // Transform API data to MatchCard format - show all live matches regardless of odds
     const transformedMatches = liveMatchesData
-        .map(match => transformLiveMatchData(match))
-        .filter(match => {
-            // Only show matches that have valid odds
-            const hasValidOdds = match.odds && Object.keys(match.odds).length > 0;
-            return hasValidOdds;
-        });
+        .map(match => transformLiveMatchData(match));
 
     if (transformedMatches.length === 0) {
         return (
@@ -135,9 +182,9 @@ const LiveMatches = () => {
                     <h2 className="text-xl font-bold text-gray-800">Live Matches</h2>
                     <Link href="/inplay" className="text-green-600 hover:underline text-sm">View All</Link>
                 </div>
-                <div className="text-gray-500 text-center py-8">
-                    No live matches with odds available at the moment.
-                </div>
+                    <div className="text-gray-500 text-center py-8">
+                        No live matches available at the moment.
+                    </div>
             </div>
         );
     }
@@ -169,7 +216,10 @@ const LiveMatches = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {transformedMatches.slice(0, 8).map((match) => (
-                    <LiveMatchCard key={match.id} match={match} />
+                    <LiveMatchCard 
+                        key={`${match.id}-${match.odds?.['1']?.value}-${match.odds?.['X']?.value}-${match.odds?.['2']?.value}`} 
+                        match={match} 
+                    />
                 ))}
             </div>
         </div>

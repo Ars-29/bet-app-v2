@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Tv } from 'lucide-react';
 import { useBetting } from '@/hooks/useBetting';
 import {
     Accordion,
@@ -12,6 +12,7 @@ import {
     AccordionTrigger
 } from '@/components/ui/accordion';
 import { formatToLocalTime } from '@/lib/utils';
+import LiveMatchTimer from '@/components/shared/LiveMatchTimer';
 
 const MatchListPage = ({ config }) => {
     const {
@@ -74,13 +75,36 @@ const MatchListPage = ({ config }) => {
 
     // Function to render match time - either component or formatter
     const renderMatchTime = (match) => {
+        // Use LiveMatchTimer for live matches with kambiLiveData
+        if (match.kambiLiveData?.matchClock) {
+            return (
+                <div className="flex items-center gap-1">
+                    <Tv className="w-3 h-3 text-red-600" />
+                    <LiveMatchTimer 
+                        matchId={match.id}
+                        initialTime={{
+                            minute: match.kambiLiveData.matchClock.minute || 0,
+                            second: match.kambiLiveData.matchClock.second || 0
+                        }}
+                        initialPeriod={match.kambiLiveData.matchClock.period || '1st half'}
+                        isRunning={match.kambiLiveData.matchClock.running || false}
+                    />
+                </div>
+            );
+        }
+        
         if (matchTimeComponent) {
             // Use React component for live timer
             const MatchTimeComponent = matchTimeComponent;
-            return <MatchTimeComponent 
-                startingAt={match.starting_at} 
-                timing={match.timing}
-            />;
+            return (
+                <div className="flex items-center gap-1">
+                    <Tv className="w-3 h-3 text-red-600" />
+                    <MatchTimeComponent 
+                        startingAt={match.starting_at} 
+                        timing={match.timing}
+                    />
+                </div>
+            );
         } else {
             // Use formatter function
             return effectiveMatchTimeFormatter(match.liveTime || match.startTime || match.starting_at, match);
@@ -249,25 +273,31 @@ const MatchListPage = ({ config }) => {
                                                                     {/* Teams and Scores */}
                                                                     <Link href={`/matches/${match.id}`}>
                                                                         <div className="cursor-pointer">                                                                        <div className="space-y-1">
-                                                                            <div className="flex items-center gap-3" title={match.team1 || (match.participants && match.participants[0] ? match.participants[0].name : '')}>
-                                                                                {match.score?.team1 !== undefined && (
-                                                                                    <span className="font-bold text-gray-900 min-w-[20px] text-center">
-                                                                                        {match.score.team1}
-                                                                                    </span>
-                                                                                )}
-                                                                                <span className="text-xs text-gray-800 truncate" style={{ maxWidth: '150px' }}>
+                                                                            <div className="flex items-center gap-2" title={match.team1 || (match.participants && match.participants[0] ? match.participants[0].name : '')}>
+                                                                                <span className="text-xs text-gray-800 truncate" style={{ maxWidth: '120px' }}>
                                                                                     {match.team1 || (match.participants && match.participants[0] ? match.participants[0].name : 'Team 1')}
                                                                                 </span>
+                                                                                {/* Score from Kambi API or fallback - fixed width for alignment */}
+                                                                                <div className="w-6 text-center">
+                                                                                    {(match.kambiLiveData?.score || match.score?.team1 !== undefined) && (
+                                                                                        <span className="font-bold text-gray-900">
+                                                                                            {match.kambiLiveData?.score?.home || match.score?.team1 || '0'}
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
                                                                             </div>
-                                                                            <div className="flex items-center gap-3" title={match.team2 || (match.participants && match.participants[1] ? match.participants[1].name : '')}>
-                                                                                {match.score?.team2 !== undefined && (
-                                                                                    <span className="font-bold text-gray-900 min-w-[20px] text-center">
-                                                                                        {match.score.team2}
-                                                                                    </span>
-                                                                                )}
-                                                                                <span className="text-xs text-gray-800 truncate" style={{ maxWidth: '150px' }}>
+                                                                            <div className="flex items-center gap-2" title={match.team2 || (match.participants && match.participants[1] ? match.participants[1].name : '')}>
+                                                                                <span className="text-xs text-gray-800 truncate" style={{ maxWidth: '120px' }}>
                                                                                     {match.team2 || (match.participants && match.participants[1] ? match.participants[1].name : 'Team 2')}
                                                                                 </span>
+                                                                                {/* Score from Kambi API or fallback - fixed width for alignment */}
+                                                                                <div className="w-6 text-center">
+                                                                                    {(match.kambiLiveData?.score || match.score?.team2 !== undefined) && (
+                                                                                        <span className="font-bold text-gray-900">
+                                                                                            {match.kambiLiveData?.score?.away || match.score?.team2 || '0'}
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                         </div>

@@ -186,6 +186,8 @@ const MatchDetailPage = ({ matchId }) => {
         
         console.log('📊 Event data:', eventData);
         console.log('🎯 Bet offers count:', matchData.data?.betOffers?.length || 0);
+        console.log('🌍 Event path:', eventData?.path);
+        console.log('🌍 Country from path:', eventData?.path?.[1]?.name);
         
         displayMatchData = {
             id: eventId,
@@ -209,6 +211,7 @@ const MatchDetailPage = ({ matchId }) => {
                 name: eventData?.group || 'Football League',
                 id: eventData?.groupId
             },
+            parentName: eventData?.path?.[1]?.name || eventData?.parentName || '',
             liveData: eventData?.state === 'STARTED' ? {
                 score: '0-0', // We'll get real score from live-matches API
                 period: '1st Half',

@@ -18,8 +18,24 @@ const UpcomingMatchesPage = () => {
     dispatch(fetchLiveMatches());
   }, [dispatch]);
 
+  // Debug: Log when upcomingMatchesRaw changes
+  useEffect(() => {
+    console.log('🔍 UpcomingMatchesPage: Data updated:', {
+      upcomingMatchesRaw: upcomingMatchesRaw,
+      upcomingMatchesRawLength: upcomingMatchesRaw?.length,
+      loading: loading,
+      error: error,
+      timestamp: new Date().toLocaleTimeString()
+    });
+  }, [upcomingMatchesRaw, loading, error]);
+
   // Transform Unibet API data to match MatchListPage expected format
   const upcomingMatches = upcomingMatchesRaw?.map(leagueData => {
+    console.log('🔍 UpcomingMatchesPage: Processing league data:', {
+      league: leagueData.league,
+      matchesCount: leagueData.matches?.length,
+      firstMatch: leagueData.matches?.[0]
+    });
     // Get groupId from the first match to use for Fotmob logo
     const firstMatch = leagueData.matches?.[0];
     const groupId = firstMatch?.groupId;
@@ -99,6 +115,13 @@ const UpcomingMatchesPage = () => {
     matchCount: leagueData.matches?.length || 0,
     };
   }) || [];
+
+  // Debug: Log final transformed data
+  console.log('🔍 UpcomingMatchesPage: Final transformed data:', {
+    upcomingMatches: upcomingMatches,
+    upcomingMatchesLength: upcomingMatches?.length,
+    timestamp: new Date().toLocaleTimeString()
+  });
 
   const formatUpcomingTime = (startTime, match) => {
     if (!startTime) return "TBD";
