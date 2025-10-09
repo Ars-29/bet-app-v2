@@ -27,18 +27,41 @@ const UpcomingMatchesPage = () => {
       error: error,
       timestamp: new Date().toLocaleTimeString()
     });
+    
+    // Debug: Check the structure of upcomingMatchesRaw
+    if (upcomingMatchesRaw && upcomingMatchesRaw.length > 0) {
+      console.log('🔍 UpcomingMatchesPage: First league data structure:', {
+        'firstLeague': upcomingMatchesRaw[0],
+        'firstLeague.matches': upcomingMatchesRaw[0]?.matches,
+        'firstLeague.matches.length': upcomingMatchesRaw[0]?.matches?.length
+      });
+    }
   }, [upcomingMatchesRaw, loading, error]);
 
   // Transform Unibet API data to match MatchListPage expected format
+  console.log('🔍 UpcomingMatchesPage: Starting transformation with:', {
+    'upcomingMatchesRaw': upcomingMatchesRaw,
+    'upcomingMatchesRaw.length': upcomingMatchesRaw?.length
+  });
+  
   const upcomingMatches = upcomingMatchesRaw?.map(leagueData => {
     console.log('🔍 UpcomingMatchesPage: Processing league data:', {
       league: leagueData.league,
       matchesCount: leagueData.matches?.length,
-      firstMatch: leagueData.matches?.[0]
+      firstMatch: leagueData.matches?.[0],
+      'leagueData.matches': leagueData.matches
     });
     // Get groupId from the first match to use for Fotmob logo
     const firstMatch = leagueData.matches?.[0];
     const groupId = firstMatch?.groupId;
+    
+    // Debug: Check what league data is available
+    console.log('🔍 UpcomingMatchesPage: League data debug:', {
+      'leagueData.league': leagueData.league,
+      'firstMatch.groupId': firstMatch?.groupId,
+      'groupId': groupId,
+      'matchesCount': leagueData.matches?.length
+    });
     
     return {
       id: leagueData.league || Math.random().toString(36).substr(2, 9),
@@ -50,6 +73,15 @@ const UpcomingMatchesPage = () => {
       },
       icon: "⚽",
     matches: (leagueData.matches || []).map(match => {
+      // Debug: Check what match data is available
+      console.log('🔍 UpcomingMatchesPage: Individual match debug:', {
+        'match.id': match.id,
+        'match.groupId': match.groupId,
+        'match.leagueName': match.leagueName,
+        'match.homeName': match.homeName,
+        'match.awayName': match.awayName
+      });
+      
       // Extract team names from Unibet API format
       const team1 = match.homeName || match.team1 || 'Home Team';
       const team2 = match.awayName || match.team2 || 'Away Team';
@@ -100,7 +132,7 @@ const UpcomingMatchesPage = () => {
         }
       }
       
-      return {
+      const transformedMatch = {
         id: match.id || match.eventId,
         team1: team1,
         team2: team2,
@@ -108,9 +140,26 @@ const UpcomingMatchesPage = () => {
         odds: odds,
         isLive: false, // Upcoming matches are not live
         league: {
+          id: groupId, // Use groupId as league ID
           name: leagueData.league
-        }
+        },
+        // Also add groupId and leagueName directly to the match object for fallback
+        groupId: groupId,
+        leagueName: leagueData.league,
+        // Add source identifier
+        source: 'UpcomingPage'
       };
+      
+      // Debug: Check what the final transformed match looks like
+      console.log('🔍 UpcomingMatchesPage: Final transformed match:', {
+        'matchId': transformedMatch.id,
+        'league': transformedMatch.league,
+        'groupId': transformedMatch.groupId,
+        'leagueName': transformedMatch.leagueName,
+        'source': transformedMatch.source
+      });
+      
+      return transformedMatch;
     }),
     matchCount: leagueData.matches?.length || 0,
     };
@@ -122,6 +171,17 @@ const UpcomingMatchesPage = () => {
     upcomingMatchesLength: upcomingMatches?.length,
     timestamp: new Date().toLocaleTimeString()
   });
+  
+  // Debug: Check if transformation is working
+  if (upcomingMatches && upcomingMatches.length > 0) {
+    console.log('🔍 UpcomingMatchesPage: First transformed league:', {
+      'firstLeague': upcomingMatches[0],
+      'firstLeague.matches': upcomingMatches[0]?.matches,
+      'firstLeague.matches.length': upcomingMatches[0]?.matches?.length
+    });
+  } else {
+    console.log('🔍 UpcomingMatchesPage: No transformed matches found!');
+  }
 
   const formatUpcomingTime = (startTime, match) => {
     if (!startTime) return "TBD";

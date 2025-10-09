@@ -322,7 +322,12 @@ const MatchListPage = ({ config }) => {
                                                                                     time: match.starting_at ? match.starting_at.split(' ')[1].slice(0, 5) : '',
                                                                                     competition: match.league ? match.league.name : 'Football',
                                                                                     isLive: match.isLive || false,
-                                                                                    name: match.name || `${match.team1 || 'Team 1'} vs ${match.team2 || 'Team 2'}`
+                                                                                    name: match.name || `${match.team1 || 'Team 1'} vs ${match.team2 || 'Team 2'}`,
+                                                                                    // Include league information for betting
+                                                                                    league: match.league,
+                                                                                    groupId: match.groupId,
+                                                                                    leagueName: match.leagueName,
+                                                                                    source: match.source
                                                                                 }, 
                                                                                 'Home', 
                                                                                 match.odds.home.value, 
@@ -351,7 +356,12 @@ const MatchListPage = ({ config }) => {
                                                                                     time: match.starting_at ? match.starting_at.split(' ')[1].slice(0, 5) : '',
                                                                                     competition: match.league ? match.league.name : 'Football',
                                                                                     isLive: match.isLive || false,
-                                                                                    name: match.name || `${match.team1 || 'Team 1'} vs ${match.team2 || 'Team 2'}`
+                                                                                    name: match.name || `${match.team1 || 'Team 1'} vs ${match.team2 || 'Team 2'}`,
+                                                                                    // Include league information for betting
+                                                                                    league: match.league,
+                                                                                    groupId: match.groupId,
+                                                                                    leagueName: match.leagueName,
+                                                                                    source: match.source
                                                                                 }, 
                                                                                 'Draw', 
                                                                                 match.odds.draw.value, 
@@ -380,7 +390,12 @@ const MatchListPage = ({ config }) => {
                                                                                     time: match.starting_at ? match.starting_at.split(' ')[1].slice(0, 5) : '',
                                                                                     competition: match.league ? match.league.name : 'Football',
                                                                                     isLive: match.isLive || false,
-                                                                                    name: match.name || `${match.team1 || 'Team 1'} vs ${match.team2 || 'Team 2'}`
+                                                                                    name: match.name || `${match.team1 || 'Team 1'} vs ${match.team2 || 'Team 2'}`,
+                                                                                    // Include league information for betting
+                                                                                    league: match.league,
+                                                                                    groupId: match.groupId,
+                                                                                    leagueName: match.leagueName,
+                                                                                    source: match.source
                                                                                 }, 
                                                                                 'Away', 
                                                                                 match.odds.away.value, 

@@ -20,7 +20,6 @@ import LiveMatchTimer from '@/components/shared/LiveMatchTimer';
 const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButtonClass, isOddClickable, hideOdds = false }) => {
     const liveOdds = useLiveOdds(match.id);
     
-    console.log('🔍 MatchItem received match:', match.id, 'kambiLiveData:', match.kambiLiveData, 'isInPlay:', isInPlay);
     
     return (
         <div>
@@ -160,7 +159,16 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                                                 size="sm"
                                                 className={getOddButtonClass({ suspended: getSuspendedStatus('home') || getSuspendedStatus('1') || !(displayOdds.home || displayOdds['1']) })}
                                                 onClick={isOddClickable({ suspended: getSuspendedStatus('home') || getSuspendedStatus('1') || !(displayOdds.home || displayOdds['1']) })
-                                                    ? createBetHandler(match, 'Home', getOddValue('home') || getOddValue('1'), '1x2', (liveOdds.home?.oddId || displayOdds['1']?.oddId || null), { marketId: "1_home", label: "Home", name: `Win - ${match.team1 || match.participants?.[0]?.name || 'Team 1'}`, marketDescription: "Full Time Result" })
+                                                    ? (e) => {
+                                                        console.log('🔍 CLICKED - createBetHandler match data:', {
+                                                            matchId: match.id,
+                                                            league: match.league,
+                                                            groupId: match.groupId,
+                                                            leagueName: match.leagueName,
+                                                            source: match.source
+                                                        });
+                                                        return createBetHandler(match, 'Home', getOddValue('home') || getOddValue('1'), '1x2', (liveOdds.home?.oddId || displayOdds['1']?.oddId || null), { marketId: "1_home", label: "Home", name: `Win - ${match.team1 || match.participants?.[0]?.name || 'Team 1'}`, marketDescription: "Full Time Result" })(e);
+                                                    }
                                                     : undefined
                                                 }
                                                 disabled={!isOddClickable({ suspended: getSuspendedStatus('home') || getSuspendedStatus('1') || !(displayOdds.home || displayOdds['1']) })}
@@ -369,7 +377,6 @@ const LeagueCards = ({
 
     // Transform Redux data to match the expected format
     const transformReduxData = (data) => {
-        console.log('🔍 LeagueCards transformReduxData input:', data);
         
         if (data && Array.isArray(data)) {
             
@@ -385,7 +392,6 @@ const LeagueCards = ({
                     
                     // Transform matches to match the expected format
                     const transformedMatches = leagueData.matches.map(match => {
-                        console.log('🔍 LeagueCards processing match:', match.id, 'kambiLiveData:', match.kambiLiveData);
     
     
                     // Handle both formats: Unibet API (homeName/awayName) and old format (name with ' vs ')
@@ -410,7 +416,6 @@ const LeagueCards = ({
                     let oddsData = {};
                     if (match.liveOdds && match.liveOdds.outcomes) {
                         // Kambi API format - extract from liveOdds.outcomes
-                        console.log('🎲 LeagueCards: Found liveOdds for match', match.id, match.liveOdds);
                         const outcomes = match.liveOdds.outcomes;
                         const homeOdds = outcomes.find(o => o.label === '1')?.odds;
                         const drawOdds = outcomes.find(o => o.label === 'X')?.odds;
@@ -424,14 +429,16 @@ const LeagueCards = ({
                     } else if (match.mainBetOffer && match.mainBetOffer.outcomes) {
                         // Unibet API format - extract from mainBetOffer.outcomes
                         const outcomes = match.mainBetOffer.outcomes;
-                        const homeOdds = outcomes.find(o => o.label === '1')?.odds;
-                        const drawOdds = outcomes.find(o => o.label === 'X')?.odds;
-                        const awayOdds = outcomes.find(o => o.label === '2')?.odds;
+                        
+                        // Extract odds with their IDs
+                        const homeOutcome = outcomes.find(o => o.label === '1');
+                        const drawOutcome = outcomes.find(o => o.label === 'X');
+                        const awayOutcome = outcomes.find(o => o.label === '2');
                         
                         oddsData = {
-                            home: homeOdds ? homeOdds / 1000 : null, // Divide by 1000 to get decimal odds
-                            draw: drawOdds ? drawOdds / 1000 : null,
-                            away: awayOdds ? awayOdds / 1000 : null
+                            home: homeOutcome ? { value: homeOutcome.odds / 1000, oddId: homeOutcome.id } : null,
+                            draw: drawOutcome ? { value: drawOutcome.odds / 1000, oddId: drawOutcome.id } : null,
+                            away: awayOutcome ? { value: awayOutcome.odds / 1000, oddId: awayOutcome.id } : null
                         };
                     } else {
                         // Old format
@@ -527,6 +534,7 @@ const LeagueCards = ({
                             });
                         }
                     }
+                    
     
                     // For in-play matches, show them even without odds
                     // For other matches, skip if no odds are available
@@ -575,8 +583,19 @@ const LeagueCards = ({
                         isLive: isMatchLive, // Add live flag
                         timing: match.timing || null, // Include timing info from backend if available
                         kambiLiveData: match.kambiLiveData, // Preserve Kambi live data for timer and score
-                        liveData: match.liveData // Preserve other live data
+                        liveData: match.liveData, // Preserve other live data
+                        // Add league information
+                            league: {
+                            id: match.groupId || (typeof leagueData.league === 'object' ? leagueData.league.id : null),
+                            name: match.leagueName || (typeof leagueData.league === 'object' ? leagueData.league.name : leagueData.league)
+                        },
+                        // Also add groupId and leagueName directly to the match object
+                        groupId: match.groupId,
+                        leagueName: match.leagueName,
+                        // Add source identifier
+                        source: 'LeagueCards'
                     };
+                    
                 }).filter(match => match !== null); // Filter out null matches
     
                 // Get groupId from the first match to use for Fotmob logo and as league ID
@@ -585,12 +604,6 @@ const LeagueCards = ({
                 
                 // Use groupId as the league ID (this is the actual Unibet league ID)
                 const leagueId = groupId || leagueData.league.id || leagueData.league;
-                console.log('🔍 LeagueCards: Generated league data:', {
-                    leagueId: leagueId,
-                    leagueName: leagueData.league.name || leagueData.league,
-                    groupId: groupId,
-                    matchesCount: transformedMatches.length
-                });
                 
                 return {
                     id: leagueId, // Use groupId (Unibet league ID) as the primary ID

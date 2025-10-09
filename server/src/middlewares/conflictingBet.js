@@ -102,6 +102,7 @@ export const preventConflictingBet = async (req, res, next) => {
       } else {
         // For single bets, check conflicts with other single bets only
         // Allow single bets to coexist with combination bets
+        // Use oddId as the primary conflict identifier since it's unique per market+selection
         const existingSingleBet = await Bet.findOne({
           userId,
           matchId,
@@ -111,11 +112,8 @@ export const preventConflictingBet = async (req, res, next) => {
             { combination: { $exists: false } },
             { combination: { $size: 0 } }
           ],
-          $or: [
-            { 'betDetails.market_id': marketKey },
-            { 'betDetails.market_description': bet.betDetails?.market_description },
-            { 'betDetails.market_name': bet.betDetails?.market_name }
-          ]
+          // Use oddId as the primary conflict identifier
+          oddId: bet.oddId
         });
 
         if (existingSingleBet) {

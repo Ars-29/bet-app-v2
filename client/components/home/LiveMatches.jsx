@@ -103,16 +103,6 @@ const transformLiveMatchData = (apiMatch) => {
         }
     }
 
-    // Debug: Log the live match data
-    console.log('🔍 LiveMatches Data:', {
-        groupId: apiMatch.groupId,
-        leagueName: apiMatch.leagueName,
-        fotmobUrl: getFotmobLogoByUnibetId(apiMatch.groupId),
-        liveOdds: apiMatch.liveOdds,
-        kambiLiveData: apiMatch.kambiLiveData,
-        extractedOdds: odds,
-        fullApiMatch: apiMatch
-    });
 
     return {
         id: apiMatch.id,
@@ -147,7 +137,6 @@ const LiveMatches = () => {
         
         // Set up interval to refresh every 2 seconds with silent updates
         const refreshInterval = setInterval(() => {
-            console.log('🔄 Auto-refreshing live matches and odds...');
             dispatch(silentUpdateLiveMatches());
         }, 2000); // 2 seconds
 
@@ -157,14 +146,6 @@ const LiveMatches = () => {
         };
     }, [dispatch]);
 
-    // Debug: Log when liveMatchesData changes
-    useEffect(() => {
-        console.log('📊 LiveMatchesData updated:', {
-            totalMatches: liveMatchesData.length,
-            firstMatchOdds: liveMatchesData[0]?.liveOdds,
-            timestamp: new Date().toLocaleTimeString()
-        });
-    }, [liveMatchesData]);
 
     // Show skeleton while loading
     if (loading) {

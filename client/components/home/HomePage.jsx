@@ -40,7 +40,6 @@ const HomePage = () => {
         const startPolling = () => {
             pollingIntervalRef.current = setInterval(() => {
                 if (typeof document !== 'undefined' && document.hidden) return; // pause when tab hidden
-                console.log('🔄 Home page polling live matches data...');
                 dispatch(silentUpdateLiveMatches());
             }, 1000); // Poll every 1 second (same as MatchDetailPage)
         };
@@ -68,16 +67,13 @@ const HomePage = () => {
                 if (pollingIntervalRef.current) {
                     clearInterval(pollingIntervalRef.current);
                     pollingIntervalRef.current = null;
-                    console.log('⏸️ Home page polling paused - tab not visible');
                 }
             } else {
                 // Resume polling when tab becomes visible
                 if (!pollingIntervalRef.current) {
                     pollingIntervalRef.current = setInterval(() => {
-                        console.log('🔄 Home page resuming live matches polling...');
                         dispatch(silentUpdateLiveMatches());
                     }, 5000);
-                    console.log('▶️ Home page polling resumed - tab visible');
                 }
             }
         };

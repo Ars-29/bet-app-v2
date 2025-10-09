@@ -153,22 +153,16 @@ const UNIBET_TO_FOTMOB_MAPPING = {
 };
 
 export const getFotmobLogoByUnibetId = (unibetId) => {
-  console.log('🔍 getFotmobLogoByUnibetId called with:', unibetId);
-  
   if (!unibetId) {
-    console.log('❌ No unibetId provided');
     return null;
   }
   
   const fotmobId = UNIBET_TO_FOTMOB_MAPPING[String(unibetId)];
-  console.log('🔍 Mapping result:', { unibetId, fotmobId, found: !!fotmobId });
   
   if (!fotmobId) {
-    console.log('❌ No Fotmob ID found for Unibet ID:', unibetId);
     return null;
   }
   
   const url = `https://images.fotmob.com/image_resources/logo/leaguelogo/${fotmobId}.png`;
-  console.log('✅ Generated URL:', url);
   return url;
 };

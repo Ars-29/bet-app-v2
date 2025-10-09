@@ -35,18 +35,6 @@ const betSlipSlice = createSlice({
         ...rest
       } = action.payload;
 
-      console.log("Adding bet with payload:", action.payload);
-      console.log("MarketId type and value:", typeof marketId, marketId);
-      
-      // 🔍 Debug: Log the match data being processed
-      console.log('🔍 Bet Slip - Processing match data:', {
-        matchId: match.id,
-        team1: match.team1,
-        team2: match.team2,
-        homeName: match.homeName,
-        awayName: match.awayName,
-        participants: match.participants
-      });
 
       // Check if bet already exists (same oddId) or same market bet exists (same match + marketId)
       // For combination bets, we allow multiple selections from the same market (1X2)
@@ -73,11 +61,9 @@ const betSlipSlice = createSlice({
         const existingBet = state.bets[existingBetIndex];
         if (existingBet.oddId === oddId) {
           // Same exact bet, update it
-          console.log("Updating existing bet with same oddId");
         } else if (existingBet.marketId && marketId && existingBet.marketId === marketId && 
                    !(typeof marketId === 'string' && marketId.includes('_'))) {
           // Same market bet exists for non-combination markets, don't add
-          console.log("Same market bet already exists for this match, not adding");
           state.lastError = "You already have a bet on this market for this match";
           return; // Exit early, don't add the bet
         }
@@ -99,6 +85,15 @@ const betSlipSlice = createSlice({
 
       const inplay = isMatchLive(match);
 
+      // Debug: Check what match data is being received in betSlip
+      console.log('🔍 betSlip addBet received match:', {
+        matchId: match.id,
+        league: match.league,
+        groupId: match.groupId,
+        leagueName: match.leagueName,
+        source: match.source
+      });
+
       const newBet = {
         id: `${match.id}-${oddId}-${Date.now()}`,
         match: {
@@ -113,6 +108,11 @@ const betSlipSlice = createSlice({
           isLive: match.isLive || false,
           name: match.name || `${match.team1 || ''} vs ${match.team2 || ''}`,
           starting_at: match.starting_at, // Keep for inplay calculation
+          // Add league information
+          league: match.league || null,
+          // Also add groupId and leagueName directly to the match object
+          groupId: match.groupId,
+          leagueName: match.leagueName,
         },
         selection,
         odds: parseFloat(odds),
@@ -131,17 +131,12 @@ const betSlipSlice = createSlice({
         ...rest
       };
 
-      // 🔍 Debug: Log the final bet object that will be stored
-      console.log('🔍 Bet Slip - Final bet object created:', {
-        id: newBet.id,
-        match: {
-          id: newBet.match.id,
-          team1: newBet.match.team1,
-          team2: newBet.match.team2,
-          name: newBet.match.name
-        },
-        selection: newBet.selection,
-        odds: newBet.odds
+      // Debug: Check what the newBet object looks like
+      console.log('🔍 betSlip newBet object created:', {
+        matchId: newBet.match.id,
+        league: newBet.match.league,
+        groupId: newBet.match.groupId,
+        leagueName: newBet.match.leagueName
       });
 
       if (existingBetIndex >= 0 && state.bets[existingBetIndex].oddId === oddId) {
@@ -322,7 +317,6 @@ const getMatchDataFromState = (matchId, matchesState, leaguesState) => {
   let matchData = matchesState.matchDetailsV2?.[matchId]?.matchData;
   
   if (matchData) {
-    console.log(`[getMatchDataFromState] Found match data in matchDetailsV2 for ${matchId}`);
     return matchData;
   }
   
@@ -332,7 +326,6 @@ const getMatchDataFromState = (matchId, matchesState, leaguesState) => {
     if (leagueData && leagueData.matches && Array.isArray(leagueData.matches)) {
       const leagueMatch = leagueData.matches.find(match => match.id === matchId);
       if (leagueMatch) {
-        console.log(`[getMatchDataFromState] Found match data in league ${leagueId} for ${matchId}`);
         // Transform league match data to match the expected format
         return {
           data: {
@@ -364,24 +357,6 @@ const getMatchDataFromState = (matchId, matchesState, leaguesState) => {
 
 // Helper function to extract Unibet metadata from match data
 const extractUnibetMetadata = (bet, matchData) => {
-  console.log('🔍 Debug matchData structure:', {
-    hasData: !!matchData?.data,
-    dataKeys: matchData?.data ? Object.keys(matchData.data) : 'no data',
-    hasGroupId: !!matchData?.data?.groupId,
-    hasGroup: !!matchData?.data?.group,
-    groupId: matchData?.data?.groupId,
-    group: matchData?.data?.group,
-    // Check if it's test data structure
-    isTestData: matchData?.data?.betOffers && Array.isArray(matchData.data.betOffers),
-    // Check root level for test data
-    rootGroupId: matchData?.data?.groupId,
-    rootGroup: matchData?.data?.group,
-    // Check events array
-    hasEvents: !!matchData?.data?.events,
-    eventsLength: matchData?.data?.events?.length || 0,
-    eventsGroupId: matchData?.data?.events?.[0]?.groupId,
-    eventsGroup: matchData?.data?.events?.[0]?.group
-  });
   
   // Determine correct participant for base metadata
   let baseParticipant = bet.selection || bet.label;
@@ -424,12 +399,6 @@ const extractUnibetMetadata = (bet, matchData) => {
       const outcome = betOffer.outcomes?.find(outcome => outcome.id === bet.oddId);
       
       if (outcome) {
-        console.log('Extracted detailed metadata:', {
-          betOffer: betOffer.criterion?.label,
-          outcome: outcome.label,
-          leagueId: matchData.data.groupId,
-          leagueName: matchData.data.group
-        });
 
         // Determine correct participant based on bet selection
         let correctParticipant = outcome.participant || bet.selection;
@@ -474,7 +443,6 @@ const extractUnibetMetadata = (bet, matchData) => {
     console.warn('No betOffers data available for metadata extraction, using base metadata');
   }
 
-  console.log('Using base metadata:', baseMetadata);
   return baseMetadata;
 };
 
@@ -494,7 +462,6 @@ export const placeBetThunk = createAsyncThunk(
     
     try {
       const results = [];
-      console.log("Placing bets:", { activeTab, betsCount: bets.length, bets });
 
       if (activeTab === "singles") {
         // Handle single bets (clean, label-based)
@@ -508,7 +475,6 @@ export const placeBetThunk = createAsyncThunk(
           const matchData = getMatchDataFromState(bet.match.id, matchesState, leaguesState);
           const unibetMetadata = extractUnibetMetadata(bet, matchData);
           
-          console.log('Unibet metadata extracted:', unibetMetadata);
           
           // Use label for betOption and selection
           const label = bet.label || bet.selection;
@@ -521,6 +487,7 @@ export const placeBetThunk = createAsyncThunk(
             selection: label,
             teams: `${bet.match.team1} vs ${bet.match.team2}`,
             marketId: (typeof bet.marketId === 'string' && bet.marketId.includes('_')) ? bet.marketId.split('_')[0] : bet.marketId,
+            // League information will be added after unibetMetadata to prevent override
             betDetails: {
               market_id: (typeof bet.marketId === 'string' && bet.marketId.includes('_')) ? bet.marketId.split('_')[0] : bet.marketId,
               market_name: bet.marketName || "Unknown Market",
@@ -542,12 +509,44 @@ export const placeBetThunk = createAsyncThunk(
               matchEndTime: bet.match.estimatedMatchEnd || (bet.match.starting_at ? new Date(new Date(bet.match.starting_at).getTime() + 120 * 60 * 1000).toISOString() : null)
             }),
             // Add Unibet metadata for enrichment
-            ...unibetMetadata
+            ...unibetMetadata,
+            // Use smart fallback for leagueId and leagueName:
+            // 1. First try bet.match.league (for League Card bets)
+            // 2. Fallback to unibetMetadata (for Match Detail Page bets)
+            leagueId: (() => {
+              const fromBetMatch = bet.match.league?.id || bet.match.groupId;
+              const fromUnibetMeta = unibetMetadata?.leagueId;
+              const finalLeagueId = fromBetMatch || fromUnibetMeta || null;
+              
+              console.log('🔍 placeBetThunk leagueId extraction:', {
+                'bet.match.league': bet.match.league,
+                'bet.match.league?.id': bet.match.league?.id,
+                'bet.match.groupId': bet.match.groupId,
+                'unibetMetadata.leagueId': fromUnibetMeta,
+                'finalLeagueId': finalLeagueId
+              });
+              return finalLeagueId;
+            })(),
+            leagueName: (() => {
+              const fromBetMatch = bet.match.league?.name || bet.match.leagueName;
+              const fromUnibetMeta = unibetMetadata?.leagueName;
+              return fromBetMatch || fromUnibetMeta || null;
+            })(),
           };
-                      console.log("Single bet payload:", payload);
-            console.log("Single bet - matchId type:", typeof payload.matchId, "value:", payload.matchId);
-            console.log("Single bet - inplay:", payload.inplay, "isLive:", payload.isLive);
 
+          // Debug: Check payload after construction
+          console.log('🔍 Payload after construction:', {
+            'payload.leagueId': payload.leagueId,
+            'payload.leagueName': payload.leagueName
+          });
+
+          // Debug: Log the final API payload being sent
+          console.log('🚀 Final API payload being sent:', payload);
+          console.log('🔍 Payload leagueId check:', {
+            'payload.leagueId': payload.leagueId,
+            'payload.leagueName': payload.leagueName
+          });
+          
           const response = await apiClient.post("/bet/place-bet", payload);
           results.push(response.data);
           // Update user balance
@@ -566,23 +565,10 @@ export const placeBetThunk = createAsyncThunk(
           const label = bet.label || bet.selection;
           
           // Extract Unibet metadata from match data for each leg (try multiple sources)
-          console.log(`[placeBet] Processing leg for match ${bet.match.id}:`, {
-            matchId: bet.match.id,
-            team1: bet.match.team1,
-            team2: bet.match.team2,
-            starting_at: bet.match.starting_at
-          });
           
           const matchData = getMatchDataFromState(bet.match.id, matchesState, leaguesState);
-          console.log(`[placeBet] Match data found for ${bet.match.id}:`, {
-            hasMatchData: !!matchData,
-            hasData: !!matchData?.data,
-            groupId: matchData?.data?.groupId,
-            group: matchData?.data?.group
-          });
           
           const unibetMetadata = extractUnibetMetadata(bet, matchData);
-          console.log(`[placeBet] Unibet metadata extracted for ${bet.match.id}:`, unibetMetadata);
           
           return {
             matchId: bet.match.id,
@@ -614,7 +600,20 @@ export const placeBetThunk = createAsyncThunk(
               matchEndTime: bet.match.estimatedMatchEnd || (bet.match.starting_at ? new Date(new Date(bet.match.starting_at).getTime() + 120 * 60 * 1000).toISOString() : null)
             }),
             // ✅ Spread unibetMeta fields at root level for backend compatibility
-            ...unibetMetadata
+            ...unibetMetadata,
+            // Use smart fallback for leagueId and leagueName:
+            // 1. First try bet.match.league (for League Card bets)
+            // 2. Fallback to unibetMetadata (for Match Detail Page bets)
+            leagueId: (() => {
+              const fromBetMatch = bet.match.league?.id || bet.match.groupId;
+              const fromUnibetMeta = unibetMetadata?.leagueId;
+              return fromBetMatch || fromUnibetMeta || null;
+            })(),
+            leagueName: (() => {
+              const fromBetMatch = bet.match.league?.name || bet.match.leagueName;
+              const fromUnibetMeta = unibetMetadata?.leagueName;
+              return fromBetMatch || fromUnibetMeta || null;
+            })()
           };
         });
 
@@ -632,10 +631,6 @@ export const placeBetThunk = createAsyncThunk(
           combinationData // ✅ This contains all the bet details
         };
 
-        console.log("Combination bet payload:", {
-          ...payload,
-          combinationDataSample: combinationData.slice(0, 2) // Log first 2 legs for debugging
-        });
 
         const response = await apiClient.post("/bet/place-bet", payload);
         results.push(response.data);
@@ -648,14 +643,12 @@ export const placeBetThunk = createAsyncThunk(
         throw new Error(`Invalid bet configuration: ${activeTab} with ${bets.length} bets`);
       }
 
-      console.log("Bet placement results:", results);
       dispatch(clearAllBets());
       return results;
     } catch (error) {
       // Check if this is a client error (4xx status) before logging as error
       if (error.response?.status >= 400 && error.response?.status < 500) {
         // Log client errors as info, not error
-        console.log("Client error (like conflicting bet):", error.response?.data);
       } else {
         // Log server errors as errors
         console.error("Error placing bet:", error);

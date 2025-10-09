@@ -10,6 +10,7 @@ import { getBetLabel } from '@/lib/utils';
 const MatchCard = ({ match }) => {
     const { createBetHandler } = useBetting();
 
+
     // Helper function to create bet object for label formatting
     
 

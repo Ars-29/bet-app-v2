@@ -7,6 +7,16 @@ export const useBetting = () => {
 
   // Add bet to slip (Redux only, no API call)
   const addBetToSlip = (match, selection, odds, type = "1x2", oddId = null, metadata = {}) => {
+    
+    // Debug: Check what match data is being received in useBetting
+    console.log('🔍 useBetting addBetToSlip received match:', {
+      matchId: match.id,
+      league: match.league,
+      groupId: match.groupId,
+      leagueName: match.leagueName,
+      source: match.source
+    });
+    
     // Always pass both label and name for bet slip formatting
     const { label = selection, name = undefined, marketDescription, ...restMeta } = metadata;
     dispatch(

@@ -65,13 +65,10 @@ const MatchDetailPage = ({ matchId }) => {
     useEffect(() => {
         if (matchId && !matchData) {
             if (useNewAPI) {
-                console.log(`🔍 Fetching match ${matchId} using new clean API...`);
                 dispatch(fetchMatchByIdV2(matchId)).catch((error) => {
-                    console.warn(`⚠️ New API failed for ${matchId}, falling back to old API:`, error.message);
                     dispatch(fetchMatchById(matchId));
                 });
             } else {
-                console.log(`🔍 Fetching match ${matchId} using old API...`);
             dispatch(fetchMatchById(matchId));
         }
         }
@@ -174,20 +171,11 @@ const MatchDetailPage = ({ matchId }) => {
 
     if (useNewAPI) {
         // New clean API data structure - betOffers API response
-        console.log('🔍 Processing new API data:', matchData);
-        console.log('🔍 matchData exists:', !!matchData);
-        console.log('🔍 matchData.data exists:', !!matchData?.data);
-        console.log('🔍 matchData.data.betOffers exists:', !!matchData?.data?.betOffers);
-        console.log('🔍 matchData.data.betOffers length:', matchData?.data?.betOffers?.length);
         
         // Extract event info from events array
         const eventData = matchData.data?.events?.[0];
         const eventId = matchData.eventId;
         
-        console.log('📊 Event data:', eventData);
-        console.log('🎯 Bet offers count:', matchData.data?.betOffers?.length || 0);
-        console.log('🌍 Event path:', eventData?.path);
-        console.log('🌍 Country from path:', eventData?.path?.[1]?.name);
         
         displayMatchData = {
             id: eventId,
@@ -223,9 +211,6 @@ const MatchDetailPage = ({ matchId }) => {
                     const marketName = offer.criterion?.label || offer.criterion?.englishLabel || offer.betOfferType?.name;
                     const isImplemented = isMarketImplemented(marketName);
                     if (!isImplemented) {
-                        console.log(`🚫 Main: Filtering out non-implemented market: "${marketName}"`);
-                    } else {
-                        console.log(`✅ Main: Including implemented market: "${marketName}"`);
                     }
                     return isImplemented;
                 })
@@ -246,22 +231,14 @@ const MatchDetailPage = ({ matchId }) => {
         };
 
         bettingData = displayMatchData.betting_data;
-        console.log('🎯 Processed betting data:', bettingData);
-        console.log('📊 Number of betting offers:', bettingData.length);
-        console.log('🔍 Raw matchData:', matchData);
-        console.log('🔍 Raw betOffers:', matchData.data?.betOffers);
         
         // Fallback: If bettingData is empty but we have raw betOffers, try to process them directly
         if ((!bettingData || bettingData.length === 0) && matchData.data?.betOffers?.length > 0) {
-            console.log('⚠️ Fallback: Processing raw betOffers directly');
             bettingData = matchData.data.betOffers
                 .filter(offer => {
                     const marketName = offer.criterion?.label || offer.criterion?.englishLabel || offer.betOfferType?.name;
                     const isImplemented = isMarketImplemented(marketName);
                     if (!isImplemented) {
-                        console.log(`🚫 Fallback: Filtering out non-implemented market: "${marketName}"`);
-                    } else {
-                        console.log(`✅ Fallback: Including implemented market: "${marketName}"`);
                     }
                     return isImplemented;
                 })
@@ -276,7 +253,6 @@ const MatchDetailPage = ({ matchId }) => {
                         line: outcome.line // Include line value for Over/Under markets
                     }))
                 }));
-            console.log('🔄 Fallback betting data:', bettingData);
         }
         
         // Create proper market categorization (like unibet-api app)
@@ -422,7 +398,6 @@ const MatchDetailPage = ({ matchId }) => {
             <div className="lg:mr-80 xl:mr-96">
                 <div className="lg:p-2 xl:p-4">
                     <MatchHeader matchData={displayMatchData} onScoreUpdate={(scoreData) => {
-                        console.log('📊 Score updated:', scoreData);
                     }} />
                     <BettingTabs 
                         matchData={{ 
