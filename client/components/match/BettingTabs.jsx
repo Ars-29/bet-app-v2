@@ -205,7 +205,7 @@ const BettingTabs = ({ matchData }) => {
                                 orientation="horizontal"
                                 className="w-full"
                             >
-                                <div className="flex gap-1 sm:gap-1.5 min-w-max pr-4">
+                                <div className="flex gap-1 sm:gap-1.5 min-w-max pr-4 mb-1">
                                     {tabs.map((tab) => (
                                         <Button
                                             key={tab.id}

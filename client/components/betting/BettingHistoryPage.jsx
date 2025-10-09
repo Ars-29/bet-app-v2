@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,6 @@ const BettingHistoryPage = ({ userId }) => {
   // Keep filters for date range, but not bet type
   const [filters, setFilters] = useState({ dateFrom: '', dateTo: '', status: '' });
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
-  const [expandedCombinations, setExpandedCombinations] = useState(new Set());
 
   useEffect(() => {
     if (userId && user && user.role === 'admin') {
@@ -51,21 +50,72 @@ const BettingHistoryPage = ({ userId }) => {
     setSortConfig({ key, direction });
   };
 
-  const toggleCombinationExpansion = (betId) => {
-    setExpandedCombinations(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(betId)) {
-        newSet.delete(betId);
-      } else {
-        newSet.add(betId);
-      }
-      return newSet;
-    });
-  };
+  // const toggleCombinationExpansion = React.useCallback((betId, event) => {
+  //   // Prevent default behavior to avoid scroll issues
+  //   if (event) {
+  //     event.preventDefault();
+  //     event.stopPropagation();
+  //     event.nativeEvent?.stopImmediatePropagation();
+  //   }
+    
+  //   // Find the card element and store its current scroll position
+  //   const cardElement = event?.target?.closest('.bet-card');
+  //   if (!cardElement) return;
+    
+  //   const currentScrollY = window.scrollY;
+  //   const cardRect = cardElement.getBoundingClientRect();
+  //   const cardTopFromViewport = cardRect.top;
+    
+  //   setExpandedCombinations(prev => {
+  //     const newSet = new Set(prev);
+  //     if (newSet.has(betId)) {
+  //       newSet.delete(betId);
+  //     } else {
+  //       newSet.add(betId);
+  //     }
+  //     return newSet;
+  //   });
+    
+  //   // Use multiple attempts to maintain scroll position
+  //   const maintainPosition = () => {
+  //     window.scrollTo(0, currentScrollY);
+  //   };
+    
+  //   // Try multiple times with different timing
+  //   requestAnimationFrame(maintainPosition);
+  //   setTimeout(maintainPosition, 0);
+  //   setTimeout(maintainPosition, 10);
+  //   setTimeout(maintainPosition, 50);
+  //   setTimeout(maintainPosition, 100);
+  // }, []);
+
+
+  // Individual card component that manages its own expansion state
+  const BetCardWrapper = React.memo(({ item }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const isCombo = isCombinationBet(item);
+    
+    const handleToggle = React.useCallback((event) => {
+      event?.preventDefault();
+      event?.stopPropagation();
+      setIsExpanded(prev => !prev);
+    }, []);
+    
+    return (
+      <BetCard
+        bet={item}
+        isExpanded={isExpanded}
+        onToggleExpansion={isCombo ? handleToggle : undefined}
+      />
+    );
+  });
+  
+  
+
 
   const formatAmount = (amount) => {
     return (
-      <span className="text-black">
+      <span style={{color: "#242424"}}>
         ${Math.abs(amount).toFixed(2)}
       </span>
     );
@@ -111,6 +161,7 @@ const BettingHistoryPage = ({ userId }) => {
   const renderCombinationDetails = (bet) => {
     if (!isCombinationBet(bet)) return null;
 
+
     return (
       <TableRow className="bg-gray-50">
         <TableCell colSpan={11} className="p-0">
@@ -133,8 +184,7 @@ const BettingHistoryPage = ({ userId }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {bet.combination.map((leg, index) => {
-                  return (
+                {bet.combination.map((leg, index) => (
                     <TableRow key={index} className="text-[12px] hover:bg-gray-100">
                       <TableCell className="font-medium text-purple-600">
                         {index + 1}
@@ -170,8 +220,8 @@ const BettingHistoryPage = ({ userId }) => {
                         </div>
                       </TableCell>
                       <TableCell className="max-w-32">
-                        <div className="truncate" title={leg.betDetails?.market_description}>
-                          {leg.betDetails?.market_description || "-"}
+                        <div className="truncate" title={leg.unibetMeta?.marketName || leg.betDetails?.market_description || leg.betDetails?.market_name}>
+                          {leg.unibetMeta?.marketName || leg.betDetails?.market_description || leg.betDetails?.market_name || "-"}
                         </div>
                       </TableCell>
                       <TableCell className="max-w-32">
@@ -183,21 +233,277 @@ const BettingHistoryPage = ({ userId }) => {
                         </div>
                       </TableCell>
                       <TableCell className="max-w-20">
-                        <div className="truncate" title={leg.betDetails?.total}>
+                        <div className="truncate" title={leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-")}>
                           {leg.betDetails?.market_id === "37" 
-                            ? leg.betDetails?.total
-                            : (leg.betDetails?.total || "-")
+                            ? (leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-"))
+                            : (leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-"))
                           }
                         </div>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
+                ))}
               </TableBody>
             </Table>
           </div>
         </TableCell>
       </TableRow>
+    );
+  };
+
+  // Mobile card component for individual bets
+  const BetCard = React.memo(({ bet, isExpanded, onToggleExpansion }) => {
+    const { date, time } = formatDateTime(bet.createdAt);
+    const isCombo = isCombinationBet(bet);
+    
+    // Debug: Log bet data structure to help identify missing fields
+    console.log('🔍 BetCard - Bet data structure:', {
+      id: bet._id,
+      teams: bet.teams,
+      match: bet.match,
+      betDetails: bet.betDetails,
+      isCombo: isCombo,
+      combination: bet.combination,
+      // Additional debugging for single bets
+      ...(isCombo ? {} : {
+        matchId: bet.matchId,
+        oddId: bet.oddId,
+        betOption: bet.betOption,
+        selection: bet.selection,
+        unibetMeta: bet.unibetMeta
+      })
+    });
+
+    return (
+      <Card className="bet-card mb-4 border border-gray-200 rounded-none py-0">
+           <div className="flex items-center justify-between" style={{backgroundColor: "oklch(0.6 0.15 163.23 / 0.35)", borderTop: "2px solid oklch(0.596 0.145 163.225)"}}>
+            {/* Left side - Stake and Odds */}
+            <div className="flex items-center gap-2 py-2" style={{paddingLeft:"10px"}}>
+                <span className="text-lg font-semibold" style={{color: "#242424"}}>
+                  {isCombo ? formatAmount(bet.stake * bet.combination.length) : formatAmount(bet.stake)}
+                </span>
+                <span className="text-sm" style={{color: "#242424"}}>@ {parseFloat(bet.odds).toFixed(2)}</span>
+            </div>
+            
+            {/* Right side - View All with Chevron (only for combo bets) */}
+            <div className="flex items-center">
+              {isCombo && (
+                <>
+                  <span 
+                    className="text-sm cursor-pointer hover:underline" 
+                    style={{color: "#242424"}}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onToggleExpansion && onToggleExpansion(e);
+                    }}
+                  >
+                    View All
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onToggleExpansion && onToggleExpansion(e);
+                    }}
+                    className="h-8 w-6"
+                    style={{padding: 0}}
+                    type="button"
+                  >
+                    {isExpanded ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        <CardContent className="py-0 px-3" style={{paddingBottom:"10px"}}>
+          {/* Header with expand button for combo bets */}
+          
+
+          {/* Date and Time with Badges */}
+          <div className="flex items-center justify-between mb-3">
+            {/* Date and Time on the left */}
+            <div className="text-sm text-gray-600">
+              <div className="font-medium">{date}</div>
+              <div>{time}</div>
+            </div>
+            
+            {/* Status and Type badges on the right */}
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={
+                  bet.status.toLowerCase() === 'won' 
+                    ? 'text-emerald-600 bg-emerald-50 border-emerald-200 text-xs'
+                    : bet.status.toLowerCase() === 'lost'
+                    ? 'text-rose-600 bg-rose-50 border-rose-200 text-xs'
+                    : bet.status.toLowerCase() === 'cancelled' || bet.status.toLowerCase() === 'canceled'
+                    ? 'text-gray-600 bg-gray-50 border-gray-200 text-xs'
+                    : 'text-amber-600 bg-amber-50 border-amber-200 text-xs'
+                }
+              >
+                {bet.status}
+              </Badge>
+              {getBetTypeBadge(bet)}
+            </div>
+          </div>
+
+          {/* Match details */}
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Match:</span>
+              <span className="text-gray-900 font-medium text-right max-w-[60%] truncate" title={
+                isCombo ? `Combination (${bet.combination.length} legs)` : (
+                  bet.teams || 
+                  bet.match?.name || 
+                  (bet.unibetMeta?.eventName && bet.unibetMeta.eventName !== 'Combination Bet' ? bet.unibetMeta.eventName : null) ||
+                  (bet.unibetMeta?.homeName && bet.unibetMeta?.awayName ? `${bet.unibetMeta.homeName} vs ${bet.unibetMeta.awayName}` : null) ||
+                  "-"
+                )
+              }>
+                {isCombo ? `Combination (${bet.combination.length} legs)` : (
+                  bet.teams || 
+                  bet.match?.name || 
+                  (bet.unibetMeta?.eventName && bet.unibetMeta.eventName !== 'Combination Bet' ? bet.unibetMeta.eventName : null) ||
+                  (bet.unibetMeta?.homeName && bet.unibetMeta?.awayName ? `${bet.unibetMeta.homeName} vs ${bet.unibetMeta.awayName}` : null) ||
+                  "-"
+                )}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Market:</span>
+              <span className="text-gray-900">
+                {isCombo ? "Multiple Markets" : (bet.betDetails?.market_description || bet.betDetails?.market_name || "-")}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Selection:</span>
+              <span className="text-gray-900">
+                {isCombo ? "Multiple Selections" : (
+                  bet.betDetails?.market_id === "37" 
+                    ? `${bet.betDetails?.label} ${bet.betDetails?.total} / ${bet.betDetails?.name}`
+                    : (bet.selection || "-")
+                )}
+              </span>
+            </div>
+            {!isCombo && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Value:</span>
+                <span className="text-gray-900">
+                  {bet.betDetails?.market_id === "37" 
+                    ? bet.betDetails?.total
+                    : (bet.betDetails?.total || "-")
+                  }
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between pt-2 border-t">
+              <span className="text-gray-500 font-medium">Profit:</span>
+              <span className={`font-semibold ${
+                bet.status.toLowerCase() === "won" 
+                  ? "text-green-600"
+                  : bet.status.toLowerCase() === "lost"
+                  ? "text-red-600"
+                  : "text-gray-500"
+              }`}>
+                {bet.status.toLowerCase() === "won" ? (
+                  `+$${(bet.stake * bet.odds).toFixed(2)}`
+                ) : bet.status.toLowerCase() === "pending" ? (
+                  "Pending"
+                ) : bet.status.toLowerCase() === "cancelled" || bet.status.toLowerCase() === "canceled" ? (
+                  "$0.00"
+                ) : (
+                  `-$${bet.stake.toFixed(2)}`
+                )}
+              </span>
+            </div>
+          </div>
+
+          {/* Combination bet legs - show within the same card when expanded */}
+          {isCombo && (
+            <div
+              style={{
+                maxHeight: isExpanded ? '1000px' : '0px',
+                overflow: 'hidden',
+                transition: 'max-height 0.3s ease',
+              }}
+            >
+              <CombinationBetLegs bet={bet} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  });
+
+  // Mobile combination bet legs component (inline within parent card)
+  const CombinationBetLegs = ({ bet }) => {
+    if (!isCombinationBet(bet)) return null;
+
+    return (
+      <div className="mt-3 pt-2 border-t border-gray-200">
+        <h4 className="font-semibold text-gray-700 text-sm mb-2">Combination Bet Legs</h4>
+          <div className="space-y-3" style={{ backgroundColor: 'lightgray', paddingLeft: '10px', paddingRight: '10px', paddingBottom: '10px', paddingTop: '10px' }}>
+            {bet.combination.map((leg, index) => (
+                <div key={index} className="bg-gray-50 p-2 rounded border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-purple-600 text-sm">Leg {index + 1}</span>
+                  <Badge
+                    variant="outline"
+                    className={
+                      leg.status.toLowerCase() === 'won' 
+                        ? 'text-emerald-600 bg-emerald-50 border-emerald-200 text-xs'
+                        : leg.status.toLowerCase() === 'lost'
+                        ? 'text-rose-600 bg-rose-50 border-rose-200 text-xs'
+                        : leg.status.toLowerCase() === 'cancelled' || leg.status.toLowerCase() === 'canceled'
+                        ? 'text-gray-600 bg-gray-50 border-gray-200 text-xs'
+                        : 'text-amber-600 bg-amber-50 border-amber-200 text-xs'
+                    }
+                  >
+                    {leg.status}
+                  </Badge>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Stake:</span>
+                    <span className="text-gray-600">${bet.stake.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Odds:</span>
+                    <span className="text-gray-900">{parseFloat(leg.odds).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Match:</span>
+                    <span className="text-gray-900 text-right max-w-[60%] truncate" title={leg.teams || "-"}>{leg.teams || "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Market:</span>
+                    <span className="text-gray-900 truncate ml-2">{leg.unibetMeta?.marketName || leg.betDetails?.market_description || leg.betDetails?.market_name || "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Selection:</span>
+                    <span className="text-gray-900 truncate ml-2">
+                      {leg.betDetails?.market_id === "37" 
+                        ? `${leg.betDetails?.label} ${leg.betDetails?.total} / ${leg.betDetails?.name}`
+                        : (leg.selection || "-")
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Value:</span>
+                    <span className="text-gray-900">
+                      {leg.betDetails?.market_id === "37" 
+                        ? (leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-"))
+                        : (leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-"))
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+      </div>
     );
   };
 
@@ -351,160 +657,182 @@ const BettingHistoryPage = ({ userId }) => {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50 text-[13px]">
-                      <TableHead className="w-8"></TableHead>
-                      <TableHead
-                        className="cursor-pointer select-none"
-                        onClick={() => handleSort('stake')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Stake
-                          <ArrowUpDown className="h-4 w-4" />
-                        </div>
-                      </TableHead>
-                      <TableHead
-                        className="cursor-pointer select-none"
-                        onClick={() => handleSort('odds')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Odds
-                          <ArrowUpDown className="h-4 w-4" />
-                        </div>
-                      </TableHead>
-                      <TableHead
-                        className="cursor-pointer select-none"
-                        onClick={() => handleSort('createdAt')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Date & Time
-                          <ArrowUpDown className="h-4 w-4" />
-                        </div>
-                      </TableHead>
-                      <TableHead
-                        className="cursor-pointer select-none"
-                        onClick={() => handleSort('status')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Status
-                          <ArrowUpDown className="h-4 w-4" />
-                        </div>
-                      </TableHead>
-                      <TableHead className="select-none">Type</TableHead>
-                      <TableHead className="select-none">Match</TableHead>
-                      <TableHead className="select-none">Market</TableHead>
-                      <TableHead className="select-none">Selection</TableHead>
-                      <TableHead className="select-none">Value</TableHead>
-                      <TableHead
-                        className="cursor-pointer select-none"
-                        onClick={() => handleSort('payout')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Profit
-                          <ArrowUpDown className="h-4 w-4" />
-                        </div>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedData.map((item) => {
-                      const { date, time } = formatDateTime(item.createdAt);
-                      const isExpanded = expandedCombinations.has(item._id);
-                      const isCombo = isCombinationBet(item);
-                      
-                      return (
-                        <React.Fragment key={item._id}>
-                          <TableRow
-                            className={`hover:bg-gray-50 text-[13px] ${isCombo ? 'cursor-pointer' : ''}`}
-                            onClick={isCombo ? () => toggleCombinationExpansion(item._id) : undefined}
-                          >
-                            <TableCell>
-                              {isCombo && (
-                                isExpanded ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {isCombo ? formatAmount(item.stake * item.combination.length) : formatAmount(item.stake)}
-                            </TableCell>
-                            <TableCell>{parseFloat(item.odds).toFixed(2)}</TableCell>
-                            <TableCell>
-                              <div>
-                                <div>{date}</div>
-                                <div className="text-gray-500">{time}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant="outline"
-                                className={
-                                  item.status.toLowerCase() === 'won' 
-                                    ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
-                                    : item.status.toLowerCase() === 'lost'
-                                    ? 'text-rose-600 bg-rose-50 border-rose-200'
-                                    : item.status.toLowerCase() === 'cancelled' || item.status.toLowerCase() === 'canceled'
-                                    ? 'text-gray-600 bg-gray-50 border-gray-200'
-                                    : 'text-amber-600 bg-amber-50 border-amber-200'
-                                }
-                              >
-                                {item.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {getBetTypeBadge(item)}
-                            </TableCell>
-                            <TableCell className="max-w-48">
-                              <div className="truncate" title={isCombo ? `Combination Bet (${item.combination.length} legs)` : item.teams}>
-                                {isCombo ? `Combination (${item.combination.length} legs)` : (item.teams || "-")}
-                              </div>
-                            </TableCell>
-                            <TableCell className="max-w-48">
-                              <div className="truncate" title={isCombo ? "Multiple Markets" : item.betDetails?.market_description}>
-                                {isCombo ? "Multiple Markets" : (item.betDetails?.market_description || "-")}
-                              </div>
-                            </TableCell>
-                            <TableCell className="max-w-48">
-                              <div className="truncate" title={isCombo ? "Multiple Selections" : item.selection}>
-                                {isCombo ? "Multiple Selections" : (
-                                  item.betDetails?.market_id === "37" 
-                                    ? `${item.betDetails?.label} ${item.betDetails?.total} / ${item.betDetails?.name}`
-                                    : (item.selection || "-")
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50 text-[13px]">
+                        <TableHead className="w-8"></TableHead>
+                        <TableHead
+                          className="cursor-pointer select-none"
+                          onClick={() => handleSort('stake')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Stake
+                            <ArrowUpDown className="h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead
+                          className="cursor-pointer select-none"
+                          onClick={() => handleSort('odds')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Odds
+                            <ArrowUpDown className="h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead
+                          className="cursor-pointer select-none"
+                          onClick={() => handleSort('createdAt')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Date & Time
+                            <ArrowUpDown className="h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead
+                          className="cursor-pointer select-none"
+                          onClick={() => handleSort('status')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Status
+                            <ArrowUpDown className="h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead className="select-none">Type</TableHead>
+                        <TableHead className="select-none">Match</TableHead>
+                        <TableHead className="select-none">Market</TableHead>
+                        <TableHead className="select-none">Selection</TableHead>
+                        <TableHead className="select-none">Value</TableHead>
+                        <TableHead
+                          className="cursor-pointer select-none"
+                          onClick={() => handleSort('payout')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Profit
+                            <ArrowUpDown className="h-4 w-4" />
+                          </div>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedData.map((item) => {
+                        const { date, time } = formatDateTime(item.createdAt);
+                        const isCombo = isCombinationBet(item);
+                        
+                        return (
+                          <React.Fragment key={item._id}>
+                            <TableRow
+                              className="hover:bg-gray-50 text-[13px]"
+                            >
+                              <TableCell>
+                                {isCombo && (
+                                  <ChevronRight className="h-4 w-4 text-purple-600" />
                                 )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="max-w-32">
-                              <div className="truncate" title={isCombo ? "N/A" : item.betDetails?.total}>
-                                {isCombo ? "N/A" : (
-                                  item.betDetails?.market_id === "37" 
-                                    ? item.betDetails?.total
-                                    : (item.betDetails?.total || "-")
+                              </TableCell>
+                              <TableCell>
+                                {isCombo ? formatAmount(item.stake * item.combination.length) : formatAmount(item.stake)}
+                              </TableCell>
+                              <TableCell>{parseFloat(item.odds).toFixed(2)}</TableCell>
+                              <TableCell>
+                                <div>
+                                  <div>{date}</div>
+                                  <div className="text-gray-500">{time}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    item.status.toLowerCase() === 'won' 
+                                      ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
+                                      : item.status.toLowerCase() === 'lost'
+                                      ? 'text-rose-600 bg-rose-50 border-rose-200'
+                                      : item.status.toLowerCase() === 'cancelled' || item.status.toLowerCase() === 'canceled'
+                                      ? 'text-gray-600 bg-gray-50 border-gray-200'
+                                      : 'text-amber-600 bg-amber-50 border-amber-200'
+                                  }
+                                >
+                                  {item.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {getBetTypeBadge(item)}
+                              </TableCell>
+                              <TableCell className="max-w-48">
+                                <div className="truncate" title={isCombo ? `Combination Bet (${item.combination.length} legs)` : (
+                                  item.teams || 
+                                  item.match?.name || 
+                                  (item.unibetMeta?.eventName && item.unibetMeta.eventName !== 'Combination Bet' ? item.unibetMeta.eventName : null) ||
+                                  (item.unibetMeta?.homeName && item.unibetMeta?.awayName ? `${item.unibetMeta.homeName} vs ${item.unibetMeta.awayName}` : null)
+                                )}>
+                                  {isCombo ? `Combination (${item.combination.length} legs)` : (
+                                    item.teams || 
+                                    item.match?.name || 
+                                    (item.unibetMeta?.eventName && item.unibetMeta.eventName !== 'Combination Bet' ? item.unibetMeta.eventName : null) ||
+                                    (item.unibetMeta?.homeName && item.unibetMeta?.awayName ? `${item.unibetMeta.homeName} vs ${item.unibetMeta.awayName}` : null) ||
+                                    "-"
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="max-w-48">
+                                <div className="truncate" title={isCombo ? "Multiple Markets" : (item.betDetails?.market_description || item.betDetails?.market_name)}>
+                                  {isCombo ? "Multiple Markets" : (item.betDetails?.market_description || item.betDetails?.market_name || "-")}
+                                </div>
+                              </TableCell>
+                              <TableCell className="max-w-48">
+                                <div className="truncate" title={isCombo ? "Multiple Selections" : item.selection}>
+                                  {isCombo ? "Multiple Selections" : (
+                                    item.betDetails?.market_id === "37" 
+                                      ? `${item.betDetails?.label} ${item.betDetails?.total} / ${item.betDetails?.name}`
+                                      : (item.selection || "-")
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="max-w-32">
+                                <div className="truncate" title={isCombo ? "N/A" : item.betDetails?.total}>
+                                  {isCombo ? "N/A" : (
+                                    item.betDetails?.market_id === "37" 
+                                      ? item.betDetails?.total
+                                      : (item.betDetails?.total || "-")
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {item.status.toLowerCase() === "won" ? (
+                                  <span className="font-medium text-green-600">
+                                    +${(item.stake * item.odds).toFixed(2)}
+                                  </span>
+                                ) : item.status.toLowerCase() === "pending" ? (
+                                  <span className="text-gray-500">Pending</span>
+                                ) : item.status.toLowerCase() === "cancelled" || item.status.toLowerCase() === "canceled" ? (
+                                  <span className="text-gray-500">$0.00</span>
+                                ) : (
+                                  <span className="font-medium text-red-600">
+                                    -${item.stake.toFixed(2)}
+                                  </span>
                                 )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {item.status.toLowerCase() === "won" ? (
-                                <span className="font-medium text-green-600">
-                                  +${(item.stake * item.odds).toFixed(2)}
-                                </span>
-                              ) : item.status.toLowerCase() === "pending" ? (
-                                <span className="text-gray-500">Pending</span>
-                              ) : item.status.toLowerCase() === "cancelled" || item.status.toLowerCase() === "canceled" ? (
-                                <span className="text-gray-500">$0.00</span>
-                              ) : (
-                                <span className="font-medium text-red-600">
-                                  -${item.stake.toFixed(2)}
-                                </span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                          {isExpanded && isCombo && renderCombinationDetails(item)}
-                        </React.Fragment>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                              </TableCell>
+                            </TableRow>
+                            {isCombo && renderCombinationDetails(item)}
+                          </React.Fragment>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-4">
+                  {sortedData.map((item) => (
+                    <BetCardWrapper
+                      key={item._id}
+                      item={item}
+                    />
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

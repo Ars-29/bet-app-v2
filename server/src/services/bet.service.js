@@ -1121,10 +1121,17 @@ class BetService {
     user.balance -= stake;
     await user.save();
 
-    let teams =
-      matchData.participants && matchData.participants.length >= 2
-        ? `${matchData.participants[0].name} vs ${matchData.participants[1].name}`
-        : "";
+    // Use the robust getTeamsFromMatchData method for single bets too
+    let teams = this.getTeamsFromMatchData(matchData, "");
+    
+    // Debug: Log match data and teams extraction for single bets
+    console.log(`[DEBUG] Single bet - matchData:`, {
+      matchId,
+      participants: matchData.participants,
+      name: matchData.name,
+      extractedTeams: teams
+    });
+    
     const selection = betOption;
 
     const matchDate = this.parseMatchStartTime(matchData.starting_at);

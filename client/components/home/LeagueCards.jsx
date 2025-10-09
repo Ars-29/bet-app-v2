@@ -167,6 +167,18 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                                                             leagueName: match.leagueName,
                                                             source: match.source
                                                         });
+                                                        
+                                                        // Detailed match object being sent to bet slip
+                                                        console.log('🔍 COMPLETE MATCH OBJECT TO BET SLIP:', {
+                                                            fullMatchObject: match,
+                                                            leagueId: match.league?.id,
+                                                            groupId: match.groupId,
+                                                            leagueName: match.leagueName,
+                                                            team1: match.team1,
+                                                            team2: match.team2,
+                                                            participants: match.participants
+                                                        });
+                                                        
                                                         return createBetHandler(match, 'Home', getOddValue('home') || getOddValue('1'), '1x2', (liveOdds.home?.oddId || displayOdds['1']?.oddId || null), { marketId: "1_home", label: "Home", name: `Win - ${match.team1 || match.participants?.[0]?.name || 'Team 1'}`, marketDescription: "Full Time Result" })(e);
                                                     }
                                                     : undefined
@@ -181,7 +193,28 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                                                 size="sm"
                                                 className={getOddButtonClass({ suspended: getSuspendedStatus('draw') || getSuspendedStatus('X') || !(displayOdds.draw || displayOdds['X']) })}
                                                 onClick={isOddClickable({ suspended: getSuspendedStatus('draw') || getSuspendedStatus('X') || !(displayOdds.draw || displayOdds['X']) })
-                                                    ? createBetHandler(match, 'Draw', getOddValue('draw') || getOddValue('X'), '1x2', (liveOdds.draw?.oddId || displayOdds['X']?.oddId || null), { marketId: "1_draw", label: "Draw", name: `Draw - ${match.team1 || match.participants?.[0]?.name || 'Team 1'} vs ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })
+                                                    ? (e) => {
+                                                        console.log('🔍 DRAW CLICKED - createBetHandler match data:', {
+                                                            matchId: match.id,
+                                                            league: match.league,
+                                                            groupId: match.groupId,
+                                                            leagueName: match.leagueName,
+                                                            source: match.source
+                                                        });
+                                                        
+                                                        // Detailed match object being sent to bet slip
+                                                        console.log('🔍 COMPLETE MATCH OBJECT TO BET SLIP (DRAW):', {
+                                                            fullMatchObject: match,
+                                                            leagueId: match.league?.id,
+                                                            groupId: match.groupId,
+                                                            leagueName: match.leagueName,
+                                                            team1: match.team1,
+                                                            team2: match.team2,
+                                                            participants: match.participants
+                                                        });
+                                                        
+                                                        return createBetHandler(match, 'Draw', getOddValue('draw') || getOddValue('X'), '1x2', (liveOdds.draw?.oddId || displayOdds['X']?.oddId || null), { marketId: "1_draw", label: "Draw", name: `Draw - ${match.team1 || match.participants?.[0]?.name || 'Team 1'} vs ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })(e);
+                                                    }
                                                     : undefined
                                                 }
                                                 disabled={!isOddClickable({ suspended: getSuspendedStatus('draw') || getSuspendedStatus('X') || !(displayOdds.draw || displayOdds['X']) })}
@@ -194,7 +227,28 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                                                 size="sm"
                                                 className={getOddButtonClass({ suspended: getSuspendedStatus('away') || getSuspendedStatus('2') || !(displayOdds.away || displayOdds['2']) })}
                                                 onClick={isOddClickable({ suspended: getSuspendedStatus('away') || getSuspendedStatus('2') || !(displayOdds.away || displayOdds['2']) })
-                                                    ? createBetHandler(match, 'Away', getOddValue('away') || getOddValue('2'), '1x2', (liveOdds.away?.oddId || displayOdds['2']?.oddId || null), { marketId: "1_away", label: "Away", name: `Win - ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })
+                                                    ? (e) => {
+                                                        console.log('🔍 AWAY CLICKED - createBetHandler match data:', {
+                                                            matchId: match.id,
+                                                            league: match.league,
+                                                            groupId: match.groupId,
+                                                            leagueName: match.leagueName,
+                                                            source: match.source
+                                                        });
+                                                        
+                                                        // Detailed match object being sent to bet slip
+                                                        console.log('🔍 COMPLETE MATCH OBJECT TO BET SLIP (AWAY):', {
+                                                            fullMatchObject: match,
+                                                            leagueId: match.league?.id,
+                                                            groupId: match.groupId,
+                                                            leagueName: match.leagueName,
+                                                            team1: match.team1,
+                                                            team2: match.team2,
+                                                            participants: match.participants
+                                                        });
+                                                        
+                                                        return createBetHandler(match, 'Away', getOddValue('away') || getOddValue('2'), '1x2', (liveOdds.away?.oddId || displayOdds['2']?.oddId || null), { marketId: "1_away", label: "Away", name: `Win - ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })(e);
+                                                    }
                                                     : undefined
                                                 }
                                                 disabled={!isOddClickable({ suspended: getSuspendedStatus('away') || getSuspendedStatus('2') || !(displayOdds.away || displayOdds['2']) })}

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@radix-ui/react-avatar"
 import { Button } from "@/components/ui/button"
 import { formatToLocalTime } from '@/lib/utils';
+import Link from "next/link";
 
 const isMatchLive = (match) => {
     if (!match || !match.start) return false;
@@ -89,13 +90,21 @@ const MatchHeader = ({ matchData, onScoreUpdate }) => {
     const country = matchData?.parentName || '';
     const displayLeagueName = country ? `${leagueName} (${country})` : leagueName;
     
+    // Get league ID for navigation
+    const leagueId = matchData?.groupId || matchData?.group || matchData?.league?.id || matchData?.leagueId;
+    
     // Debug logging
     console.log('🔍 MatchHeader Debug:', {
         matchData,
         leagueName,
         country,
         parentName: matchData?.parentName,
-        displayLeagueName
+        displayLeagueName,
+        leagueId,
+        'matchData.groupId': matchData?.groupId,
+        'matchData.group': matchData?.group,
+        'matchData.league?.id': matchData?.league?.id,
+        'matchData.leagueId': matchData?.leagueId
     });
 
     // Get match time/score
@@ -145,7 +154,7 @@ const MatchHeader = ({ matchData, onScoreUpdate }) => {
     }, [currentScore]);
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-4">
+        <div className="bg-white shadow-sm border p-4 mb-4">
             {/* Back button */}
             <div className="flex items-center mb-4">
                 <Button
@@ -162,7 +171,12 @@ const MatchHeader = ({ matchData, onScoreUpdate }) => {
             {/* Match info */}
             <div className="text-center mb-4">
                 <div className="text-sm font-medium text-gray-600 mb-2">
-                    {displayLeagueName}
+                    <Link 
+                        href={`/leagues/${leagueId || 'unknown'}`}
+                        className="hover:text-base hover:underline cursor-pointer transition-colors duration-200"
+                    >
+                        {displayLeagueName}
+                    </Link>
                 </div>
                 <div className="flex items-center justify-center text-xs text-gray-500 mb-2">
                     {isLive ? (

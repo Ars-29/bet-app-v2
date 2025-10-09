@@ -93,7 +93,6 @@ export default function BetManagement() {
   const [selectedUser, setSelectedUser] = useState("all");
   const [amountRange, setAmountRange] = useState({ min: "", max: "" });
   const [activeFilters, setActiveFilters] = useState(0);
-  const [expandedCombinations, setExpandedCombinations] = useState(new Set());
   const [betTypeFilter, setBetTypeFilter] = useState("all");
 
   useEffect(() => {
@@ -323,16 +322,233 @@ export default function BetManagement() {
     );
   };
 
-  const toggleCombinationExpansion = (betId) => {
-    setExpandedCombinations(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(betId)) {
-        newSet.delete(betId);
-      } else {
-        newSet.add(betId);
-      }
-      return newSet;
-    });
+
+  // Mobile card component for individual bets (Admin version)
+  const AdminBetCard = React.memo(({ bet }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const { date, time } = formatDateTime(bet.createdAt);
+    const isCombo = isCombinationBet(bet);
+    
+    const handleToggle = React.useCallback((event) => {
+      event?.preventDefault();
+      event?.stopPropagation();
+      setIsExpanded(prev => !prev);
+    }, []);
+
+    return (
+      <Card className="mb-4 border border-gray-200 rounded-none">
+        <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-semibold text-gray-900">
+                {isCombo ? formatAmount(bet.stake * bet.combination.length) : formatAmount(bet.stake)}
+              </span>
+              <span className="text-sm text-gray-500">@ {parseFloat(bet.odds).toFixed(2)}</span>
+            </div>
+            {isCombo && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleToggle}
+                className="p-1 h-8 w-8"
+              >
+                {isExpanded ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />}
+              </Button>
+            )}
+          </div>
+
+        <CardContent className="py-0 px-3">
+          {/* Header with expand button for combo bets */}
+          
+          {/* User Name */}
+          <div className="text-sm text-gray-600 mb-3">
+            <div className="font-medium">User: {bet.user}</div>
+          </div>
+
+          {/* Status and Type badges */}
+          <div className="flex items-center gap-2 mb-3">
+            <Badge
+              variant="outline"
+              className={getStatusColor(bet.status)}
+            >
+              {bet.status}
+            </Badge>
+            {getBetTypeBadge(bet)}
+          </div>
+
+          {/* Date and Time */}
+          <div className="text-sm text-gray-600 mb-3">
+            <div className="font-medium">{date}</div>
+            <div>{time}</div>
+          </div>
+
+          {/* Match details */}
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Match:</span>
+              <span className="text-gray-900 font-medium text-right max-w-[60%] truncate" title={isCombo ? `Combination (${bet.combination.length} legs)` : getMatchDisplay(bet)}>
+                {isCombo ? `Combination (${bet.combination.length} legs)` : getMatchDisplay(bet)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Market:</span>
+              <span className="text-gray-900">
+                {isCombo ? "Multiple Markets" : (bet.betDetails?.market_description || "-")}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Selection:</span>
+              <span className="text-gray-900">
+                {isCombo ? "Multiple Selections" : getBetSelection(bet.betDetails, bet.selection)}
+              </span>
+            </div>
+            {!isCombo && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Value:</span>
+                <span className="text-gray-900">
+                  {getBetValue(bet.betDetails)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-gray-500">Reason:</span>
+              <span className="text-gray-900 text-right max-w-[60%] truncate" title={bet.result?.reason || "-"}>
+                {bet.result?.reason || "-"}
+              </span>
+            </div>
+            <div className="flex justify-between pt-2 border-t">
+              <span className="text-gray-500 font-medium">Profit:</span>
+              <span className={`font-semibold ${
+                bet.status.toLowerCase() === "won" 
+                  ? "text-green-600"
+                  : bet.status.toLowerCase() === "lost"
+                  ? "text-red-600"
+                  : "text-gray-500"
+              }`}>
+                {bet.status.toLowerCase() === "won" ? (
+                  `+$${isCombo ? bet.payout.toFixed(2) : (bet.stake * bet.odds).toFixed(2)}`
+                ) : bet.status.toLowerCase() === "pending" ? (
+                  "Pending"
+                ) : bet.status.toLowerCase() === "cancelled" || bet.status.toLowerCase() === "canceled" ? (
+                  "$0.00"
+                ) : (
+                  `-$${bet.stake.toFixed(2)}`
+                )}
+              </span>
+            </div>
+          </div>
+
+          {/* Admin Actions */}
+          <div className="mt-4 pt-3 border-t">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-500">Status:</span>
+              <Select
+                value={bet.status}
+                onValueChange={(newStatus) => handleStatusChange(bet._id, bet.status, newStatus)}
+              >
+                <SelectTrigger className="h-8 w-24 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="won">Won</SelectItem>
+                  <SelectItem value="lost">Lost</SelectItem>
+                  <SelectItem value="canceled">Canceled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Combination bet legs - show within the same card when expanded */}
+          {isCombo && (
+            <div
+              style={{
+                maxHeight: isExpanded ? '1000px' : '0px',
+                overflow: 'hidden',
+                transition: 'max-height 0.3s ease',
+              }}
+            >
+              <AdminCombinationDetailsCard bet={bet} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  });
+
+  // Mobile combination bet legs component (inline within parent card)
+  const AdminCombinationDetailsCard = ({ bet }) => {
+    if (!isCombinationBet(bet)) return null;
+
+    return (
+      <div className="mt-3 pt-2 border-t border-gray-200">
+        <h4 className="font-semibold text-gray-700 text-sm mb-2">Combination Bet Legs</h4>
+        <div className="space-y-3"style={{ backgroundColor: 'lightgray', paddingLeft: '10px', paddingRight: '10px', paddingBottom: '10px', paddingTop: '10px' }}>
+          {bet.combination.map((leg, index) => (
+            <div key={index} className="bg-gray-50 p-2 rounded border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-purple-600 text-sm">Leg {index + 1}</span>
+                  <Badge
+                    variant="outline"
+                    className={
+                      leg.status.toLowerCase() === 'won' 
+                        ? 'text-emerald-600 bg-emerald-50 border-emerald-200 text-xs'
+                        : leg.status.toLowerCase() === 'lost'
+                        ? 'text-rose-600 bg-rose-50 border-rose-200 text-xs'
+                        : leg.status.toLowerCase() === 'cancelled' || leg.status.toLowerCase() === 'canceled'
+                        ? 'text-gray-600 bg-gray-50 border-gray-200 text-xs'
+                        : 'text-amber-600 bg-amber-50 border-amber-200 text-xs'
+                    }
+                  >
+                    {leg.status}
+                  </Badge>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Stake:</span>
+                    <span className="text-gray-600">${bet.stake.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Odds:</span>
+                    <span className="text-gray-900">{parseFloat(leg.odds).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Match:</span>
+                    <span className="text-gray-900 text-right max-w-[60%] truncate" title={leg.teams || "-"}>{leg.teams || "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Market:</span>
+                    <span className="text-gray-900 truncate ml-2">{leg.unibetMeta?.marketName || leg.betDetails?.market_description || leg.betDetails?.market_name || "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Selection:</span>
+                    <span className="text-gray-900 truncate ml-2">
+                      {leg.betDetails?.market_id === "37" 
+                        ? `${leg.betDetails?.label} ${leg.betDetails?.total} / ${leg.betDetails?.name}`
+                        : (leg.selection || "-")
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Value:</span>
+                    <span className="text-gray-900">
+                      {leg.betDetails?.market_id === "37" 
+                        ? (leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-"))
+                        : (leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-"))
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Reason:</span>
+                    <span className="text-gray-900 text-right max-w-[60%] truncate" title={leg.result?.reason || "-"}>
+                      {leg.result?.reason || "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
+    );
   };
 
   // Helper function to render combination bet details
@@ -415,8 +631,8 @@ export default function BetManagement() {
                         </div>
                       </TableCell>
                       <TableCell className="max-w-20">
-                        <div className="truncate" title={leg.betDetails?.value}>
-                          {leg.betDetails?.total || leg.betDetails?.handicapRaw || "-"}
+                        <div className="truncate" title={leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-")}>
+                          {leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-")}
                         </div>
                       </TableCell>
                       <TableCell className="max-w-32">
@@ -1234,194 +1450,216 @@ export default function BetManagement() {
         {/* Bets Table */}
         <Card className="rounded-none shadow-none px-2 py-2 gap-0">
           <CardContent className="p-1">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50 text-[13px]">
-                    <TableHead className="w-8"></TableHead>
-                    <TableHead
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort("user")}
-                    >
-                      <div className="flex items-center gap-2">
-                        User Name
-                        <ArrowUpDown className="h-4 w-4" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort("stake")}
-                    >
-                      <div className="flex items-center gap-2">
-                        Stake
-                        <ArrowUpDown className="h-4 w-4" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort("odds")}
-                    >
-                      <div className="flex items-center gap-2">
-                        Odds
-                        <ArrowUpDown className="h-4 w-4" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort("createdAt")}
-                    >
-                      <div className="flex items-center gap-2">
-                        Date & Time
-                        <ArrowUpDown className="h-4 w-4" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort("status")}
-                    >
-                      <div className="flex items-center gap-2">
-                        Status
-                        <ArrowUpDown className="h-4 w-4" />
-                      </div>
-                    </TableHead>
-                    <TableHead className="select-none">Type</TableHead>
-                    <TableHead className="select-none">Match</TableHead>
-                    <TableHead className="select-none">Market</TableHead>
-                    <TableHead className="select-none">Selection</TableHead>
-                    <TableHead className="select-none">Value</TableHead>
-                    <TableHead
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort("payout")}
-                    >
-                      <div className="flex items-center gap-2">
-                        Profit
-                        <ArrowUpDown className="h-4 w-4" />
-                      </div>
-                    </TableHead>
-                    <TableHead className="select-none">Reason</TableHead>
-                    <TableHead className="select-none">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedBets.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={14}
-                        className="text-center py-12 text-gray-500"
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50 text-[13px]">
+                      <TableHead className="w-8"></TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("user")}
                       >
-                        <div className="flex flex-col items-center justify-center">
-                          <Search className="h-8 w-8 text-gray-300 mb-2" />
-                          <p>No bets found</p>
-                          <p className="text-sm text-gray-400 mt-1">
-                            Try adjusting your search or filter
-                          </p>
+                        <div className="flex items-center gap-2">
+                          User Name
+                          <ArrowUpDown className="h-4 w-4" />
                         </div>
-                      </TableCell>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("stake")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Stake
+                          <ArrowUpDown className="h-4 w-4" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("odds")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Odds
+                          <ArrowUpDown className="h-4 w-4" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("createdAt")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Date & Time
+                          <ArrowUpDown className="h-4 w-4" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("status")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Status
+                          <ArrowUpDown className="h-4 w-4" />
+                        </div>
+                      </TableHead>
+                      <TableHead className="select-none">Type</TableHead>
+                      <TableHead className="select-none">Match</TableHead>
+                      <TableHead className="select-none">Market</TableHead>
+                      <TableHead className="select-none">Selection</TableHead>
+                      <TableHead className="select-none">Value</TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("payout")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Profit
+                          <ArrowUpDown className="h-4 w-4" />
+                        </div>
+                      </TableHead>
+                      <TableHead className="select-none">Reason</TableHead>
+                      <TableHead className="select-none">Actions</TableHead>
                     </TableRow>
-                  ) : (
-                    paginatedBets.map((bet) => {
-                      const { date, time } = formatDateTime(bet.createdAt);
-                      const isExpanded = expandedCombinations.has(bet._id);
-                      const isCombo = isCombinationBet(bet);
-                      
-                      return (
-                        <React.Fragment key={bet._id}>
-                          <TableRow
-                            className={`hover:bg-gray-50 text-[13px] ${isCombo ? 'cursor-pointer' : ''}`}
-                            onClick={isCombo ? () => toggleCombinationExpansion(bet._id) : undefined}
-                          >
-                            <TableCell>
-                              {isCombo && (
-                                isExpanded ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />
-                              )}
-                            </TableCell>
-                            <TableCell>{bet.user}</TableCell>
-                            <TableCell>{formatAmount(bet.stake)}</TableCell>
-                            <TableCell>{parseFloat(bet.odds).toFixed(2)}</TableCell>
-                            <TableCell>
-                              <div>
-                                <div>{date}</div>
-                                <div className="text-gray-500">{time}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant="outline"
-                                className={getStatusColor(bet.status)}
-                              >
-                                {bet.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {getBetTypeBadge(bet)}
-                            </TableCell>
-                            <TableCell className="max-w-48">
-                              <div className="truncate" title={isCombo ? `Combination Bet (${bet.combination.length} legs)` : getMatchDisplay(bet)}>
-                                {isCombo ? `Combination (${bet.combination.length} legs)` : getMatchDisplay(bet)}
-                              </div>
-                            </TableCell>
-                            <TableCell className="max-w-48">
-                              <div className="truncate" title={isCombo ? "Multiple Markets" : bet.betDetails?.market_description}>
-                                {isCombo ? "Multiple Markets" : (bet.betDetails?.market_description || "-")}
-                              </div>
-                            </TableCell>
-                            <TableCell className="max-w-48">
-                              <div className="truncate" title={isCombo ? "Multiple Selections" : bet.selection}>
-                                {isCombo ? "Multiple Selections" : getBetSelection(bet.betDetails, bet.selection)}
-                              </div>
-                            </TableCell>
-                            <TableCell className="max-w-32">
-                              <div className="truncate" title={isCombo ? "N/A" : getBetValue(bet.betDetails)}>
-                                {isCombo ? "N/A" : getBetValue(bet.betDetails)}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {bet.status.toLowerCase() === "won" ? (
-                                <span className="font-medium text-green-600">
-                                  +${isCombo ? bet.payout.toFixed(2) : (bet.stake * bet.odds).toFixed(2)}
-                                </span>
-                              ) : bet.status.toLowerCase() === "pending" ? (
-                                <span className="text-gray-500">Pending</span>
-                              ) : bet.status.toLowerCase() === "cancelled" || bet.status.toLowerCase() === "canceled" ? (
-                                <span className="text-gray-500">$0.00</span>
-                              ) : (
-                                <span className="font-medium text-red-600">
-                                  -${bet.stake.toFixed(2)}
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell className="max-w-48">
-                              <div className="truncate" title={bet.result?.reason || "No reason available"}>
-                                {bet.result?.reason || "-"}
-                              </div>
-                            </TableCell>
-                            <TableCell className="w-32">
-                              <div className="flex gap-1">
-                                <Select
-                                  value={bet.status}
-                                  onValueChange={(newStatus) => handleStatusChange(bet._id, bet.status, newStatus)}
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedBets.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={14}
+                          className="text-center py-12 text-gray-500"
+                        >
+                          <div className="flex flex-col items-center justify-center">
+                            <Search className="h-8 w-8 text-gray-300 mb-2" />
+                            <p>No bets found</p>
+                            <p className="text-sm text-gray-400 mt-1">
+                              Try adjusting your search or filter
+                            </p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedBets.map((bet) => {
+                        const { date, time } = formatDateTime(bet.createdAt);
+                        const isCombo = isCombinationBet(bet);
+                        
+                        return (
+                          <React.Fragment key={bet._id}>
+                            <TableRow
+                              className="hover:bg-gray-50 text-[13px]"
+                            >
+                              <TableCell>
+                                {isCombo && (
+                                  <ChevronRight className="h-4 w-4 text-purple-600" />
+                                )}
+                              </TableCell>
+                              <TableCell>{bet.user}</TableCell>
+                              <TableCell>{formatAmount(bet.stake)}</TableCell>
+                              <TableCell>{parseFloat(bet.odds).toFixed(2)}</TableCell>
+                              <TableCell>
+                                <div>
+                                  <div>{date}</div>
+                                  <div className="text-gray-500">{time}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={getStatusColor(bet.status)}
                                 >
-                                  <SelectTrigger className="h-8 w-24 text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="pending">Pending</SelectItem>
-                                    <SelectItem value="won">Won</SelectItem>
-                                    <SelectItem value="lost">Lost</SelectItem>
-                                    <SelectItem value="canceled">Canceled</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                          {isExpanded && isCombo && renderCombinationDetails(bet)}
-                        </React.Fragment>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                                  {bet.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {getBetTypeBadge(bet)}
+                              </TableCell>
+                              <TableCell className="max-w-48">
+                                <div className="truncate" title={isCombo ? `Combination Bet (${bet.combination.length} legs)` : getMatchDisplay(bet)}>
+                                  {isCombo ? `Combination (${bet.combination.length} legs)` : getMatchDisplay(bet)}
+                                </div>
+                              </TableCell>
+                              <TableCell className="max-w-48">
+                                <div className="truncate" title={isCombo ? "Multiple Markets" : bet.betDetails?.market_description}>
+                                  {isCombo ? "Multiple Markets" : (bet.betDetails?.market_description || "-")}
+                                </div>
+                              </TableCell>
+                              <TableCell className="max-w-48">
+                                <div className="truncate" title={isCombo ? "Multiple Selections" : bet.selection}>
+                                  {isCombo ? "Multiple Selections" : getBetSelection(bet.betDetails, bet.selection)}
+                                </div>
+                              </TableCell>
+                              <TableCell className="max-w-32">
+                                <div className="truncate" title={isCombo ? "N/A" : getBetValue(bet.betDetails)}>
+                                  {isCombo ? "N/A" : getBetValue(bet.betDetails)}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {bet.status.toLowerCase() === "won" ? (
+                                  <span className="font-medium text-green-600">
+                                    +${isCombo ? bet.payout.toFixed(2) : (bet.stake * bet.odds).toFixed(2)}
+                                  </span>
+                                ) : bet.status.toLowerCase() === "pending" ? (
+                                  <span className="text-gray-500">Pending</span>
+                                ) : bet.status.toLowerCase() === "cancelled" || bet.status.toLowerCase() === "canceled" ? (
+                                  <span className="text-gray-500">$0.00</span>
+                                ) : (
+                                  <span className="font-medium text-red-600">
+                                    -${bet.stake.toFixed(2)}
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="max-w-48">
+                                <div className="truncate" title={bet.result?.reason || "No reason available"}>
+                                  {bet.result?.reason || "-"}
+                                </div>
+                              </TableCell>
+                              <TableCell className="w-32">
+                                <div className="flex gap-1">
+                                  <Select
+                                    value={bet.status}
+                                    onValueChange={(newStatus) => handleStatusChange(bet._id, bet.status, newStatus)}
+                                  >
+                                    <SelectTrigger className="h-8 w-24 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="pending">Pending</SelectItem>
+                                      <SelectItem value="won">Won</SelectItem>
+                                      <SelectItem value="lost">Lost</SelectItem>
+                                      <SelectItem value="canceled">Canceled</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          </React.Fragment>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-4">
+                {paginatedBets.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <Search className="h-8 w-8 text-gray-300 mb-2" />
+                      <p>No bets found</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Try adjusting your search or filter
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  paginatedBets.map((bet) => (
+                    <AdminBetCard
+                      key={bet._id}
+                      bet={bet}
+                    />
+                  ))
+                )}
+              </div>
+            </>
           </CardContent>
 
           {/* Pagination */}

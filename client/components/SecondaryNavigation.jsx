@@ -1,7 +1,7 @@
 "use client"
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Home, Clock, PlayCircle, Search, Calendar } from "lucide-react"
+import { Home, Clock, PlayCircle, Search, Calendar, History } from "lucide-react"
 
 const SecondaryNavigation = () => {
     const pathname = usePathname()
@@ -11,6 +11,7 @@ const SecondaryNavigation = () => {
        
         if (pathname === '/inplay') return 'IN-PLAY';
         if (pathname.includes('/upcoming')) return 'UPCOMING';
+        if (pathname === '/betting-history') return 'BET HISTORY';
         return 'HOME'; // Default to HOME
     }
 
@@ -18,9 +19,9 @@ const SecondaryNavigation = () => {
 
     const navigationItems = [
         { icon: <Home className="h-3 w-3" />, label: "HOME", href: "/" },
-
         { icon: <PlayCircle className="h-3 w-3" />, label: "IN-PLAY", href: "/inplay" },
         { icon: <Clock className="h-3 w-3" />, label: "UPCOMING", href: "/upcoming" },
+        { icon: <History className="h-3 w-3" />, label: "BET HISTORY", href: "/betting-history" },
     ];
 
     return (
@@ -28,8 +29,8 @@ const SecondaryNavigation = () => {
             {/* Unified Navigation View for all screen sizes */}
             <div className="px-4">
                 <div className="flex items-center justify-between">
-                    {/* Navigation items container */}
-                    <div className="flex items-center space-x-2 sm:space-x-3">
+                    {/* Navigation items container with horizontal scroll */}
+                    <div className="flex items-center space-x-2 sm:space-x-3 overflow-x-auto scrollbar-hide flex-1">
                         {navigationItems.map((item, index) => (
                             <NavItem
                                 key={index}
