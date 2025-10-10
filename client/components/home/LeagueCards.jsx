@@ -179,7 +179,45 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                                                             participants: match.participants
                                                         });
                                                         
-                                                        return createBetHandler(match, 'Home', getOddValue('home') || getOddValue('1'), '1x2', (liveOdds.home?.oddId || displayOdds['1']?.oddId || null), { marketId: "1_home", label: "Home", name: `Win - ${match.team1 || match.participants?.[0]?.name || 'Team 1'}`, marketDescription: "Full Time Result" })(e);
+                                                         // Extract oddId based on data structure
+                                                         let oddId = null;
+                                                         console.log('🔍 Step 1: Starting oddId extraction for Home button.');
+                                                         console.log('🔍 Step 2: Checking if isInPlay:', isInPlay);
+                                                         console.log('🔍 Step 3: Full match object for context:', match);
+
+                                                         if (isInPlay) {
+                                                             console.log('🔍 Step 4 (In-Play): isInPlay is TRUE. Looking for oddId in match.odds[1].oddId.');
+                                                             console.log('🔍 Step 5 (In-Play): Current match.odds object:', match.odds);
+                                                             console.log('🔍 Step 6 (In-Play): Current match.odds["1"] object:', match.odds?.['1']);
+                                                             oddId = match.odds?.['1']?.oddId || null;
+                                                             console.log('🔍 Step 7 (In-Play): Extracted oddId for Home:', oddId);
+                                                         } else {
+                                                             console.log('🔍 Step 4 (Football Daily): isInPlay is FALSE. Looking for oddId in liveOdds.home or displayOdds[1].');
+                                                             console.log('🔍 Step 5 (Football Daily): Current liveOdds.home object:', liveOdds.home);
+                                                             console.log('🔍 Step 6 (Football Daily): Current displayOdds["1"] object:', displayOdds['1']);
+                                                             oddId = liveOdds.home?.oddId || displayOdds['1']?.oddId || null;
+                                                             console.log('🔍 Step 7 (Football Daily): Extracted oddId for Home:', oddId);
+                                                         }
+
+                                                         console.log('🔍 Final oddId for Home button:', oddId);
+                                                        console.log('🔍 In-Play DATA STRUCTURE DEBUG:', {
+                                                            'liveOdds': liveOdds,
+                                                            'displayOdds': displayOdds,
+                                                            'match.odds': match.odds,
+                                                            'match object keys': Object.keys(match),
+                                                            'odds structure': match.odds ? Object.keys(match.odds) : 'no odds'
+                                                        });
+                                                         console.log('🔍 In-Play SEARCHING FOR ODDID:', {
+                                                             'match.kambiLiveData': match.kambiLiveData,
+                                                             'match.liveData': match.liveData,
+                                                             'match.liveOdds': match.liveOdds,
+                                                             'match.betOffers': match.betOffers,
+                                                             'match.outcomes': match.outcomes,
+                                                             'match.mainBetOffer': match.mainBetOffer,
+                                                             'match.mainBetOffer?.outcomes': match.mainBetOffer?.outcomes,
+                                                             'full match object': match
+                                                         });
+                                                        return createBetHandler(match, 'Home', getOddValue('home') || getOddValue('1'), '1x2', oddId, { marketId: "1_home", label: "Home", name: `Win - ${match.team1 || match.participants?.[0]?.name || 'Team 1'}`, marketDescription: "Full Time Result" })(e);
                                                     }
                                                     : undefined
                                                 }
@@ -213,7 +251,45 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                                                             participants: match.participants
                                                         });
                                                         
-                                                        return createBetHandler(match, 'Draw', getOddValue('draw') || getOddValue('X'), '1x2', (liveOdds.draw?.oddId || displayOdds['X']?.oddId || null), { marketId: "1_draw", label: "Draw", name: `Draw - ${match.team1 || match.participants?.[0]?.name || 'Team 1'} vs ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })(e);
+                                                         // Extract oddId based on data structure
+                                                         let oddId = null;
+                                                         console.log('🔍 Step 1: Starting oddId extraction for Draw button.');
+                                                         console.log('🔍 Step 2: Checking if isInPlay:', isInPlay);
+                                                         console.log('🔍 Step 3: Full match object for context:', match);
+
+                                                         if (isInPlay) {
+                                                             console.log('🔍 Step 4 (In-Play): isInPlay is TRUE. Looking for oddId in match.odds[X].oddId.');
+                                                             console.log('🔍 Step 5 (In-Play): Current match.odds object:', match.odds);
+                                                             console.log('🔍 Step 6 (In-Play): Current match.odds["X"] object:', match.odds?.['X']);
+                                                             oddId = match.odds?.['X']?.oddId || null;
+                                                             console.log('🔍 Step 7 (In-Play): Extracted oddId for Draw:', oddId);
+                                                         } else {
+                                                             console.log('🔍 Step 4 (Football Daily): isInPlay is FALSE. Looking for oddId in liveOdds.draw or displayOdds[X].');
+                                                             console.log('🔍 Step 5 (Football Daily): Current liveOdds.draw object:', liveOdds.draw);
+                                                             console.log('🔍 Step 6 (Football Daily): Current displayOdds["X"] object:', displayOdds['X']);
+                                                             oddId = liveOdds.draw?.oddId || displayOdds['X']?.oddId || null;
+                                                             console.log('🔍 Step 7 (Football Daily): Extracted oddId for Draw:', oddId);
+                                                         }
+
+                                                         console.log('🔍 Final oddId for Draw button:', oddId);
+                                                        console.log('🔍 In-Play DRAW DATA STRUCTURE DEBUG:', {
+                                                            'liveOdds': liveOdds,
+                                                            'displayOdds': displayOdds,
+                                                            'match.odds': match.odds,
+                                                            'match object keys': Object.keys(match),
+                                                            'odds structure': match.odds ? Object.keys(match.odds) : 'no odds'
+                                                        });
+                                                         console.log('🔍 In-Play DRAW SEARCHING FOR ODDID:', {
+                                                             'match.kambiLiveData': match.kambiLiveData,
+                                                             'match.liveData': match.liveData,
+                                                             'match.liveOdds': match.liveOdds,
+                                                             'match.betOffers': match.betOffers,
+                                                             'match.outcomes': match.outcomes,
+                                                             'match.mainBetOffer': match.mainBetOffer,
+                                                             'match.mainBetOffer?.outcomes': match.mainBetOffer?.outcomes,
+                                                             'full match object': match
+                                                         });
+                                                        return createBetHandler(match, 'Draw', getOddValue('draw') || getOddValue('X'), '1x2', oddId, { marketId: "1_draw", label: "Draw", name: `Draw - ${match.team1 || match.participants?.[0]?.name || 'Team 1'} vs ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })(e);
                                                     }
                                                     : undefined
                                                 }
@@ -247,7 +323,45 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                                                             participants: match.participants
                                                         });
                                                         
-                                                        return createBetHandler(match, 'Away', getOddValue('away') || getOddValue('2'), '1x2', (liveOdds.away?.oddId || displayOdds['2']?.oddId || null), { marketId: "1_away", label: "Away", name: `Win - ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })(e);
+                                                         // Extract oddId based on data structure
+                                                         let oddId = null;
+                                                         console.log('🔍 Step 1: Starting oddId extraction for Away button.');
+                                                         console.log('🔍 Step 2: Checking if isInPlay:', isInPlay);
+                                                         console.log('🔍 Step 3: Full match object for context:', match);
+
+                                                         if (isInPlay) {
+                                                             console.log('🔍 Step 4 (In-Play): isInPlay is TRUE. Looking for oddId in match.odds[2].oddId.');
+                                                             console.log('🔍 Step 5 (In-Play): Current match.odds object:', match.odds);
+                                                             console.log('🔍 Step 6 (In-Play): Current match.odds["2"] object:', match.odds?.['2']);
+                                                             oddId = match.odds?.['2']?.oddId || null;
+                                                             console.log('🔍 Step 7 (In-Play): Extracted oddId for Away:', oddId);
+                                                         } else {
+                                                             console.log('🔍 Step 4 (Football Daily): isInPlay is FALSE. Looking for oddId in liveOdds.away or displayOdds[2].');
+                                                             console.log('🔍 Step 5 (Football Daily): Current liveOdds.away object:', liveOdds.away);
+                                                             console.log('🔍 Step 6 (Football Daily): Current displayOdds["2"] object:', displayOdds['2']);
+                                                             oddId = liveOdds.away?.oddId || displayOdds['2']?.oddId || null;
+                                                             console.log('🔍 Step 7 (Football Daily): Extracted oddId for Away:', oddId);
+                                                         }
+
+                                                         console.log('🔍 Final oddId for Away button:', oddId);
+                                                        console.log('🔍 In-Play AWAY DATA STRUCTURE DEBUG:', {
+                                                            'liveOdds': liveOdds,
+                                                            'displayOdds': displayOdds,
+                                                            'match.odds': match.odds,
+                                                            'match object keys': Object.keys(match),
+                                                            'odds structure': match.odds ? Object.keys(match.odds) : 'no odds'
+                                                        });
+                                                         console.log('🔍 In-Play AWAY SEARCHING FOR ODDID:', {
+                                                             'match.kambiLiveData': match.kambiLiveData,
+                                                             'match.liveData': match.liveData,
+                                                             'match.liveOdds': match.liveOdds,
+                                                             'match.betOffers': match.betOffers,
+                                                             'match.outcomes': match.outcomes,
+                                                             'match.mainBetOffer': match.mainBetOffer,
+                                                             'match.mainBetOffer?.outcomes': match.mainBetOffer?.outcomes,
+                                                             'full match object': match
+                                                         });
+                                                        return createBetHandler(match, 'Away', getOddValue('away') || getOddValue('2'), '1x2', oddId, { marketId: "1_away", label: "Away", name: `Win - ${match.team2 || match.participants?.[1]?.name || 'Team 2'}`, marketDescription: "Full Time Result" })(e);
                                                     }
                                                     : undefined
                                                 }
@@ -427,6 +541,26 @@ const LeagueCards = ({
 }) => {
     const scrollRef = useRef(null);
 
+    // Debug: Log what data is being passed to LeagueCards component
+    console.log('🔍 LeagueCards component received data:', {
+        title,
+        isInPlay,
+        useReduxData,
+        reduxDataLength: reduxData?.length,
+        reduxData: reduxData,
+        'first match sample': reduxData?.[0]?.matches?.[0] || reduxData?.[0]
+    });
+
+    // Debug: Log when In-Play section is being rendered
+    if (isInPlay) {
+        console.log('🔍 IN-PLAY SECTION RENDERED:', {
+            title,
+            reduxDataLength: reduxData?.length,
+            'first league': reduxData?.[0],
+            'first match': reduxData?.[0]?.matches?.[0]
+        });
+    }
+
    
 
     // Transform Redux data to match the expected format
@@ -471,14 +605,14 @@ const LeagueCards = ({
                     if (match.liveOdds && match.liveOdds.outcomes) {
                         // Kambi API format - extract from liveOdds.outcomes
                         const outcomes = match.liveOdds.outcomes;
-                        const homeOdds = outcomes.find(o => o.label === '1')?.odds;
-                        const drawOdds = outcomes.find(o => o.label === 'X')?.odds;
-                        const awayOdds = outcomes.find(o => o.label === '2')?.odds;
+                        const homeOutcome = outcomes.find(o => o.label === '1');
+                        const drawOutcome = outcomes.find(o => o.label === 'X');
+                        const awayOutcome = outcomes.find(o => o.label === '2');
                         
                         oddsData = {
-                            home: homeOdds ? homeOdds / 1000 : null, // Divide by 1000 to get decimal odds
-                            draw: drawOdds ? drawOdds / 1000 : null,
-                            away: awayOdds ? awayOdds / 1000 : null
+                            home: homeOutcome ? { value: homeOutcome.odds / 1000, oddId: homeOutcome.id } : null,
+                            draw: drawOutcome ? { value: drawOutcome.odds / 1000, oddId: drawOutcome.id } : null,
+                            away: awayOutcome ? { value: awayOutcome.odds / 1000, oddId: awayOutcome.id } : null
                         };
                     } else if (match.mainBetOffer && match.mainBetOffer.outcomes) {
                         // Unibet API format - extract from mainBetOffer.outcomes

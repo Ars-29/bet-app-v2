@@ -183,8 +183,12 @@ const InPlayPage = () => {
                     isLive: true, // Live matches are live
                     kambiLiveData: match.kambiLiveData, // Include Kambi live data
                     league: {
+                        id: match.groupId || leagueData.league, // Add league ID
                         name: leagueData.league
-                    }
+                    },
+                    groupId: match.groupId, // Add groupId for league mapping
+                    leagueName: leagueData.league, // Add league name
+                    source: 'InPlayPage' // Add source identifier
                 };
             }),
             matchCount: leagueData.matches?.length || 0,

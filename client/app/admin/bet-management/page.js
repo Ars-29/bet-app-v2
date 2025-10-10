@@ -94,6 +94,7 @@ export default function BetManagement() {
   const [amountRange, setAmountRange] = useState({ min: "", max: "" });
   const [activeFilters, setActiveFilters] = useState(0);
   const [betTypeFilter, setBetTypeFilter] = useState("all");
+  const [expandedTableBets, setExpandedTableBets] = useState(new Set());
 
   useEffect(() => {
     dispatch(fetchAdminBets());
@@ -336,27 +337,43 @@ export default function BetManagement() {
     }, []);
 
     return (
-      <Card className="mb-4 border border-gray-200 rounded-none">
-        <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-semibold text-gray-900">
+      <Card className="bet-card mb-4 border border-gray-200 rounded-none py-0">
+        <div className="flex items-center justify-between" style={{backgroundColor: "oklch(0.6 0.15 163.23 / 0.35)", borderTop: "2px solid oklch(0.596 0.145 163.225)"}}>
+            {/* Left side - Stake and Odds */}
+            <div className="flex items-center gap-2 py-2" style={{paddingLeft:"10px"}}>
+              <span className="text-lg font-semibold" style={{color: "#242424"}}>
                 {isCombo ? formatAmount(bet.stake * bet.combination.length) : formatAmount(bet.stake)}
               </span>
-              <span className="text-sm text-gray-500">@ {parseFloat(bet.odds).toFixed(2)}</span>
+              <span className="text-sm" style={{color: "#242424"}}>@ {parseFloat(bet.odds).toFixed(2)}</span>
             </div>
-            {isCombo && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleToggle}
-                className="p-1 h-8 w-8"
-              >
-                {isExpanded ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />}
-              </Button>
-            )}
+            
+            {/* Right side - View All with Chevron (only for combo bets) */}
+            <div className="flex items-center">
+              {isCombo && (
+                <>
+                  <span 
+                    className="text-sm cursor-pointer hover:underline" 
+                    style={{color: "#242424"}}
+                    onClick={handleToggle}
+                  >
+                    View All
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleToggle}
+                    className="h-8 w-6"
+                    style={{padding: 0}}
+                    type="button"
+                  >
+                    {isExpanded ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />}
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
-        <CardContent className="py-0 px-3">
+        <CardContent className="py-0 px-3" style={{paddingBottom:"10px"}}>
           {/* Header with expand button for combo bets */}
           
           {/* User Name */}
@@ -549,6 +566,19 @@ export default function BetManagement() {
         </div>
       </div>
     );
+  };
+
+  // Handle table expansion toggle
+  const handleTableExpansionToggle = (betId) => {
+    setExpandedTableBets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(betId)) {
+        newSet.delete(betId);
+      } else {
+        newSet.add(betId);
+      }
+      return newSet;
+    });
   };
 
   // Helper function to render combination bet details
@@ -1548,7 +1578,23 @@ export default function BetManagement() {
                             >
                               <TableCell>
                                 {isCombo && (
-                                  <ChevronRight className="h-4 w-4 text-purple-600" />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleTableExpansionToggle(bet._id);
+                                    }}
+                                    className="h-6 w-6 p-0"
+                                    type="button"
+                                  >
+                                    {expandedTableBets.has(bet._id) ? (
+                                      <ChevronDown className="h-4 w-4 text-purple-600" />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4 text-purple-600" />
+                                    )}
+                                  </Button>
                                 )}
                               </TableCell>
                               <TableCell>{bet.user}</TableCell>
@@ -1630,6 +1676,8 @@ export default function BetManagement() {
                                 </div>
                               </TableCell>
                             </TableRow>
+                            {/* Expansion details for combo bets */}
+                            {isCombo && expandedTableBets.has(bet._id) && renderCombinationDetails(bet)}
                           </React.Fragment>
                         );
                       })

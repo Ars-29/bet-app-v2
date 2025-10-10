@@ -107,6 +107,7 @@ const transformLiveMatchData = (apiMatch) => {
     return {
         id: apiMatch.id,
         league: {
+            id: apiMatch.groupId, // Add leagueId to fix missing leagueId issue
             name: apiMatch.leagueName || 'Live Match',
             country: apiMatch.parentName || '',
             imageUrl: getFotmobLogoByUnibetId(apiMatch.groupId) || '/api/placeholder/20/20'
