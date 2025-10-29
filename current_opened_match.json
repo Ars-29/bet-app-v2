@@ -1,6 +1,6 @@
 {
   "eventId": "1024881593",
-  "timestamp": "2025-10-29T18:05:03.461Z",
+  "timestamp": "2025-10-29T18:34:30.436Z",
   "data": {
     "betOffers": [
       {
@@ -20888,321 +20888,6 @@
     ],
     "prePacks": [
       {
-        "id": 5094816,
-        "prePackSelections": [
-          {
-            "selectionId": 5663240,
-            "label": [
-              "Match (regular time) Eintracht Frankfurt",
-              "Jonathan Burkardt Player's shots on target (Settled using Opta data) Over 1.5",
-              "Jonathan Burkardt To Score",
-              "Yes Both Teams To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 21000,
-                  "american": "2000",
-                  "fractional": "20/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659434,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707852,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568377007
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659505,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383436
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707734,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376962
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094823,
-        "prePackSelections": [
-          {
-            "selectionId": 5663247,
-            "label": [
-              "Double Chance 1X",
-              "Total Goals Over 3.5",
-              "Total Corners Over 9.5",
-              "Yes Both Teams To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 5000,
-                  "american": "400",
-                  "fractional": "4/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659445,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383407
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923646231,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376930
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662647,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346357
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707734,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376962
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094794,
-        "prePackSelections": [
-          {
-            "selectionId": 5663218,
-            "label": [
-              "Both Teams To Score",
-              "Match (regular time) Napoli",
-              "Total Corners Over 9.5"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 4800,
-                  "american": "380",
-                  "fractional": "19/5"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707734,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376962
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659432,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662647,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346357
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094796,
-        "prePackSelections": [
-          {
-            "selectionId": 5663220,
-            "label": [
-              "Total Corners Over 9.5",
-              "Total Goals Over 2.5"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 2480,
-                  "american": "148",
-                  "fractional": "29/20"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662647,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346357
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659326,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383352
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094790,
-        "prePackSelections": [
-          {
-            "selectionId": 5663214,
-            "label": [
-              "Both Teams To Score",
-              "Total Corners Over 9.5"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 2500,
-                  "american": "150",
-                  "fractional": "6/4"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707734,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376962
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662647,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346357
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
         "id": 5095482,
         "prePackSelections": [
           {
@@ -21241,354 +20926,6 @@
                             "id": 3923707728,
                             "eventId": 1024881593,
                             "betOfferId": 2568376960
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659505,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383436
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5095469,
-        "prePackSelections": [
-          {
-            "selectionId": 5663893,
-            "label": [
-              "1/1 Half Time/Full Time",
-              "Lorenzo Lucca To Score",
-              "Lorenzo Lucca Player's shots on target (Settled using Opta data) Over 1.5",
-              "Total Goals Over 3.5"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 8500,
-                  "american": "750",
-                  "fractional": "15/2"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662742,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346385
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707728,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376960
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662920,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346457
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923646231,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376930
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5095466,
-        "prePackSelections": [
-          {
-            "selectionId": 5663890,
-            "label": [
-              "Match (regular time) Napoli",
-              "Yes Both Teams To Score",
-              "Lorenzo Lucca Player's shots on target (Settled using Opta data) Over 1.5",
-              "Lorenzo Lucca To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 7000,
-                  "american": "600",
-                  "fractional": "6/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659432,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707734,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376962
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662920,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346457
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707728,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376960
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5095467,
-        "prePackSelections": [
-          {
-            "selectionId": 5663891,
-            "label": [
-              "Match (regular time) Napoli",
-              "Total Goals Over 3.5",
-              "Lorenzo Lucca To Score",
-              "Rasmus Højlund To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 10000,
-                  "american": "900",
-                  "fractional": "9/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659432,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923646231,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376930
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707728,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376960
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662914,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346454
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5140166,
-        "prePackSelections": [
-          {
-            "selectionId": 5713399,
-            "label": [
-              "Match (regular time) Napoli",
-              "Yes Both Teams To Score",
-              "Lorenzo Lucca Player's shots on target (Settled using Opta data) Over 1.5",
-              "Lorenzo Lucca To Assist (Settled using Opta data)"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 17000,
-                  "american": "1600",
-                  "fractional": "16/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659432,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707734,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376962
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662920,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346457
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662954,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346474
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094789,
-        "prePackSelections": [
-          {
-            "selectionId": 5663213,
-            "label": [
-              "Match (regular time) Eintracht Frankfurt",
-              "Jonathan Burkardt To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 9500,
-                  "american": "850",
-                  "fractional": "17/2"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659434,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
                           }
                         ]
                       },
@@ -21688,23 +21025,23 @@
         ]
       },
       {
-        "id": 5095468,
+        "id": 5095469,
         "prePackSelections": [
           {
-            "selectionId": 5663892,
+            "selectionId": 5663893,
             "label": [
               "1/1 Half Time/Full Time",
-              "No Both Teams To Score",
-              "Total Goals Over 3.5",
-              "Lorenzo Lucca To Score"
+              "Lorenzo Lucca To Score",
+              "Lorenzo Lucca Player's shots on target (Settled using Opta data) Over 1.5",
+              "Total Goals Over 3.5"
             ],
             "status": "OPEN",
             "combinations": [
               {
                 "odds": {
-                  "decimal": 16000,
-                  "american": "1500",
-                  "fractional": "15/1"
+                  "decimal": 8500,
+                  "american": "750",
+                  "fractional": "15/2"
                 },
                 "groups": [
                   {
@@ -21724,9 +21061,73 @@
                         "operation": "AND",
                         "outcomes": [
                           {
-                            "id": 3923707737,
+                            "id": 3923707728,
                             "eventId": 1024881593,
-                            "betOfferId": 2568376962
+                            "betOfferId": 2568376960
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662920,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346457
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923646231,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376930
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5094818,
+        "prePackSelections": [
+          {
+            "selectionId": 5663242,
+            "label": [
+              "Match (regular time) Eintracht Frankfurt",
+              "Total Goals Over 3.5",
+              "Jonathan Burkardt Player's shots on target (Settled using Opta data) Over 1.5",
+              "Jonathan Burkardt To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 29000,
+                  "american": "2800",
+                  "fractional": "28/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659434,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
                           }
                         ]
                       },
@@ -21744,9 +21145,742 @@
                         "operation": "AND",
                         "outcomes": [
                           {
+                            "id": 3923707852,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568377007
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659505,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383436
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5094788,
+        "prePackSelections": [
+          {
+            "selectionId": 5663212,
+            "label": [
+              "Match (regular time) Eintracht Frankfurt",
+              "Can Uzun To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 11000,
+                  "american": "1000",
+                  "fractional": "10/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659434,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659513,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383440
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095473,
+        "prePackSelections": [
+          {
+            "selectionId": 5663897,
+            "label": [
+              "Match (regular time) Napoli",
+              "Yes Both Teams To Score",
+              "Lorenzo Lucca Player's shots on target (Settled using Opta data) Over 1.5",
+              "Jonathan Burkardt Player's shots on target (Settled using Opta data) Over 1.5",
+              "Total Corners Over 9.5"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 41000,
+                  "american": "4000",
+                  "fractional": "40/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659432,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707734,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662920,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346457
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707852,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568377007
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662647,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346357
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5094794,
+        "prePackSelections": [
+          {
+            "selectionId": 5663218,
+            "label": [
+              "Both Teams To Score",
+              "Match (regular time) Napoli",
+              "Total Corners Over 9.5"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 4800,
+                  "american": "380",
+                  "fractional": "19/5"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707734,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659432,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662647,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346357
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095483,
+        "prePackSelections": [
+          {
+            "selectionId": 5663907,
+            "label": [
+              "Match (regular time) Napoli",
+              "Lorenzo Lucca To Score",
+              "Jonathan Burkardt To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 15000,
+                  "american": "1400",
+                  "fractional": "14/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659432,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
                             "id": 3923707728,
                             "eventId": 1024881593,
                             "betOfferId": 2568376960
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659505,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383436
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095461,
+        "prePackSelections": [
+          {
+            "selectionId": 5663885,
+            "label": [
+              "Total Goals Over 2.5",
+              "Lorenzo Lucca To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 2650,
+                  "american": "165",
+                  "fractional": "33/20"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659326,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383352
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707728,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376960
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5094823,
+        "prePackSelections": [
+          {
+            "selectionId": 5663247,
+            "label": [
+              "Double Chance 1X",
+              "Total Goals Over 3.5",
+              "Total Corners Over 9.5",
+              "Yes Both Teams To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 5000,
+                  "american": "400",
+                  "fractional": "4/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659445,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383407
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923646231,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376930
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662647,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346357
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707734,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095466,
+        "prePackSelections": [
+          {
+            "selectionId": 5663890,
+            "label": [
+              "Match (regular time) Napoli",
+              "Yes Both Teams To Score",
+              "Lorenzo Lucca Player's shots on target (Settled using Opta data) Over 1.5",
+              "Lorenzo Lucca To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 7000,
+                  "american": "600",
+                  "fractional": "6/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659432,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707734,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662920,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346457
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707728,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376960
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5094787,
+        "prePackSelections": [
+          {
+            "selectionId": 5663211,
+            "label": [
+              "Match (regular time) Napoli",
+              "Jonathan Burkardt To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 8500,
+                  "american": "750",
+                  "fractional": "15/2"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659432,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659505,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383436
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095460,
+        "prePackSelections": [
+          {
+            "selectionId": 5663884,
+            "label": [
+              "Lorenzo Lucca To Score",
+              "Rasmus Højlund To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 7000,
+                  "american": "600",
+                  "fractional": "6/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707728,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376960
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662914,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346454
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095462,
+        "prePackSelections": [
+          {
+            "selectionId": 5663886,
+            "label": [
+              "Lorenzo Lucca To Score",
+              "Jonathan Burkardt To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 9000,
+                  "american": "800",
+                  "fractional": "8/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707728,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376960
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659505,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383436
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5094786,
+        "prePackSelections": [
+          {
+            "selectionId": 5663210,
+            "label": [
+              "Match (regular time) Napoli",
+              "Lorenzo Lucca To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 2750,
+                  "american": "175",
+                  "fractional": "7/4"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659432,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707728,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376960
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095457,
+        "prePackSelections": [
+          {
+            "selectionId": 5663881,
+            "label": [
+              "Match (regular time) Napoli",
+              "Rasmus Højlund To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 3550,
+                  "american": "255",
+                  "fractional": "5/2"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659432,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662914,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346454
                           }
                         ]
                       }
@@ -21836,21 +21970,21 @@
         ]
       },
       {
-        "id": 5095461,
+        "id": 5094796,
         "prePackSelections": [
           {
-            "selectionId": 5663885,
+            "selectionId": 5663220,
             "label": [
-              "Total Goals Over 2.5",
-              "Lorenzo Lucca To Score"
+              "Total Corners Over 9.5",
+              "Total Goals Over 2.5"
             ],
             "status": "OPEN",
             "combinations": [
               {
                 "odds": {
-                  "decimal": 2650,
-                  "american": "165",
-                  "fractional": "33/20"
+                  "decimal": 2480,
+                  "american": "148",
+                  "fractional": "29/20"
                 },
                 "groups": [
                   {
@@ -21860,9 +21994,136 @@
                         "operation": "AND",
                         "outcomes": [
                           {
+                            "id": 3923662647,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346357
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
                             "id": 3923659326,
                             "eventId": 1024881593,
                             "betOfferId": 2568383352
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5094836,
+        "prePackSelections": [
+          {
+            "selectionId": 5663260,
+            "label": [
+              "1/1 Half Time/Full Time",
+              "Lorenzo Lucca First Goal Scorer",
+              "No Both Teams To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 12500,
+                  "american": "1150",
+                  "fractional": "23/2"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662742,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346385
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923711139,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383582
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707737,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095467,
+        "prePackSelections": [
+          {
+            "selectionId": 5663891,
+            "label": [
+              "Match (regular time) Napoli",
+              "Total Goals Over 3.5",
+              "Lorenzo Lucca To Score",
+              "Rasmus Højlund To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 10000,
+                  "american": "900",
+                  "fractional": "9/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659432,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923646231,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376930
                           }
                         ]
                       },
@@ -21873,6 +22134,679 @@
                             "id": 3923707728,
                             "eventId": 1024881593,
                             "betOfferId": 2568376960
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662914,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346454
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5094789,
+        "prePackSelections": [
+          {
+            "selectionId": 5663213,
+            "label": [
+              "Match (regular time) Eintracht Frankfurt",
+              "Jonathan Burkardt To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 9500,
+                  "american": "850",
+                  "fractional": "17/2"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659434,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659505,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383436
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5140165,
+        "prePackSelections": [
+          {
+            "selectionId": 5713398,
+            "label": [
+              "Match (regular time) Napoli",
+              "Lorenzo Lucca To Score",
+              "Lorenzo Lucca To Assist (Settled using Opta data)",
+              "Total Goals Over 3.5"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 11500,
+                  "american": "1050",
+                  "fractional": "21/2"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659432,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707728,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376960
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662954,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346474
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923646231,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376930
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5094795,
+        "prePackSelections": [
+          {
+            "selectionId": 5663219,
+            "label": [
+              "Both Teams To Score",
+              "Total Goals Over 2.5"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 1670,
+                  "american": "-150",
+                  "fractional": "4/6"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707734,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659326,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383352
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5094816,
+        "prePackSelections": [
+          {
+            "selectionId": 5663240,
+            "label": [
+              "Match (regular time) Eintracht Frankfurt",
+              "Jonathan Burkardt Player's shots on target (Settled using Opta data) Over 1.5",
+              "Jonathan Burkardt To Score",
+              "Yes Both Teams To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 21000,
+                  "american": "2000",
+                  "fractional": "20/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659434,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707852,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568377007
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659505,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383436
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707734,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095459,
+        "prePackSelections": [
+          {
+            "selectionId": 5663883,
+            "label": [
+              "Both Teams To Score",
+              "Match (regular time) Napoli",
+              "Lorenzo Lucca To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 4700,
+                  "american": "370",
+                  "fractional": "18/5"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707734,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659432,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707728,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376960
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095471,
+        "prePackSelections": [
+          {
+            "selectionId": 5663895,
+            "label": [
+              "Yes Both Teams To Score",
+              "Total Goals Over 3.5",
+              "Total Corners Over 9.5",
+              "Lorenzo Lucca To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 7500,
+                  "american": "650",
+                  "fractional": "13/2"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707734,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923646231,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376930
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662647,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346357
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707728,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376960
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095477,
+        "prePackSelections": [
+          {
+            "selectionId": 5663901,
+            "label": [
+              "Match (regular time) Napoli",
+              "Total Goals Over 3.5",
+              "Total Corners Over 9.5",
+              "Lorenzo Lucca To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 8500,
+                  "american": "750",
+                  "fractional": "15/2"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659432,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923646231,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376930
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662647,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346357
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707728,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376960
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5094815,
+        "prePackSelections": [
+          {
+            "selectionId": 5663239,
+            "label": [
+              "Match (regular time) Eintracht Frankfurt",
+              "No Both Teams To Score",
+              "Total Goals Over 3.5"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 91000,
+                  "american": "9000",
+                  "fractional": "90/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659434,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707737,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923646231,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376930
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095463,
+        "prePackSelections": [
+          {
+            "selectionId": 5663887,
+            "label": [
+              "Yes Both Teams To Score",
+              "Lorenzo Lucca Player's shots on target (Settled using Opta data) Over 1.5",
+              "Jonathan Burkardt Player's shots on target (Settled using Opta data) Over 1.5",
+              "Total Goals Over 3.5"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 20000,
+                  "american": "1900",
+                  "fractional": "19/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707734,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662920,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346457
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707852,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568377007
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923646231,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376930
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5094812,
+        "prePackSelections": [
+          {
+            "selectionId": 5663236,
+            "label": [
+              "Match (regular time) Napoli",
+              "No Both Teams To Score",
+              "Total Goals Over 3.5"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 11000,
+                  "american": "1000",
+                  "fractional": "10/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923659432,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568383401
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707737,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923646231,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376930
                           }
                         ]
                       }
@@ -21951,23 +22885,21 @@
         ]
       },
       {
-        "id": 5095476,
+        "id": 5094805,
         "prePackSelections": [
           {
-            "selectionId": 5663900,
+            "selectionId": 5663229,
             "label": [
               "Match (regular time) Napoli",
-              "Total Corners Over 9.5",
-              "Jonathan Burkardt Player's shots on target (Settled using Opta data) Over 1.5",
-              "Lorenzo Lucca Player's shots on target (Settled using Opta data) Over 1.5"
+              "Lorenzo Lucca To score at least 2 goals"
             ],
             "status": "OPEN",
             "combinations": [
               {
                 "odds": {
-                  "decimal": 34000,
-                  "american": "3300",
-                  "fractional": "33/1"
+                  "decimal": 9000,
+                  "american": "800",
+                  "fractional": "8/1"
                 },
                 "groups": [
                   {
@@ -21987,92 +22919,9 @@
                         "operation": "AND",
                         "outcomes": [
                           {
-                            "id": 3923662647,
+                            "id": 3923662768,
                             "eventId": 1024881593,
-                            "betOfferId": 2568346357
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707852,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568377007
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662920,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346457
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094815,
-        "prePackSelections": [
-          {
-            "selectionId": 5663239,
-            "label": [
-              "Match (regular time) Eintracht Frankfurt",
-              "No Both Teams To Score",
-              "Total Goals Over 3.5"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 91000,
-                  "american": "9000",
-                  "fractional": "90/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659434,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707737,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376962
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923646231,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376930
+                            "betOfferId": 2568346388
                           }
                         ]
                       }
@@ -22214,327 +23063,23 @@
         ]
       },
       {
-        "id": 5095463,
+        "id": 5095476,
         "prePackSelections": [
           {
-            "selectionId": 5663887,
-            "label": [
-              "Yes Both Teams To Score",
-              "Lorenzo Lucca Player's shots on target (Settled using Opta data) Over 1.5",
-              "Jonathan Burkardt Player's shots on target (Settled using Opta data) Over 1.5",
-              "Total Goals Over 3.5"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 20000,
-                  "american": "1900",
-                  "fractional": "19/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707734,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376962
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662920,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346457
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707852,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568377007
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923646231,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376930
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5095462,
-        "prePackSelections": [
-          {
-            "selectionId": 5663886,
-            "label": [
-              "Lorenzo Lucca To Score",
-              "Jonathan Burkardt To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 9000,
-                  "american": "800",
-                  "fractional": "8/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707728,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376960
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659505,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383436
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094788,
-        "prePackSelections": [
-          {
-            "selectionId": 5663212,
-            "label": [
-              "Match (regular time) Eintracht Frankfurt",
-              "Can Uzun To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 11000,
-                  "american": "1000",
-                  "fractional": "10/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659434,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659513,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383440
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094818,
-        "prePackSelections": [
-          {
-            "selectionId": 5663242,
-            "label": [
-              "Match (regular time) Eintracht Frankfurt",
-              "Total Goals Over 3.5",
-              "Jonathan Burkardt Player's shots on target (Settled using Opta data) Over 1.5",
-              "Jonathan Burkardt To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 29000,
-                  "american": "2800",
-                  "fractional": "28/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659434,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923646231,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376930
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707852,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568377007
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659505,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383436
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094795,
-        "prePackSelections": [
-          {
-            "selectionId": 5663219,
-            "label": [
-              "Both Teams To Score",
-              "Total Goals Over 2.5"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 1670,
-                  "american": "-150",
-                  "fractional": "4/6"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707734,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376962
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659326,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383352
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5095477,
-        "prePackSelections": [
-          {
-            "selectionId": 5663901,
+            "selectionId": 5663900,
             "label": [
               "Match (regular time) Napoli",
-              "Total Goals Over 3.5",
               "Total Corners Over 9.5",
-              "Lorenzo Lucca To Score"
+              "Jonathan Burkardt Player's shots on target (Settled using Opta data) Over 1.5",
+              "Lorenzo Lucca Player's shots on target (Settled using Opta data) Over 1.5"
             ],
             "status": "OPEN",
             "combinations": [
               {
                 "odds": {
-                  "decimal": 8500,
-                  "american": "750",
-                  "fractional": "15/2"
+                  "decimal": 34000,
+                  "american": "3300",
+                  "fractional": "33/1"
                 },
                 "groups": [
                   {
@@ -22547,16 +23092,6 @@
                             "id": 3923659432,
                             "eventId": 1024881593,
                             "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923646231,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376930
                           }
                         ]
                       },
@@ -22574,9 +23109,19 @@
                         "operation": "AND",
                         "outcomes": [
                           {
-                            "id": 3923707728,
+                            "id": 3923707852,
                             "eventId": 1024881593,
-                            "betOfferId": 2568376960
+                            "betOfferId": 2568377007
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662920,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346457
                           }
                         ]
                       }
@@ -22592,191 +23137,23 @@
         ]
       },
       {
-        "id": 5094812,
+        "id": 5140166,
         "prePackSelections": [
           {
-            "selectionId": 5663236,
-            "label": [
-              "Match (regular time) Napoli",
-              "No Both Teams To Score",
-              "Total Goals Over 3.5"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 11000,
-                  "american": "1000",
-                  "fractional": "10/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659432,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707737,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376962
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923646231,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376930
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094799,
-        "prePackSelections": [
-          {
-            "selectionId": 5663223,
-            "label": [
-              "Match (regular time) Napoli",
-              "Most Corners Napoli"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 1840,
-                  "american": "-120",
-                  "fractional": "5/6"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659432,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662834,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346417
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094787,
-        "prePackSelections": [
-          {
-            "selectionId": 5663211,
-            "label": [
-              "Match (regular time) Napoli",
-              "Jonathan Burkardt To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 8500,
-                  "american": "750",
-                  "fractional": "15/2"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659432,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659505,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383436
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5095473,
-        "prePackSelections": [
-          {
-            "selectionId": 5663897,
+            "selectionId": 5713399,
             "label": [
               "Match (regular time) Napoli",
               "Yes Both Teams To Score",
               "Lorenzo Lucca Player's shots on target (Settled using Opta data) Over 1.5",
-              "Jonathan Burkardt Player's shots on target (Settled using Opta data) Over 1.5",
-              "Total Corners Over 9.5"
+              "Lorenzo Lucca To Assist (Settled using Opta data)"
             ],
             "status": "OPEN",
             "combinations": [
               {
                 "odds": {
-                  "decimal": 41000,
-                  "american": "4000",
-                  "fractional": "40/1"
+                  "decimal": 17000,
+                  "american": "1600",
+                  "fractional": "16/1"
                 },
                 "groups": [
                   {
@@ -22816,145 +23193,9 @@
                         "operation": "AND",
                         "outcomes": [
                           {
-                            "id": 3923707852,
+                            "id": 3923662954,
                             "eventId": 1024881593,
-                            "betOfferId": 2568377007
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662647,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346357
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5095460,
-        "prePackSelections": [
-          {
-            "selectionId": 5663884,
-            "label": [
-              "Lorenzo Lucca To Score",
-              "Rasmus Højlund To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 7000,
-                  "american": "600",
-                  "fractional": "6/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707728,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376960
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662914,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346454
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094843,
-        "prePackSelections": [
-          {
-            "selectionId": 5663267,
-            "label": [
-              "Match (regular time) Napoli",
-              "Total Goals Over 3.5",
-              "Total Corners Over 9.5",
-              "Woodwork to be Hit in the Match (Settled using Opta data) Yes"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 9500,
-                  "american": "850",
-                  "fractional": "17/2"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659432,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923646231,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376930
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662647,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346357
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707711,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376952
+                            "betOfferId": 2568346474
                           }
                         ]
                       }
@@ -23044,85 +23285,21 @@
         ]
       },
       {
-        "id": 5094836,
+        "id": 5094799,
         "prePackSelections": [
           {
-            "selectionId": 5663260,
-            "label": [
-              "1/1 Half Time/Full Time",
-              "Lorenzo Lucca First Goal Scorer",
-              "No Both Teams To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 12500,
-                  "american": "1150",
-                  "fractional": "23/2"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662742,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346385
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923711139,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383582
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707737,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376962
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5095483,
-        "prePackSelections": [
-          {
-            "selectionId": 5663907,
+            "selectionId": 5663223,
             "label": [
               "Match (regular time) Napoli",
-              "Lorenzo Lucca To Score",
-              "Jonathan Burkardt To Score"
+              "Most Corners Napoli"
             ],
             "status": "OPEN",
             "combinations": [
               {
                 "odds": {
-                  "decimal": 15000,
-                  "american": "1400",
-                  "fractional": "14/1"
+                  "decimal": 1840,
+                  "american": "-120",
+                  "fractional": "5/6"
                 },
                 "groups": [
                   {
@@ -23142,19 +23319,9 @@
                         "operation": "AND",
                         "outcomes": [
                           {
-                            "id": 3923707728,
+                            "id": 3923662834,
                             "eventId": 1024881593,
-                            "betOfferId": 2568376960
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659505,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383436
+                            "betOfferId": 2568346417
                           }
                         ]
                       }
@@ -23170,242 +23337,23 @@
         ]
       },
       {
-        "id": 5094805,
+        "id": 5094843,
         "prePackSelections": [
           {
-            "selectionId": 5663229,
+            "selectionId": 5663267,
             "label": [
               "Match (regular time) Napoli",
-              "Lorenzo Lucca To score at least 2 goals"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 9000,
-                  "american": "800",
-                  "fractional": "8/1"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659432,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662768,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346388
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5095459,
-        "prePackSelections": [
-          {
-            "selectionId": 5663883,
-            "label": [
-              "Both Teams To Score",
-              "Match (regular time) Napoli",
-              "Lorenzo Lucca To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 4700,
-                  "american": "370",
-                  "fractional": "18/5"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707734,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376962
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659432,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707728,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376960
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5095457,
-        "prePackSelections": [
-          {
-            "selectionId": 5663881,
-            "label": [
-              "Match (regular time) Napoli",
-              "Rasmus Højlund To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 3550,
-                  "american": "255",
-                  "fractional": "5/2"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659432,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662914,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346454
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5094786,
-        "prePackSelections": [
-          {
-            "selectionId": 5663210,
-            "label": [
-              "Match (regular time) Napoli",
-              "Lorenzo Lucca To Score"
-            ],
-            "status": "OPEN",
-            "combinations": [
-              {
-                "odds": {
-                  "decimal": 2750,
-                  "american": "175",
-                  "fractional": "7/4"
-                },
-                "groups": [
-                  {
-                    "operation": "AND",
-                    "groups": [
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923659432,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568383401
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923707728,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376960
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "AUTO"
-        ]
-      },
-      {
-        "id": 5095471,
-        "prePackSelections": [
-          {
-            "selectionId": 5663895,
-            "label": [
-              "Yes Both Teams To Score",
               "Total Goals Over 3.5",
               "Total Corners Over 9.5",
-              "Lorenzo Lucca To Score"
+              "Woodwork to be Hit in the Match (Settled using Opta data) Yes"
             ],
             "status": "OPEN",
             "combinations": [
               {
                 "odds": {
-                  "decimal": 7500,
-                  "american": "650",
-                  "fractional": "13/2"
+                  "decimal": 9500,
+                  "american": "850",
+                  "fractional": "17/2"
                 },
                 "groups": [
                   {
@@ -23415,9 +23363,9 @@
                         "operation": "AND",
                         "outcomes": [
                           {
-                            "id": 3923707734,
+                            "id": 3923659432,
                             "eventId": 1024881593,
-                            "betOfferId": 2568376962
+                            "betOfferId": 2568383401
                           }
                         ]
                       },
@@ -23445,6 +23393,80 @@
                         "operation": "AND",
                         "outcomes": [
                           {
+                            "id": 3923707711,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376952
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "AUTO"
+        ]
+      },
+      {
+        "id": 5095468,
+        "prePackSelections": [
+          {
+            "selectionId": 5663892,
+            "label": [
+              "1/1 Half Time/Full Time",
+              "No Both Teams To Score",
+              "Total Goals Over 3.5",
+              "Lorenzo Lucca To Score"
+            ],
+            "status": "OPEN",
+            "combinations": [
+              {
+                "odds": {
+                  "decimal": 16000,
+                  "american": "1500",
+                  "fractional": "15/1"
+                },
+                "groups": [
+                  {
+                    "operation": "AND",
+                    "groups": [
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923662742,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568346385
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923707737,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376962
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
+                            "id": 3923646231,
+                            "eventId": 1024881593,
+                            "betOfferId": 2568376930
+                          }
+                        ]
+                      },
+                      {
+                        "operation": "AND",
+                        "outcomes": [
+                          {
                             "id": 3923707728,
                             "eventId": 1024881593,
                             "betOfferId": 2568376960
@@ -23463,23 +23485,21 @@
         ]
       },
       {
-        "id": 5140165,
+        "id": 5094790,
         "prePackSelections": [
           {
-            "selectionId": 5713398,
+            "selectionId": 5663214,
             "label": [
-              "Match (regular time) Napoli",
-              "Lorenzo Lucca To Score",
-              "Lorenzo Lucca To Assist (Settled using Opta data)",
-              "Total Goals Over 3.5"
+              "Both Teams To Score",
+              "Total Corners Over 9.5"
             ],
             "status": "OPEN",
             "combinations": [
               {
                 "odds": {
-                  "decimal": 11500,
-                  "american": "1050",
-                  "fractional": "21/2"
+                  "decimal": 2500,
+                  "american": "150",
+                  "fractional": "6/4"
                 },
                 "groups": [
                   {
@@ -23489,9 +23509,9 @@
                         "operation": "AND",
                         "outcomes": [
                           {
-                            "id": 3923659432,
+                            "id": 3923707734,
                             "eventId": 1024881593,
-                            "betOfferId": 2568383401
+                            "betOfferId": 2568376962
                           }
                         ]
                       },
@@ -23499,29 +23519,9 @@
                         "operation": "AND",
                         "outcomes": [
                           {
-                            "id": 3923707728,
+                            "id": 3923662647,
                             "eventId": 1024881593,
-                            "betOfferId": 2568376960
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923662954,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568346474
-                          }
-                        ]
-                      },
-                      {
-                        "operation": "AND",
-                        "outcomes": [
-                          {
-                            "id": 3923646231,
-                            "eventId": 1024881593,
-                            "betOfferId": 2568376930
+                            "betOfferId": 2568346357
                           }
                         ]
                       }

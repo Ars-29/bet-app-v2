@@ -268,6 +268,9 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
             (sectionTitle.toLowerCase().includes('3-way line') ||
                 sectionTitle.toLowerCase().includes('3 way line'));
 
+        const isShotsMarket = sectionTitle &&
+            (sectionTitle.toLowerCase().includes('shots'));
+
         const isCorrectScoreMarket = sectionTitle &&
             (sectionTitle.toLowerCase().includes('correct score'));
         if (isCorrectScoreMarket) return "grid-cols-3";
@@ -283,6 +286,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
             options.some(opt => opt.label.toLowerCase().includes('over')) &&
             options.some(opt => opt.label.toLowerCase().includes('under'));
 
+        if (isShotsMarket) return "grid-cols-2";
 
         if (isAsianLineMarket) return "grid-cols-2";
         // For 3-Way Handicap markets, force 3 columns
@@ -725,10 +729,9 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
         }
 
         return (
-            <div className="flex flex-col min-[640px]:flex-row gap-2">
-                {/* Over Options (Top on mobile, Left on desktop) */}
+            <div className="grid grid-cols-2 gap-2">
+                {/* Over Options (Left column) */}
                 <div className="flex-1">
-
                     <div className="grid grid-cols-1 gap-1">
                         {overOptions.map((option, idx) => {
                             return (
@@ -757,13 +760,9 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                         })}
                     </div>
                 </div>
-
-                {/* Visual partition - horizontal line on mobile, vertical line on desktop */}
-                <div className="h-0.5 bg-gray-400 mx-2 rounded-full min-[640px]:h-auto min-[640px]:w-0.5"></div>
-
-                {/* Under Options (Bottom on mobile, Right on desktop) */}
+                
+                {/* Under Options (Right column) */}
                 <div className="flex-1">
-
                     <div className="grid grid-cols-1 gap-1">
                         {underOptions.map((option, idx) => {
                             return (
@@ -838,8 +837,8 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
         }
 
         return (
-            <div className="flex flex-col min-[640px]:flex-row gap-2">
-                {/* Over Options (Top on mobile, Left on desktop) */}
+            <div className="grid grid-cols-2 gap-2">
+                {/* Over Options (Left column) */}
                 <div className="flex-1">
                     <div className="grid grid-cols-1 gap-1">
                         {overOptions.map((option, idx) => {
@@ -870,10 +869,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                     </div>
                 </div>
 
-                {/* Visual partition - horizontal line on mobile, vertical line on desktop */}
-                <div className="h-0.5 bg-gray-400 mx-2 rounded-full min-[640px]:h-auto min-[640px]:w-0.5"></div>
-
-                {/* Under Options (Bottom on mobile, Right on desktop) */}
+                {/* Under Options (Right column) */}
                 <div className="flex-1">
                     <div className="grid grid-cols-1 gap-1">
                         {underOptions.map((option, idx) => {
