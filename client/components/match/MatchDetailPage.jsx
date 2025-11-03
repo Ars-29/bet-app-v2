@@ -339,7 +339,7 @@ const MatchDetailPage = ({ matchId }) => {
                         if (lowerName === 'even' || lowerName === 'ot_even'.toLowerCase()) displayLabel = 'Even';
                         if (lowerName === 'odd' || lowerName === 'ot_odd'.toLowerCase()) displayLabel = 'Odd';
                         // For player markets (cards, shots), prefer participant name as display name
-                        const isPlayerCardMarket = lowerMarket.includes('to get a card') || lowerMarket.includes('to be booked') || lowerMarket.includes('player cards');
+                        const isPlayerCardMarket = lowerMarket.includes('to get a card') || lowerMarket.includes('to get a red card') || lowerMarket.includes('to be booked') || lowerMarket.includes('player cards');
                         const isPlayerShotsMarket = (lowerMarket.includes('shot') || lowerMarket.includes('on target')) && (lowerMarket.includes("player") || Boolean(outcome.participant));
                         if (isPlayerShotsMarket) {
                             console.log('🔍 Player shots market found:', lowerMarket, 'Outcome:', outcome);

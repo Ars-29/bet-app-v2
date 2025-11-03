@@ -1525,7 +1525,9 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                 s.includes('to score from') ||
                 s.includes('header') ||
                 s.includes('outside the penalty') ||
-                s.includes('penalty')
+                s.includes('penalty') ||
+                s.includes('to get a red card') ||
+                s.includes('to get a card')
             );
         };
 
@@ -1536,6 +1538,27 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                 <div className="space-y-3">
                     {renderGoalScorerCategory(category)}
                     {otherPlayerSections.map(sec => renderYesSection(sec))}
+                </div>
+            );
+        }
+
+        // Special handling for Player Cards category: show player YES-style markets (To Get a Card, To Get a Red Card) with renderYesSection
+        if (category.label?.toLowerCase().includes('player cards') || category.label?.toLowerCase().includes('player-cards')) {
+            const playerYesSections = (category.markets || []).filter(sec => titleMatches(sec.title));
+            const otherCardSections = (category.markets || []).filter(sec => !titleMatches(sec.title));
+            return (
+                <div className="space-y-3">
+                    {playerYesSections.map(sec => renderYesSection(sec))}
+                    {otherCardSections.map((section) => (
+                        <div key={section.id} className="bg-white border overflow-hidden transition-all duration-200">
+                            <div className="px-4 py-2.5">
+                                <h3 className="text-sm font-semibold text-gray-800">{section.title}</h3>
+                            </div>
+                            <div className="p-3">
+                                {renderOptions(section.options, section)}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             );
         }
