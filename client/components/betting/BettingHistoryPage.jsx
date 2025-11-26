@@ -821,9 +821,20 @@ const BettingHistoryPage = ({ userId }) => {
                                 </div>
                               </TableCell>
                               <TableCell className="max-w-48">
-                                <div className="truncate" title={isCombo ? "Multiple Markets" : (item.betDetails?.market_description || item.betDetails?.market_name)}>
-                                  {isCombo ? "Multiple Markets" : (item.betDetails?.market_description || item.betDetails?.market_name || "-")}
-                                </div>
+                                {(() => {
+                                  const singleMarketTitle = item.unibetMeta?.marketName
+                                    || item.betDetails?.market_description
+                                    || item.betDetails?.market_name
+                                    || "-";
+                                  return (
+                                    <div
+                                      className="truncate"
+                                      title={isCombo ? "Multiple Markets" : singleMarketTitle}
+                                    >
+                                      {isCombo ? "Multiple Markets" : singleMarketTitle}
+                                    </div>
+                                  );
+                                })()}
                               </TableCell>
                               <TableCell className="max-w-48">
                                 <div className="truncate" title={isCombo ? "Multiple Selections" : item.selection}>

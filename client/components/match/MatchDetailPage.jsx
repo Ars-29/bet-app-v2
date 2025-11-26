@@ -279,11 +279,12 @@ const MatchDetailPage = ({ matchId }) => {
         const categorizedMarkets = categorizeMarkets(bettingData);
         
         const categories = [
-            { id: 'all', label: 'All', odds_count: bettingData.length },
+            { id: 'all', label: 'All', odds_count: bettingData.length, priority: 0 },
             ...Object.entries(categorizedMarkets).map(([categoryId, markets]) => ({
                 id: categoryId,
                 label: getCategoryLabel(categoryId),
-                odds_count: markets.length
+                odds_count: markets.length,
+                priority: getCategoryPriority(categoryId)
             }))
         ];
         
@@ -338,15 +339,30 @@ const MatchDetailPage = ({ matchId }) => {
                         if (lowerName === 'ot_no'.toLowerCase() || lowerName === 'no') displayLabel = 'No';
                         if (lowerName === 'even' || lowerName === 'ot_even'.toLowerCase()) displayLabel = 'Even';
                         if (lowerName === 'odd' || lowerName === 'ot_odd'.toLowerCase()) displayLabel = 'Odd';
-                        // For player markets (cards, shots), prefer participant name as display name
-                        const isPlayerCardMarket = lowerMarket.includes('to get a card') || lowerMarket.includes('to get a red card') || lowerMarket.includes('to be booked') || lowerMarket.includes('player cards');
-                        const isPlayerShotsMarket = (lowerMarket.includes('shot') || lowerMarket.includes('on target')) && (lowerMarket.includes("player") || Boolean(outcome.participant));
+                        // For player markets (cards, shots, YES-only specials), prefer participant name as display name
+                        const isPlayerCardMarket =
+                            lowerMarket.includes('to get a card') ||
+                            lowerMarket.includes('to be booked') ||
+                            lowerMarket.includes('player cards') ||
+                            lowerMarket.includes('to get a red card');
+                        const isPlayerShotsMarket =
+                            (lowerMarket.includes('shot') || lowerMarket.includes('on target')) &&
+                            (lowerMarket.includes('player') || Boolean(outcome.participant));
+                        const isPlayerYesSpecialMarket =
+                            lowerMarket.includes('to score at least') ||
+                            lowerMarket.includes('to assist') ||
+                            lowerMarket.includes('to score from outside the penalty box') ||
+                            lowerMarket.includes('to score from a header') ||
+                            lowerMarket.includes('to score or assist');
                         if (isPlayerShotsMarket) {
                             console.log('🔍 Player shots market found:', lowerMarket, 'Outcome:', outcome);
                         }
                         // For team line markets (e.g., Cards Line), populate handicap from line
                         const isLineMarket = lowerMarket.includes(' line') || lowerMarket === 'line';
-                        const displayName = (isPlayerCardMarket || isPlayerShotsMarket) ? (outcome.participant || displayLabel) : displayLabel;
+                        const displayName =
+                            (isPlayerCardMarket || isPlayerShotsMarket || isPlayerYesSpecialMarket)
+                                ? (outcome.participant || displayLabel)
+                                : displayLabel;
                         acc[marketName].odds.push({
                             id: outcome.id,
                             label: displayLabel,
@@ -373,7 +389,7 @@ const MatchDetailPage = ({ matchId }) => {
         });
         
         oddsClassification = {
-            categories: categories,
+            categories,
             classified_odds: transformedClassifiedOdds,
             stats: {
                 total_categories: categories.length - 1,
@@ -521,6 +537,8 @@ const IMPLEMENTED_MARKETS = [
     'Double Chance - 1st Half',
     'Win to Nil',
     'to Win to Nil',
+    // Player generic shots (not on target) – new market
+    'Player\'s shots (Settled using Opta data)',
 ];
 
 // Helper function to check if a market is implemented
@@ -593,6 +611,8 @@ function isMarketImplemented(marketName) {
     if (name.includes('red card given')) return true;
     if (name.includes('most red cards')) return true;
     if (name.includes('player\'s shots on target')) return true;
+    // NEW: allow generic Player's shots (Opta) markets
+    if (name.includes('player\'s shots') && !name.includes('on target')) return true;
     if (name.includes('total shots') && !name.includes('player')) return true;
     if (name.includes('total shots on target') && !name.includes('player')) return true;
     if (name.includes('shots by') && !name.includes('player')) return true;
@@ -626,128 +646,275 @@ function isMarketImplemented(marketName) {
 
 // Helper methods for market categorization (based on unibet-api logic)
 function categorizeMarkets(bettingData) {
+    // Fine‑grained categories aligned with the bookmaker UI screenshots
     const categorized = {
-        'match': [],
-        'goals': [],
-        'asian': [],
+        // Top-level tabs
         'three-way-line': [],
+        'asian-lines': [],
+        // Match events – row 1
+        'match-regular-time': [],
+        'player-shots-on-target': [],
+        'player-cards': [],
+        'goal-scorer': [],
+        'player-goals': [],
+        'goalkeeper-saves': [],
+        'player-assist': [],
+        'player-specials': [],
+        // Match events – row 2
+        'player-fouls': [],
+        'player-shots': [],
+        'half-time': [],
         'corners': [],
         'cards': [],
-        'player-shots': [],
-        'player-cards': [],
-        'scorers': [],
-        'results': [],
+        'match-team-shots': [],
+        'match-team-fouls': [],
+        'match-team-stats': [],
+        // Fallback buckets
+        'goals-other': [],
         'other': []
     };
 
     bettingData.forEach(offer => {
-        const marketName = offer.name.toLowerCase();
-        
-        // Filter out non-implemented markets
-        if (!isMarketImplemented(offer.name)) {
-            return; // Skip this market
+        const name = offer.name || '';
+        const marketName = name.toLowerCase();
+
+        // Filter out non-implemented markets (double‑safety)
+        if (!isMarketImplemented(name)) {
+            return;
         }
-        
-        // Debug: Log Total Offsides market
-        if (offer.name.toLowerCase().includes('total offsides')) {
-            console.log('🎯 Found Total Offsides market:', offer.name);
+
+        // Helper for placing in first non‑empty category id
+        const assign = (...ids) => {
+            const target = ids.find(id => categorized[id] !== undefined);
+            if (target) categorized[target].push(offer);
+        };
+
+        // 3‑Way Line / Handicap & Asian Lines
+        if (marketName.includes('3-way') || marketName.includes('3 way') || marketName.includes('three way')) {
+            return assign('three-way-line');
         }
-        
-        // Debug: Log penalty markets
-        if (offer.name.toLowerCase().includes('penalty')) {
-            console.log('🎯 Found penalty market:', offer.name);
+        if (marketName.includes('asian') || marketName.includes('handicap')) {
+            return assign('asian-lines');
         }
-        
-        // Enhanced categorization logic (matching unibet-api app)
-        if (marketName.includes('match') || marketName.includes('winner') || marketName.includes('head to head') || 
-            marketName.includes('full time') || marketName.includes('draw no bet') || marketName.includes('double chance') ||
-            marketName.includes('regular time') || marketName.includes('(regular time)')) {
-            categorized.match.push(offer);
-        } else if (marketName.includes('3-way') || marketName.includes('3 way') || marketName.includes('three way')) {
-            categorized['three-way-line'].push(offer);
-        } else if (marketName.includes('asian') || marketName.includes('handicap')) {
-            categorized.asian.push(offer);
-        } else if (marketName.includes('corner')) {
-            categorized.corners.push(offer);
-        } else if (marketName.includes('card')) {
+
+        // Match (regular time) – full‑time match result style markets
+        if (
+            marketName.includes('match (regular time)') ||
+            marketName.includes('match regular time') ||
+            marketName.includes('full time result') ||
+            (marketName.includes('match') && marketName.includes('winner')) ||
+            marketName.includes('head to head') ||
+            (marketName.includes('draw no bet') && !marketName.includes('2nd half')) ||
+            (marketName.includes('double chance') && !marketName.includes('1st half') && !marketName.includes('2nd half')) ||
+            marketName.includes('win to nil') ||
+            marketName.includes('result / total')
+        ) {
+            return assign('match-regular-time');
+        }
+
+        // Half Time specific match markets
+        if (
+            (marketName.includes('half time') && !marketName.includes('full time')) ||
+            marketName.includes('1st half') ||
+            marketName.includes('first half')
+        ) {
+            return assign('half-time');
+        }
+
+        // Corners
+        if (marketName.includes('corner')) {
+            return assign('corners');
+        }
+
+        // Cards – team / total cards vs player card props
+        if (marketName.includes('card')) {
+            const isPlayerCardMarket =
+                marketName.includes('player') ||
+                marketName.includes('to get a card') ||
+                marketName.includes('to be booked') ||
+                marketName.includes('to get a red card');
+            if (isPlayerCardMarket) {
+                return assign('player-cards');
+            }
+            return assign('cards');
+        }
+
+        // Player Fouls
+        if (marketName.includes('fouls')) {
             if (marketName.includes('player')) {
-                categorized['player-cards'].push(offer);
-            } else {
-                categorized.cards.push(offer);
+                return assign('player-fouls');
             }
-        } else if (marketName.includes('shot')) {
-            categorized['player-shots'].push(offer);
-        } else if (marketName.includes('to assist')) {
-            categorized.scorers.push(offer);
-        } else if (marketName.includes('to score or assist')) {
-            categorized.scorers.push(offer);
-    } else if (marketName.includes('to score from outside the penalty box')) {
-        categorized.scorers.push(offer);
-    } else if (marketName.includes('to score from a header')) {
-        categorized.scorers.push(offer);
-    } else if (marketName.includes('penalty kick awarded')) {
-        categorized.other.push(offer);
-    } else if (marketName.includes('to score from a penalty')) {
-        console.log('🎯 Categorizing penalty market as other:', offer.name);
-        categorized.other.push(offer);
-    } else if (marketName.includes('club bolívar to score from a penalty') || marketName.includes('atlético mineiro-mg to score from a penalty')) {
-        console.log('🎯 Categorizing specific penalty market as other:', offer.name);
-        categorized.other.push(offer);
-    } else if (marketName.includes('own goal')) {
-        console.log('🎯 Categorizing own goal market as other:', offer.name);
-        categorized.other.push(offer);
-    } else if (marketName.includes('half time') && !marketName.includes('total') && !marketName.includes('goals')) {
-        categorized.results.push(offer);
-    } else if (marketName.includes('double chance') && marketName.includes('2nd half')) {
-        categorized.results.push(offer);
-    } else if (marketName.includes('double chance') && marketName.includes('1st half')) {
-        categorized.results.push(offer);
-    } else if (marketName.includes('both teams to score') || marketName.includes('btts')) {
-            categorized.goals.push(offer);
-        } else if (marketName.includes('to score') || marketName.includes('goalscorer') || marketName.includes('scorer') || marketName.includes('first goal')) {
-            categorized.scorers.push(offer);
-        } else if (marketName.includes('win to nil')) {
-            categorized.other.push(offer);
-        } else if (marketName.includes('goal') || marketName.includes('score') || marketName.includes('total') || 
-                   marketName.includes('correct score') || marketName.includes('half time')) {
-            categorized.goals.push(offer);
-            // Debug: Log Total Offsides categorization
-            if (marketName.includes('total offsides')) {
-                console.log('🎯 Total Offsides categorized into goals category');
-            }
-        } else {
-            categorized.other.push(offer);
+            return assign('match-team-fouls');
         }
+
+        // Player shots on target (special grouping already in BettingTabs)
+        if (marketName.includes("player's shots on target")) {
+            return assign('player-shots-on-target');
+        }
+        
+        // Other player shots markets (generic "Player's shots", not team/total or on‑target)
+        if (
+            marketName.includes("player's shots") &&
+            !marketName.includes('on target')
+        ) {
+            return assign('player-shots');
+        }
+
+        // Match & team level shots statistics (Opta data etc.)
+        if (
+            marketName.includes('total shots (settled using opta data)') ||
+            marketName.includes('total shots on target (settled using opta data)') ||
+            marketName.includes('total shots by') ||
+            marketName.includes('total shots on target by') ||
+            marketName.includes('most shots on target') ||
+            (marketName.includes('shots') && marketName.includes('team'))
+        ) {
+            return assign('match-team-shots');
+        }
+
+        // Goal scorers & player goals
+        if (
+            marketName.includes('first goal scorer') ||
+            marketName.includes('goalscorer') ||
+            (marketName.includes('goal scorer') && !marketName.includes('time of'))
+        ) {
+            return assign('goal-scorer');
+        }
+
+        if (
+            marketName.includes('to score') &&
+            !marketName.includes('assist') &&
+            !marketName.includes('or assist') &&
+            !marketName.includes('team to score') &&
+            !marketName.includes('time of') &&
+            !marketName.includes('from a penalty') &&
+            !marketName.includes('header') &&
+            !marketName.includes('outside the penalty')
+        ) {
+            return assign('player-goals');
+        }
+
+        // Goalkeeper saves
+        if (marketName.includes('goalkeeper saves')) {
+            return assign('goalkeeper-saves');
+        }
+
+        // Player assist
+        if (marketName.includes('to assist')) {
+            return assign('player-assist');
+        }
+
+        // Player specials – combos & special goal markets (player based)
+        if (
+            marketName.includes('to score or assist') ||
+            marketName.includes('to score at least') ||
+            marketName.includes('team member to score') ||
+            marketName.includes('to score from outside the penalty box') ||
+            marketName.includes('to score from a header') ||
+            marketName.includes('own goal')
+        ) {
+            return assign('player-specials');
+        }
+
+        // Team/aggregate penalty specials – treat as generic goals/other markets
+        if (marketName.includes('penalty kick awarded') || marketName.includes('to score from a penalty')) {
+            return assign('goals-other');
+        }
+
+        // Match & team stats – offsides, generic totals, etc.
+        if (
+            marketName.includes('total offsides') ||
+            marketName.includes('offsides by') ||
+            marketName.includes('match stats') ||
+            marketName.includes('team stats') ||
+            marketName.includes('match statistics')
+        ) {
+            return assign('match-team-stats');
+        }
+
+        // Remaining goals / totals style markets
+        if (
+            marketName.includes('total goals') ||
+            marketName.includes('correct score') ||
+            marketName.includes('both teams to score') ||
+            marketName.includes('btts') ||
+            marketName.includes('exact winning margin') ||
+            marketName.includes('goal in both halves') ||
+            marketName.includes('exact total goals')
+        ) {
+            return assign('goals-other');
+        }
+
+        // Fallback: catch‑all bucket
+        assign('other');
     });
 
-    // Debug: Log category counts
-    console.log('🎯 Category counts:', Object.keys(categorized).map(key => `${key}: ${categorized[key].length}`));
-    
-    // Remove empty categories
+    // Remove empty categories to avoid clutter
     Object.keys(categorized).forEach(key => {
-        if (categorized[key].length === 0) {
+        if (!categorized[key] || categorized[key].length === 0) {
             delete categorized[key];
         }
     });
 
-    console.log('🎯 Final categories:', Object.keys(categorized));
     return categorized;
 }
 
 function getCategoryLabel(categoryId) {
     const labels = {
-        'match': 'Match',
-        'goals': 'Goals',
-        'asian': 'Asian Lines',
+        // Top‑level
         'three-way-line': '3-Way Line',
+        'asian-lines': 'Asian Lines',
+        // Match events – row 1
+        'match-regular-time': 'Match (regular time)',
+        'player-shots-on-target': 'Player Shots on Target',
+        'player-cards': 'Player Cards',
+        'goal-scorer': 'Goal Scorer',
+        'player-goals': 'Player Goals',
+        'goalkeeper-saves': 'Goalkeeper Saves',
+        'player-assist': 'Player Assist',
+        'player-specials': 'Player Specials',
+        // Match events – row 2
+        'player-fouls': 'Player Fouls',
+        'player-shots': 'Player Shots',
+        'half-time': 'Half Time',
         'corners': 'Corners',
         'cards': 'Cards',
-        'player-shots': 'Player Shots',
-        'player-cards': 'Player Cards',
-        'scorers': 'Scorers',
+        'match-team-shots': 'Match and Team Shots',
+        'match-team-fouls': 'Match and Team Fouls',
+        'match-team-stats': 'Match and Team Stats',
+        // Fallback
+        'goals-other': 'Goals',
         'other': 'Other'
     };
     return labels[categoryId] || categoryId;
+}
+
+// Explicit ordering for the tabs so they match the bookmaker UI
+function getCategoryPriority(categoryId) {
+    const order = [
+        'three-way-line',
+        'asian-lines',
+        'match-regular-time',
+        'player-shots-on-target',
+        'player-cards',
+        'goal-scorer',
+        'player-goals',
+        'goalkeeper-saves',
+        'player-assist',
+        'player-specials',
+        'player-fouls',
+        'player-shots',
+        'half-time',
+        'corners',
+        'cards',
+        'match-team-shots',
+        'match-team-fouls',
+        'match-team-stats',
+        'goals-other',
+        'other'
+    ];
+    const idx = order.indexOf(categoryId);
+    return idx === -1 ? 99 : idx + 1;
 }
 
 export default MatchDetailPage

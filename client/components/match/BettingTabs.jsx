@@ -1460,7 +1460,23 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                 return t.trim();
             };
             options.forEach(opt => {
-                const playerName = typeof opt.name === 'string' ? opt.name : undefined;
+                // Prefer explicit participant/player name over generic "Yes" / "No"
+                const participantName =
+                    typeof opt.participant === 'string' && opt.participant.trim().length > 0
+                        ? opt.participant.trim()
+                        : undefined;
+                const rawName =
+                    typeof opt.name === 'string' && opt.name.trim().length > 0
+                        ? opt.name.trim()
+                        : undefined;
+                // Ignore names that are just "Yes"/"No" – those are not player names
+                const isYesNoName =
+                    rawName &&
+                    (rawName.toLowerCase() === 'yes' ||
+                        rawName.toLowerCase() === 'no' ||
+                        rawName.toLowerCase() === 'ot_yes' ||
+                        rawName.toLowerCase() === 'ot_no');
+                const playerName = participantName || (!isYesNoName ? rawName : undefined);
                 if (!playerName) return;
                 const samePlayerOpts = options.filter(o => o.name === playerName);
                 const isOnly = samePlayerOpts.length === 1;
@@ -1527,7 +1543,10 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                 s.includes('outside the penalty') ||
                 s.includes('penalty') ||
                 s.includes('to get a red card') ||
-                s.includes('to get a card')
+                s.includes('to get a card') ||
+                s.includes('to get a red card') ||
+                s.includes('to be booked') ||
+                s.includes('player cards')
             );
         };
 
@@ -1563,14 +1582,17 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
             );
         }
 
-        // Categories like "Player Specials" that only contain player YES-style markets
+        // Categories like "Player Specials" that contain player YES-style markets.
         const playerYesSections = (category.markets || []).filter(sec => titleMatches(sec.title));
         if (playerYesSections.length > 0) {
-            return (
-                <div className="space-y-3">
-                    {playerYesSections.map(sec => renderYesSection(sec))}
-                </div>
-            );
+            const rendered = playerYesSections
+                .map((sec) => renderYesSection(sec))
+                .filter(Boolean);
+            // If at least one section produced player rows, use the special layout.
+            if (rendered.length > 0) {
+                return <div className="space-y-3">{rendered}</div>;
+            }
+            // Otherwise fall through and render them with the default layout below.
         }
 
         // Detect if this is a player-based market (Player Shots, Player Shots on Target, Goalscorer, etc.)
@@ -1606,6 +1628,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
             category.markets.forEach(section => {
                 section.options.forEach(option => {
                     const playerName = option.name;
+                    if (!playerName) return;
                     if (!playerMap[playerName]) {
                         playerMap[playerName] = [];
                     }
@@ -1614,42 +1637,66 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
             });
             // If we found any player grouping, render it using PlayerCardOption
             if (Object.keys(playerMap).length > 0) {
+                // Derive market title (e.g. "To get a card") from first section / option
+                const firstSection = category.markets[0];
+                const firstOption = firstSection?.options?.[0];
+                const marketTitle =
+                    firstOption?.market_description ||
+                    firstSection?.title ||
+                    category.label;
+
                 return (
-                    <div className="grid grid-cols-1 gap-3">
-                        {Object.entries(playerMap).map(([playerName, options]) => (
-                            <PlayerCardOption key={playerName} player={{ name: playerName, options }} matchData={matchData} />
-                        ))}
+                    <div className="space-y-2">
+                        {marketTitle && (
+                            <div className="px-2 text-sm font-semibold text-gray-800">
+                                {marketTitle}
+                            </div>
+                        )}
+                        <div className="grid grid-cols-1 gap-3">
+                            {Object.entries(playerMap).map(([playerName, options]) => (
+                                <PlayerCardOption
+                                    key={playerName}
+                                    player={{ name: playerName, options }}
+                                    matchData={matchData}
+                                />
+                            ))}
+                        </div>
                     </div>
                 );
             }
         }
-        // Special handling: Player's shots on target – always group by player and show their options beneath
+        // Special handling: Player shots & Player's shots on target – always group by player and show their options beneath
         const forcePlayerShotsGrouping =
-            category.markets.some(sec => (sec.title).toLowerCase().includes("player's shots on target"));
+            category.markets.some(sec => {
+                const t = (sec.title || '').toLowerCase();
+                return t.includes("player's shots on target") || t.includes("player's shots");
+            });
 
         if (forcePlayerShotsGrouping) {
             const playerMap = {};
             const extractPlayerName = (opt, sectionTitle) => {
                 // Prefer explicit name if present and looks like a person name
-                if (typeof opt.name === 'string' && opt.name.trim().length > 1 && isNaN(Number(opt.name))) return opt.name.trim();
-                // Try from market_description: "<Player> Player's shots on target ..."
+                if (typeof opt.name === 'string' && opt.name.trim().length > 1 && isNaN(Number(opt.name))) {
+                    return opt.name.trim();
+                }
+                // Try from market_description: "<Player> Player's shots on target" / "Player's shots"
                 const md = opt.market_description || sectionTitle || '';
-                const marker = " Player's shots on target";
-                const idx = md.indexOf(marker);
-                if (idx > 0) return md.substring(0, idx).trim();
+                const markers = [" Player's shots on target", " Player's shots"];
+                for (const marker of markers) {
+                    const idx = md.indexOf(marker);
+                    if (idx > 0) return md.substring(0, idx).trim();
+                }
                 // Try from label if it embeds a name like "<Player> - Over 0.5"
                 if (typeof opt.label === 'string' && opt.label.includes(' - ')) {
                     return opt.label.split(' - ')[0].trim();
                 }
                 return undefined;
             };
-            // Separate sections: shots on target vs others so we can render both
-            const isSOT = (t) => (t || '').toLowerCase().includes("player's shots on target");
-            const shotsOnTargetSections = category.markets.filter(sec => isSOT(sec.title));
-            const otherSections = category.markets.filter(sec => !isSOT(sec.title));
 
-            // Build player map from SOT sections only
-            shotsOnTargetSections.forEach((section) => {
+            const sections = category.markets || [];
+
+            // Build player map from all player-shots style sections (both SOT and generic)
+            sections.forEach((section) => {
                 (section.options || []).forEach((opt) => {
                     const p = extractPlayerName(opt, section.title);
                     if (!p) return;
@@ -1661,34 +1708,19 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                 });
             });
 
-            // Render player SOT blocks first, then the remaining markets using the default renderer
-            if (Object.keys(playerMap).length > 0 || otherSections.length > 0) {
+            if (Object.keys(playerMap).length > 0) {
                 return (
-                    <div className="space-y-3">
-                        {Object.keys(playerMap).length > 0 && (
-                            <div className="bg-white border overflow-hidden transition-all duration-200">
-                                <div className="px-4 py-2.5">
-                                    <h3 className="text-sm font-semibold text-gray-800">{shotsOnTargetSections[0]?.title}</h3>
-                                </div>
-                                <div className="p-3">
-                                    <div className="grid grid-cols-1 ">
-                                        {Object.entries(playerMap).map(([playerName, options]) => (
-                                            <PlayerCardOption key={playerName} player={{ name: playerName, options }} matchData={matchData} />
-                                        ))}
-                                    </div>
-                                </div>
+                    <div className="bg-white border overflow-hidden transition-all duration-200">
+                        <div className="px-4 py-2.5">
+                            <h3 className="text-sm font-semibold text-gray-800">{sections[0]?.title}</h3>
+                        </div>
+                        <div className="p-3">
+                            <div className="grid grid-cols-1 ">
+                                {Object.entries(playerMap).map(([playerName, options]) => (
+                                    <PlayerCardOption key={playerName} player={{ name: playerName, options }} matchData={matchData} />
+                                ))}
                             </div>
-                        )}
-                        {otherSections.map((section) => (
-                            <div key={section.id} className="bg-white border overflow-hidden transition-all duration-200">
-                                <div className="px-4 py-2.5">
-                                    <h3 className="text-sm font-semibold text-gray-800">{section.title}</h3>
-                                </div>
-                                <div className="p-3">
-                                    {renderOptions(section.options, section)}
-                                </div>
-                            </div>
-                        ))}
+                        </div>
                     </div>
                 );
             }
