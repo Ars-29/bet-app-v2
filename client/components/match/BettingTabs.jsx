@@ -1563,7 +1563,7 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
 
         // Special handling for Player Cards category: show player YES-style markets (To Get a Card, To Get a Red Card) with renderYesSection
         if (category.label?.toLowerCase().includes('player cards') || category.label?.toLowerCase().includes('player-cards')) {
-            const playerYesSections = (category.markets || []).filter(sec => titleMatches(sec.title));
+        const playerYesSections = (category.markets || []).filter(sec => titleMatches(sec.title));
             const otherCardSections = (category.markets || []).filter(sec => !titleMatches(sec.title));
             return (
                 <div className="space-y-3">
@@ -1652,14 +1652,14 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                                 {marketTitle}
                             </div>
                         )}
-                        <div className="grid grid-cols-1 gap-3">
-                            {Object.entries(playerMap).map(([playerName, options]) => (
+                    <div className="grid grid-cols-1 gap-3">
+                        {Object.entries(playerMap).map(([playerName, options]) => (
                                 <PlayerCardOption
                                     key={playerName}
                                     player={{ name: playerName, options }}
                                     matchData={matchData}
                                 />
-                            ))}
+                        ))}
                         </div>
                     </div>
                 );
@@ -1683,8 +1683,8 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
                 const md = opt.market_description || sectionTitle || '';
                 const markers = [" Player's shots on target", " Player's shots"];
                 for (const marker of markers) {
-                    const idx = md.indexOf(marker);
-                    if (idx > 0) return md.substring(0, idx).trim();
+                const idx = md.indexOf(marker);
+                if (idx > 0) return md.substring(0, idx).trim();
                 }
                 // Try from label if it embeds a name like "<Player> - Over 0.5"
                 if (typeof opt.label === 'string' && opt.label.includes(' - ')) {
@@ -1710,17 +1710,17 @@ const BettingMarketGroup = ({ groupedMarkets, emptyMessage, matchData }) => {
 
             if (Object.keys(playerMap).length > 0) {
                 return (
-                    <div className="bg-white border overflow-hidden transition-all duration-200">
-                        <div className="px-4 py-2.5">
+                            <div className="bg-white border overflow-hidden transition-all duration-200">
+                                <div className="px-4 py-2.5">
                             <h3 className="text-sm font-semibold text-gray-800">{sections[0]?.title}</h3>
-                        </div>
-                        <div className="p-3">
-                            <div className="grid grid-cols-1 ">
-                                {Object.entries(playerMap).map(([playerName, options]) => (
-                                    <PlayerCardOption key={playerName} player={{ name: playerName, options }} matchData={matchData} />
-                                ))}
-                            </div>
-                        </div>
+                                </div>
+                                <div className="p-3">
+                                    <div className="grid grid-cols-1 ">
+                                        {Object.entries(playerMap).map(([playerName, options]) => (
+                                            <PlayerCardOption key={playerName} player={{ name: playerName, options }} matchData={matchData} />
+                                        ))}
+                                    </div>
+                                </div>
                     </div>
                 );
             }

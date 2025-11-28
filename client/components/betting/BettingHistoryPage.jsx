@@ -832,7 +832,7 @@ const BettingHistoryPage = ({ userId }) => {
                                       title={isCombo ? "Multiple Markets" : singleMarketTitle}
                                     >
                                       {isCombo ? "Multiple Markets" : singleMarketTitle}
-                                    </div>
+                                </div>
                                   );
                                 })()}
                               </TableCell>

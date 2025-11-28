@@ -79,7 +79,7 @@ router.get('/:eventId', async (req, res) => {
     console.log(`🔍 [BETOFFERS] Request method:`, req.method);
     console.log(`🔍 [BETOFFERS] Request URL:`, req.url);
 
-    // Special-case local file for testing id
+    // Special-case local file for testing id (legacy test match)
     if (eventId === '1022853538') {
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = path.dirname(__filename);
@@ -104,6 +104,22 @@ router.get('/:eventId', async (req, res) => {
         eventId,
         data: testData.data,
         timestamp: new Date().toISOString()
+      });
+    }
+
+    // Special-case for finished PSG vs Tottenham match (event 1024820144)
+    // Uses local snapshot file psg_tottenham_27_nov_betoffers.json that contains raw Unibet betOffers.
+    if (eventId === '1024820144') {
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      const testDataPath = path.join(__dirname, '../../../../psg_tottenham_27_nov_betoffers.json');
+      const testData = JSON.parse(fs.readFileSync(testDataPath, 'utf8'));
+      return res.json({
+        success: true,
+        eventId,
+        data: testData,
+        timestamp: new Date().toISOString(),
+        source: 'local-file'
       });
     }
 

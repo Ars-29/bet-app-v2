@@ -677,12 +677,12 @@ function categorizeMarkets(bettingData) {
     bettingData.forEach(offer => {
         const name = offer.name || '';
         const marketName = name.toLowerCase();
-
+        
         // Filter out non-implemented markets (double‑safety)
         if (!isMarketImplemented(name)) {
             return;
         }
-
+        
         // Helper for placing in first non‑empty category id
         const assign = (...ids) => {
             const target = ids.find(id => categorized[id] !== undefined);
@@ -696,7 +696,7 @@ function categorizeMarkets(bettingData) {
         if (marketName.includes('asian') || marketName.includes('handicap')) {
             return assign('asian-lines');
         }
-
+        
         // Match (regular time) – full‑time match result style markets
         if (
             marketName.includes('match (regular time)') ||
@@ -848,7 +848,7 @@ function categorizeMarkets(bettingData) {
         // Fallback: catch‑all bucket
         assign('other');
     });
-
+    
     // Remove empty categories to avoid clutter
     Object.keys(categorized).forEach(key => {
         if (!categorized[key] || categorized[key].length === 0) {
