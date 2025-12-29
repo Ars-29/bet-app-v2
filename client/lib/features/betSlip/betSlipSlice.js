@@ -206,7 +206,7 @@ const betSlipSlice = createSlice({
       
       // Auto-open bet slip when bet is added
       state.isOpen = true;
-      state.isExpanded = false; // Start collapsed when new bet is added
+      state.isExpanded = true; // ✅ Start expanded so user can see the bet immediately
 
       // Update active tab based on number of bets
       if (state.bets.length === 1) {
@@ -342,17 +342,30 @@ const betSlipSlice = createSlice({
     updateBetOdds: (state, action) => {
       const { matchId, oddId, newOdds } = action.payload;
       
+      // #region agent log
+      if (typeof fetch !== 'undefined') fetch('http://127.0.0.1:7242/ingest/36e9cd0b-a351-407e-8f20-cf67918d6e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'betSlipSlice.js:342',message:'updateBetOdds action received',data:{matchId,oddId,newOdds,betsCount:state.bets.length},timestamp:Date.now(),sessionId:'debug-session',runId:'home-page-bet',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      
       // Find and update the bet with matching matchId and oddId
       const betIndex = state.bets.findIndex(
         bet => bet.match.id === matchId && bet.oddId === oddId
       );
       
+      // #region agent log
+      if (typeof fetch !== 'undefined') fetch('http://127.0.0.1:7242/ingest/36e9cd0b-a351-407e-8f20-cf67918d6e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'betSlipSlice.js:351',message:'Bet search result',data:{betIndex,found:betIndex!==-1,searchCriteria:{matchId,oddId}},timestamp:Date.now(),sessionId:'debug-session',runId:'home-page-bet',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      
       if (betIndex !== -1) {
         const oldOdds = state.bets[betIndex].odds;
         const newOddsValue = parseFloat(newOdds);
         
+        // #region agent log
+        if (typeof fetch !== 'undefined') fetch('http://127.0.0.1:7242/ingest/36e9cd0b-a351-407e-8f20-cf67918d6e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'betSlipSlice.js:360',message:'Bet found - checking odds difference',data:{betId:state.bets[betIndex].id,oldOdds,newOddsValue,difference:Math.abs(newOddsValue-oldOdds),willUpdate:Math.abs(newOddsValue-oldOdds)>0.001},timestamp:Date.now(),sessionId:'debug-session',runId:'home-page-bet',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        
         // Only update if odds have actually changed
         if (Math.abs(newOddsValue - oldOdds) > 0.001) {
+          state.bets[betIndex].previousOdds = oldOdds; // Store previous odds
           state.bets[betIndex].odds = newOddsValue;
           
           // Add a flag to indicate odds were recently updated (for visual feedback)
@@ -365,6 +378,10 @@ const betSlipSlice = createSlice({
             show: true
           };
           state.placeBetDisabled = true;
+          
+          // #region agent log
+          if (typeof fetch !== 'undefined') fetch('http://127.0.0.1:7242/ingest/36e9cd0b-a351-407e-8f20-cf67918d6e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'betSlipSlice.js:383',message:'ODDS UPDATED IN REDUX + placeBetDisabled=true',data:{betId:state.bets[betIndex].id,oldOdds,newOddsValue,placeBetDisabled:state.placeBetDisabled,notificationShow:state.oddsChangeNotification.show},timestamp:Date.now(),sessionId:'debug-session',runId:'home-page-bet',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
           
           console.log(`🔄 Updated odds for bet ${state.bets[betIndex].id}: ${oldOdds} → ${newOddsValue}`);
           
@@ -597,6 +614,17 @@ export const placeBetThunk = createAsyncThunk(
             continue; // skip invalid
           }
           
+          // ✅ CRITICAL: Get the LATEST odds from current Redux state (not stale bet object)
+          // This ensures we use the most recent odds even if they changed during 7s validation
+          const currentBetState = state.bets.find(b => b.id === bet.id);
+          const latestOdds = currentBetState?.odds || bet.odds; // Use current state odds, fallback to bet.odds
+          
+          // #region agent log
+          if (typeof fetch !== 'undefined') fetch('http://127.0.0.1:7242/ingest/36e9cd0b-a351-407e-8f20-cf67918d6e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'betSlipSlice.js:604',message:'placeBetThunk reading odds',data:{betId:bet.id,oddId:bet.oddId,currentBetStateFound:!!currentBetState,currentBetStateOdds:currentBetState?.odds,betObjectOdds:bet.odds,latestOdds,previousOdds:bet.previousOdds},timestamp:Date.now(),sessionId:'debug-session',runId:'home-page-bet',hypothesisId:'D'})}).catch(()=>{});
+          // #endregion
+          
+          console.log(`🔍 [placeBetThunk] Using latest odds for bet ${bet.id}: ${latestOdds} (was ${bet.odds})`);
+          
           // Extract Unibet metadata from match data (try multiple sources)
           const matchData = getMatchDataFromState(bet.match.id, matchesState, leaguesState);
           const unibetMetadata = extractUnibetMetadata(bet, matchData);
@@ -608,7 +636,8 @@ export const placeBetThunk = createAsyncThunk(
             matchId: bet.match.id,
             oddId: bet.oddId,
             stake,
-            odds: bet.odds,
+            odds: latestOdds, // ✅ Use LATEST odds from Redux state
+            previousOdds: bet.previousOdds || bet.odds || null, // Store original odds for backend validation
             betOption: label,
             selection: label,
             teams: `${bet.match.team1} vs ${bet.match.team2}`,
@@ -673,6 +702,10 @@ export const placeBetThunk = createAsyncThunk(
             'payload.leagueName': payload.leagueName
           });
           
+          // #region agent log
+          if (typeof fetch !== 'undefined') fetch('http://127.0.0.1:7242/ingest/36e9cd0b-a351-407e-8f20-cf67918d6e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'betSlipSlice.js:705',message:'FINAL PAYLOAD SENT TO BACKEND',data:{betId:bet.id,oddId:payload.oddId,odds:payload.odds,previousOdds:payload.previousOdds,stake:payload.stake,selection:payload.selection},timestamp:Date.now(),sessionId:'debug-session',runId:'home-page-bet',hypothesisId:'D'})}).catch(()=>{});
+          // #endregion
+          
           const response = await apiClient.post("/bet/place-bet", payload);
           results.push(response.data);
           // Update user balance
@@ -696,11 +729,16 @@ export const placeBetThunk = createAsyncThunk(
           
           const unibetMetadata = extractUnibetMetadata(bet, matchData);
           
+          // ✅ CRITICAL: Get the LATEST odds from current Redux state (not stale bet object)
+          const currentBetState = state.bets.find(b => b.id === bet.id);
+          const latestOdds = currentBetState?.odds || bet.odds; // Use current state odds, fallback to bet.odds
+          
           return {
             matchId: bet.match.id,
             oddId: bet.oddId || `${bet.match.id}_${label.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`,
             betOption: label, // Always use label for betOption
-            odds: bet.odds,
+            odds: latestOdds, // ✅ Use LATEST odds from Redux state
+            previousOdds: bet.previousOdds || bet.odds || null, // Store original odds for backend validation
             stake: combinationStake, // Same stake for all legs
             inplay: bet.inplay || false,
             selection: label, // Always use label for selection
@@ -710,7 +748,7 @@ export const placeBetThunk = createAsyncThunk(
               market_id: (typeof bet.marketId === 'string' && bet.marketId.includes('_')) ? bet.marketId.split('_')[0] : bet.marketId,
               market_name: bet.marketName || "Unknown Market",
               label,
-              value: bet.odds,
+              value: latestOdds, // ✅ Use LATEST odds
               total: bet.total || null,
               market_description: bet.marketDescription || null,
               handicap: bet.handicapValue || null,

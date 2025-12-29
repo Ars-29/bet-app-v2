@@ -1,4 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createSelector } from '@reduxjs/toolkit';
 
 const initialState = {
   isConnected: false,
@@ -89,17 +89,22 @@ export const selectMatchOddsClassification = (state, matchId) => {
   return state.websocket.liveOdds[matchId]?.classification || {};
 };
 
-// Selector for main odds (1X2) from live odds
-export const selectMainOdds = (state, matchId) => {
-  const matchOdds = state.websocket.liveOdds[matchId];
-  if (!matchOdds || !matchOdds.odds) return {};
-  
-  // The backend now sends extracted main odds directly
-  return {
-    home: matchOdds.odds.home || null,
-    draw: matchOdds.odds.draw || null,
-    away: matchOdds.odds.away || null
-  };
-};
+// Memoized selector for main odds (1X2) from live odds
+// This prevents unnecessary rerenders by caching the result
+const selectMatchOddsData = (state, matchId) => state.websocket.liveOdds[matchId];
+
+export const selectMainOdds = createSelector(
+  [selectMatchOddsData],
+  (matchOdds) => {
+    if (!matchOdds || !matchOdds.odds) return {};
+    
+    // The backend now sends extracted main odds directly
+    return {
+      home: matchOdds.odds.home || null,
+      draw: matchOdds.odds.draw || null,
+      away: matchOdds.odds.away || null
+    };
+  }
+);
 
 export default websocketSlice.reducer; 

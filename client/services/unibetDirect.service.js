@@ -29,7 +29,7 @@ const UNIBET_HEADERS = {
 
 // Create axios instance for direct Unibet API calls (from browser)
 const unibetDirectClient = axios.create({
-  timeout: 1500, // 1.5 seconds timeout - optimized for faster response (live matches)
+  timeout: 3000, // 3 seconds timeout - balanced for reliability (matches API route timeout)
   headers: UNIBET_HEADERS
 });
 

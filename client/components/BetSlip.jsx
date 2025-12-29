@@ -45,12 +45,57 @@ const BetSlip = () => {
     const activeTab = useSelector(selectActiveTab);
     const lastError = useSelector(selectLastError);
     const oddsChangeNotification = useSelector(selectOddsChangeNotification);
+
+    // Debug logging
+    console.log('🎰 BetSlip component render:', {
+        betsCount: bets.length,
+        isExpanded,
+        isOpen: betSlip.isOpen,
+        bets: bets.map(b => ({ id: b.id, selection: b.selection, odds: b.odds }))
+    });
     const placeBetDisabled = useSelector(selectPlaceBetDisabled);
     const isAuthenticated = useSelector(selectIsAuthenticated);
     const user = useSelector(selectUser);
     const betSlipRef = useRef(null);
     const [isPlacingBet, setIsPlacingBet] = React.useState(false);
     const isMobile = useIsMobile();
+    
+    // New state for 7-second odds validation
+    const [pendingPlaceBet, setPendingPlaceBet] = useState(false);
+    const [countdown, setCountdown] = useState(0);
+    const [stabilityWait, setStabilityWait] = useState(false);
+
+    // Effect for countdown
+    useEffect(() => {
+        let timer;
+        if (countdown > 0) {
+            timer = setTimeout(() => {
+                setCountdown(prev => prev - 1);
+            }, 1000);
+        } else if (countdown === 0 && pendingPlaceBet) {
+            // Countdown finished - always attempt to place bet with current odds
+            executePlaceBet();
+        }
+        return () => clearTimeout(timer);
+    }, [countdown, pendingPlaceBet]);
+
+    // Effect for odds change monitoring during pending state
+    useEffect(() => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/36e9cd0b-a351-407e-8f20-cf67918d6e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BetSlip.jsx:83',message:'Odds change monitor effect',data:{pendingPlaceBet,placeBetDisabled,willRestartTimer:pendingPlaceBet&&placeBetDisabled},timestamp:Date.now(),sessionId:'debug-session',runId:'home-page-bet',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        
+        if (pendingPlaceBet && placeBetDisabled) {
+            // Odds changed during validation - just restart timer silently
+            // User wants seamless experience: just ensure we wait for stability then send latest
+            
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/36e9cd0b-a351-407e-8f20-cf67918d6e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BetSlip.jsx:93',message:'RESTARTING 7s TIMER - odds changed during validation',data:{oldCountdown:countdown,newCountdown:7},timestamp:Date.now(),sessionId:'debug-session',runId:'home-page-bet',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            
+            setCountdown(7); 
+        }
+    }, [placeBetDisabled, pendingPlaceBet]);
 
     // Calculate totals when relevant data changes
     useEffect(() => {
@@ -166,6 +211,10 @@ const BetSlip = () => {
 
 
     const handlePlaceBet = async () => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/36e9cd0b-a351-407e-8f20-cf67918d6e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BetSlip.jsx:204',message:'handlePlaceBet called',data:{isAuthenticated,userRole:user?.role,betsCount:bets.length,currentOdds:bets.map(b=>({id:b.id,odds:b.odds,previousOdds:b.previousOdds}))},timestamp:Date.now(),sessionId:'debug-session',runId:'home-page-bet',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        
         // Check if user is authenticated
         if (!isAuthenticated) {
             // Don't make API request, just return - the login dialog will be shown
@@ -178,8 +227,27 @@ const BetSlip = () => {
             return;
         }
 
+        // Start 7-second validation
+        setPendingPlaceBet(true);
+        setCountdown(7);
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/36e9cd0b-a351-407e-8f20-cf67918d6e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BetSlip.jsx:224',message:'7-second validation started',data:{pendingPlaceBet:true,countdown:7,placeBetDisabled},timestamp:Date.now(),sessionId:'debug-session',runId:'home-page-bet',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        // setStabilityWait(false); // Removed explicit stability wait logic
+    };
+
+    const executePlaceBet = async () => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/36e9cd0b-a351-407e-8f20-cf67918d6e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BetSlip.jsx:238',message:'executePlaceBet called',data:{countdown,pendingPlaceBet,placeBetDisabled,betsBeforePlacing:bets.map(b=>({id:b.id,odds:b.odds,previousOdds:b.previousOdds,oddId:b.oddId}))},timestamp:Date.now(),sessionId:'debug-session',runId:'home-page-bet',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
+        
         setIsPlacingBet(true);
         try {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/36e9cd0b-a351-407e-8f20-cf67918d6e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BetSlip.jsx:246',message:'About to dispatch placeBetThunk',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'home-page-bet',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
+            
             const resultAction = await dispatch(placeBetThunk());
             if (placeBetThunk.fulfilled.match(resultAction)) {
                 toast.success('Bet placed successfully!');
@@ -201,6 +269,7 @@ const BetSlip = () => {
             toast.error(backendMsg || 'Failed to place bet.');
         } finally {
             setIsPlacingBet(false);
+            setPendingPlaceBet(false);
         }
     };
 
@@ -407,14 +476,14 @@ const BetSlip = () => {
                             ) : (
                                 <Button
                                     className={`w-full font-bold py-2 transition-all duration-200 ${
-                                        placeBetDisabled 
+                                        (placeBetDisabled && !pendingPlaceBet)
                                             ? 'bg-gray-500 text-gray-300 cursor-not-allowed' 
                                             : 'bg-yellow-500 hover:bg-yellow-600 text-black'
                                     }`}
-                                    disabled={betSlip.totalStake === 0 || isPlacingBet || placeBetDisabled}
+                                    disabled={betSlip.totalStake === 0 || isPlacingBet || (placeBetDisabled && !pendingPlaceBet) || pendingPlaceBet}
                                     onClick={handlePlaceBet}
                                 >
-                                    {isPlacingBet ? (
+                                    {isPlacingBet || pendingPlaceBet ? (
                                         <span className="flex items-center justify-center">
                                             <Loader2 className="animate-spin h-5 w-5 mr-2 text-black" />
                                             Placing Bet...

@@ -151,7 +151,14 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                         
                         <div className="flex items-center flex-shrink-0">
                             {!hideOdds && (
-                                <div className="flex gap-1">
+                                <div 
+                                    className="flex gap-1"
+                                    onClick={(e) => {
+                                        // Prevent Link navigation when clicking on odds buttons
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                    }}
+                                >
                                     {(() => {
                                     // Use live odds if available, otherwise fall back to match odds
                                     let displayOdds;

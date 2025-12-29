@@ -359,7 +359,7 @@ export async function GET(request) {
         'referer': 'https://www.unibet.com.au/betting/sports/filter/football/all/matches',
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
       },
-      signal: AbortSignal.timeout(1500) // 1.5 seconds timeout - optimized for faster response
+      signal: AbortSignal.timeout(2500) // 2.5 seconds timeout - balanced for reliability
     });
     
     if (!response.ok) {
@@ -464,12 +464,30 @@ export async function GET(request) {
     // Mark as not refreshing on error
     cache.isRefreshing = false;
     
-    console.error(`❌ [NEXT API] Error proxying Unibet live matches:`, error);
-    console.error(`❌ [NEXT API] Error details:`, {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
+    // Handle timeout errors silently - just return cached data
+    if (error.name === 'TimeoutError' || error.message?.includes('timeout') || error.message?.includes('aborted')) {
+      if (cache.data) {
+        console.log(`⏱️ [NEXT API] Timeout - returning cached data (${Object.keys(cache.data.matches || {}).length} matches)`);
+        return NextResponse.json(cache.data);
+      }
+      // No cache available - return empty response
+      console.warn(`⏱️ [NEXT API] Timeout and no cache available`);
+      return NextResponse.json({
+        success: true,
+        matches: [],
+        allMatches: [],
+        upcomingMatches: [],
+        totalMatches: 0,
+        totalAllMatches: 0,
+        lastUpdated: new Date().toISOString(),
+        timestamp: Date.now(),
+        source: 'unibet-proxy-nextjs',
+        warning: 'Timeout - no data available'
+      });
+    }
+    
+    // Log other errors (not timeouts)
+    console.error(`❌ [NEXT API] Error proxying Unibet live matches:`, error.message);
     
     // Return cached data if available (even if stale) on error
     if (cache.data) {

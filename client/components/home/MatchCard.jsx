@@ -47,7 +47,15 @@ const MatchCard = ({ match }) => {
                             <div>{match.time}</div>
                         </div>
                     </div>
-                    <div className="flex gap-1">
+                    {/* Odds buttons - wrapped in a div that prevents Link navigation */}
+                    <div 
+                        className="flex gap-1"
+                        onClick={(e) => {
+                            // Prevent Link navigation when clicking on odds buttons
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }}
+                    >
                         {match.odds['1'] && (
                             <Button
                                 size={"sm"}

@@ -47,8 +47,8 @@ const LiveMatchCard = ({ match }) => {
         timing: match.timing,
         state_id: match.state_id,
         league: match.league,
-        groupId: match.groupId,
-        leagueName: match.leagueName,
+        groupId: match.league?.id || match.groupId, // ✅ Use league.id as groupId
+        leagueName: match.league?.name || match.leagueName, // ✅ Use league.name as leagueName
         source: 'LiveMatchCard'
     };
     // Debug: single console to inspect cards/corners structure
@@ -158,8 +158,15 @@ const LiveMatchCard = ({ match }) => {
                         </div>
                     </div>
 
-                    {/* Odds buttons */}
-                    <div className="flex gap-1">
+                    {/* Odds buttons - wrapped in a div that prevents Link navigation */}
+                    <div 
+                        className="flex gap-1"
+                        onClick={(e) => {
+                            // Prevent Link navigation when clicking on odds buttons
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }}
+                    >
                         {match.odds['1'] && (
                             <Button
                                 size={"sm"}
