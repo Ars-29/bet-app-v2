@@ -328,36 +328,38 @@ export async function GET(request) {
     // Extract matches (SAME LOGIC AS BACKEND)
     const { allMatches, liveMatches, upcomingMatches } = extractFootballMatches(data);
     
-    // Apply league filtering based on backend API
-    console.log('🔍 [NEXT API] Applying league filtering...');
-    let filteredAllMatches = allMatches;
-    let filteredLiveMatches = liveMatches;
-    let filteredUpcomingMatches = upcomingMatches;
+    // Apply league filtering based on backend API - STRICT FILTERING
+    console.log('🔍 [NEXT API] Applying league filtering (STRICT MODE)...');
+    let filteredAllMatches = [];
+    let filteredLiveMatches = [];
+    let filteredUpcomingMatches = [];
     
     try {
       const stats = await getLeagueFilterStats();
       console.log(`📊 [NEXT API] Total allowed leagues: ${stats.totalAllowedLeagues}`);
       
-      // ✅ FIX: Only filter if we have league mapping data
-      // If mapping fails or returns 0 leagues, allow all matches through (fail-open)
-      if (stats.totalAllowedLeagues > 0) {
-        filteredAllMatches = await filterMatchesByAllowedLeagues(allMatches);
-        filteredLiveMatches = await filterMatchesByAllowedLeagues(liveMatches);
-        filteredUpcomingMatches = await filterMatchesByAllowedLeagues(upcomingMatches);
-        
-        console.log(`✅ [NEXT API] League filtering complete:`);
-        console.log(`   - All matches: ${allMatches.length} → ${filteredAllMatches.length}`);
-        console.log(`   - Live matches: ${liveMatches.length} → ${filteredLiveMatches.length}`);
-        console.log(`   - Upcoming matches: ${upcomingMatches.length} → ${filteredUpcomingMatches.length}`);
-      } else {
-        console.warn('⚠️ [NEXT API] League mapping not available (0 leagues) - allowing all matches through');
-        console.log(`📊 [NEXT API] No filtering applied - showing all ${allMatches.length} matches`);
+      // ✅ STRICT FILTERING: Always filter if mapping loaded successfully
+      // Only show matches from CSV leagues, even if 0 leagues in CSV
+      filteredAllMatches = await filterMatchesByAllowedLeagues(allMatches);
+      filteredLiveMatches = await filterMatchesByAllowedLeagues(liveMatches);
+      filteredUpcomingMatches = await filterMatchesByAllowedLeagues(upcomingMatches);
+      
+      console.log(`✅ [NEXT API] League filtering complete (STRICT):`);
+      console.log(`   - All matches: ${allMatches.length} → ${filteredAllMatches.length}`);
+      console.log(`   - Live matches: ${liveMatches.length} → ${filteredLiveMatches.length}`);
+      console.log(`   - Upcoming matches: ${upcomingMatches.length} → ${filteredUpcomingMatches.length}`);
+      
+      if (stats.totalAllowedLeagues === 0) {
+        console.warn('⚠️ [NEXT API] League mapping has 0 leagues - no matches will be shown (STRICT MODE)');
       }
     } catch (error) {
-      // ✅ FIX: If filtering fails, allow all matches through (fail-open approach)
+      // ✅ STRICT: If filtering fails, show empty array (don't allow all matches)
       console.error('❌ [NEXT API] League filtering failed:', error.message);
-      console.warn('⚠️ [NEXT API] Allowing all matches through due to filtering error');
-      // Keep original matches (no filtering applied)
+      console.warn('⚠️ [NEXT API] STRICT MODE: Showing no matches due to filtering error');
+      // Return empty arrays - strict filtering means no matches if filtering fails
+      filteredAllMatches = [];
+      filteredLiveMatches = [];
+      filteredUpcomingMatches = [];
     }
 
     // Filter upcoming matches to only show matches within next 24 hours (SAME AS BACKEND)
