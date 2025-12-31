@@ -60,14 +60,27 @@ export async function GET(request) {
         'accept': 'application/json',
         'cache-control': 'no-cache'
       },
-      signal: AbortSignal.timeout(5000) // 5 seconds timeout
+      signal: AbortSignal.timeout(10000) // ✅ FIX: Increased to 10 seconds for Render
     });
     
     if (!response.ok) {
-      throw new Error(`Backend API returned ${response.status}`);
+      // ✅ DEBUG: Log more details about the error
+      const errorText = await response.text().catch(() => 'Unable to read error response');
+      console.error(`❌ [NEXT API] Backend API error ${response.status}:`, errorText);
+      throw new Error(`Backend API returned ${response.status}: ${errorText.substring(0, 200)}`);
     }
     
     const data = await response.json();
+    
+    // ✅ FIX: Validate response structure
+    if (!data.success || !data.data) {
+      console.error('❌ [NEXT API] Invalid response structure:', {
+        success: data.success,
+        hasData: !!data.data,
+        dataKeys: data.data ? Object.keys(data.data) : []
+      });
+      throw new Error('Backend returned invalid response structure');
+    }
     
     console.log(`✅ [NEXT API] Successfully fetched league mapping from backend`);
     console.log(`📊 [NEXT API] Mapping data:`, {
@@ -75,6 +88,12 @@ export async function GET(request) {
       mappingCount: Object.keys(data.data?.unibetToFotmobMapping || {}).length,
       allowedLeagueIdsCount: data.data?.allowedLeagueIds?.length || 0
     });
+    
+    // ✅ FIX: Validate that we actually have league IDs
+    if (!data.data.allowedLeagueIds || data.data.allowedLeagueIds.length === 0) {
+      console.warn('⚠️ [NEXT API] Backend returned empty allowedLeagueIds array');
+      // Still cache it, but log warning
+    }
     
     // Update cache
     cache.data = data;

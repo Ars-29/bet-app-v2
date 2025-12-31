@@ -47,7 +47,7 @@ async function fetchLeagueMappingFromBackend() {
       console.log(`✅ [NEXT API] Allowed league IDs (first 10):`, allowedLeagueIds?.slice(0, 10));
       console.log(`✅ [NEXT API] Allowed league IDs type:`, typeof allowedLeagueIds?.[0]);
       
-      // ✅ DEBUG: Ensure allowedLeagueIds is an array and convert all to strings
+      // ✅ FIX: Ensure allowedLeagueIds is an array
       const leagueIdsArray = Array.isArray(allowedLeagueIds) ? allowedLeagueIds : [];
       const leagueIdsSet = new Set(leagueIdsArray.map(id => String(id))); // Convert all to strings
       
@@ -60,7 +60,9 @@ async function fetchLeagueMappingFromBackend() {
         totalLeagues: totalLeagues || 0
       };
     } else {
-      throw new Error('Invalid API response format');
+      // ✅ FIX: Handle case where API returns success: false or empty data
+      console.warn('⚠️ [NEXT API] Invalid API response - success:', result.success, 'data:', !!result.data);
+      throw new Error('Invalid API response format or backend unavailable');
     }
   } catch (error) {
     console.error('❌ [NEXT API] Error fetching league mapping from backend:', error.message);
