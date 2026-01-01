@@ -23,9 +23,7 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
     
     // Enable real-time odds synchronization for live matches in LeagueCards
     // This ensures bets placed from In-Play section get odds updates
-    if (isInPlay && match.isLive) {
-        useLiveOddsSync(match.id);
-    }
+    useLiveOddsSync(match.id, Boolean(isInPlay && match.isLive));
     
     
     return (
@@ -163,32 +161,38 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                                     }}
                                 >
                                     {(() => {
-                                    // Use live odds if available, otherwise fall back to match odds
+                                    // ✅ Use a single source of truth for display odds to avoid flicker:
+                                    // Priority: mainBetOffer (updated frequently) > match.odds > liveOdds (fallback)
                                     let displayOdds;
-                                    if (isInPlay && match.isLive && liveOdds && (liveOdds.home || liveOdds.draw || liveOdds.away)) {
-                                        displayOdds = liveOdds;
-                                    } else if (match.odds) {
-                                        displayOdds = match.odds;
-                                    } else if (match.mainBetOffer && match.mainBetOffer.outcomes) {
-                                        // Convert Unibet API odds format to expected format
+                                    if (match.mainBetOffer && match.mainBetOffer.outcomes) {
+                                        // Convert Unibet API mainBetOffer outcomes into the same shape the UI expects
                                         displayOdds = {};
                                         match.mainBetOffer.outcomes.forEach(outcome => {
-                                            // Convert Unibet API odds format (divide by 1000)
+                                            const label = (outcome.label || '').toString().toLowerCase();
                                             const convertedOdds = outcome.oddsDecimal || (parseFloat(outcome.odds) / 1000).toFixed(2);
-                                            
-                                            if (outcome.label === '1' || outcome.label === 'Home') {
-                                                displayOdds['1'] = convertedOdds;
-                                            } else if (outcome.label === 'X' || outcome.label === 'Draw') {
-                                                displayOdds['X'] = convertedOdds;
-                                            } else if (outcome.label === '2' || outcome.label === 'Away') {
-                                                displayOdds['2'] = convertedOdds;
+                                            const item = {
+                                                value: convertedOdds,
+                                                oddId: outcome.id || outcome.outcomeId,
+                                                suspended: (outcome.status || 'OPEN') !== 'OPEN'
+                                            };
+                                            if (label === '1' || label === 'home') {
+                                                displayOdds['1'] = item;
+                                            } else if (label === 'x' || label === 'draw') {
+                                                displayOdds['X'] = item;
+                                            } else if (label === '2' || label === 'away') {
+                                                displayOdds['2'] = item;
                                             }
                                         });
+                                    } else if (match.odds) {
+                                        displayOdds = match.odds;
+                                    } else if (isInPlay && match.isLive && liveOdds && (liveOdds.home || liveOdds.draw || liveOdds.away)) {
+                                        displayOdds = liveOdds;
                                     } else {
                                         displayOdds = {};
                                     }
                                     
-                                    const isUsingLiveOdds = isInPlay && match.isLive && liveOdds && (liveOdds.home || liveOdds.draw || liveOdds.away);
+                                    // ✅ Prefer displayOdds for rendering; only use liveOdds as a last resort fallback
+                                    const isUsingLiveOdds = false;
                                     
                                     // Helper function to get suspended status for an odd
                                     const getSuspendedStatus = (oddKey) => {

@@ -15,13 +15,14 @@ import { selectBets, updateBetOdds, removeBet } from '@/lib/features/betSlip/bet
  * @param {string} matchId - The ID of the match to sync odds for
  * @returns {Object} - Object containing match data and bets count for debugging
  */
-export const useLiveOddsSync = (matchId) => {
+export const useLiveOddsSync = (matchId, enabled = true) => {
   const dispatch = useDispatch();
   const liveMatches = useSelector(selectLiveMatchesRaw);
   const matchBetOffers = useSelector(state => state.liveMatches.matchBetOffers);
   const bets = useSelector(selectBets);
 
   useEffect(() => {
+    if (!enabled) return;
     if (!liveMatches || !Array.isArray(liveMatches) || liveMatches.length === 0) {
       return;
     }
@@ -250,7 +251,7 @@ export const useLiveOddsSync = (matchId) => {
         }
       }
     });
-  }, [liveMatches, matchBetOffers, bets, matchId, dispatch]);
+  }, [enabled, liveMatches, matchBetOffers, bets, matchId, dispatch]);
 
   // Return the current live match data for debugging purposes
   const liveMatch = liveMatches?.find(match => match.id === matchId);
