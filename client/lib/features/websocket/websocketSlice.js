@@ -96,14 +96,14 @@ const selectMatchOddsData = (state, matchId) => state.websocket.liveOdds[matchId
 export const selectMainOdds = createSelector(
   [selectMatchOddsData],
   (matchOdds) => {
-    if (!matchOdds || !matchOdds.odds) return {};
-    
-    // The backend now sends extracted main odds directly
-    return {
-      home: matchOdds.odds.home || null,
-      draw: matchOdds.odds.draw || null,
-      away: matchOdds.odds.away || null
-    };
+  if (!matchOdds || !matchOdds.odds) return {};
+  
+  // The backend now sends extracted main odds directly
+  return {
+    home: matchOdds.odds.home || null,
+    draw: matchOdds.odds.draw || null,
+    away: matchOdds.odds.away || null
+  };
   }
 );
 

@@ -277,8 +277,9 @@ const MatchListPage = ({ config }) => {
                                                             isInPlay={pageTitle === 'Live Matches'}
                                                         >
                                                             <div className="px-4 py-3 hover:bg-gray-50 transition-colors">
-                                                                <div className="flex items-center justify-between">
-                                                                <div className="flex-1">
+                                                                <div className="flex items-center justify-between gap-2">
+                                                                {/* Team names - with max width constraint on mobile */}
+                                                                <div className="flex-1 min-w-0 max-w-[calc(100%-140px)] md:max-w-none">
                                                                     {/* Match Time/Date and Indicator */}
                                                                     <div className="flex items-center justify-between mb-1.5"> {/* Reduced margin */}
                                                                         <div className="flex items-center gap-2">
@@ -288,45 +289,26 @@ const MatchListPage = ({ config }) => {
                                                                         </div>
                                                                     </div>
 
-                                                                    {/* Teams and Scores */}
+                                                                    {/* Teams - scores removed from here, moved to right */}
                                                                     <Link href={`/matches/${match.id}`}>
-                                                                        <div className="cursor-pointer">                                                                        <div className="space-y-1">
-                                                                            <div className="flex items-center gap-2" title={match.team1 || (match.participants && match.participants[0] ? match.participants[0].name : '')}>
-                                                                                <span className="text-xs text-gray-800 truncate" style={{ maxWidth: '120px' }}>
+                                                                        <div className="cursor-pointer">
+                                                                            <div className="space-y-1">
+                                                                                <div className="text-xs text-gray-800 truncate" title={match.team1 || (match.participants && match.participants[0] ? match.participants[0].name : '')}>
                                                                                     {match.team1 || (match.participants && match.participants[0] ? match.participants[0].name : 'Team 1')}
-                                                                                </span>
-                                                                                {/* Score from Kambi API or fallback - fixed width for alignment */}
-                                                                                <div className="w-6 text-center">
-                                                                                    {(match.kambiLiveData?.score || match.score?.team1 !== undefined) && (
-                                                                                        <span className="font-bold text-gray-900">
-                                                                                            {match.kambiLiveData?.score?.home || match.score?.team1 || '0'}
-                                                                                        </span>
-                                                                                    )}
                                                                                 </div>
-                                                                            </div>
-                                                                            <div className="flex items-center gap-2" title={match.team2 || (match.participants && match.participants[1] ? match.participants[1].name : '')}>
-                                                                                <span className="text-xs text-gray-800 truncate" style={{ maxWidth: '120px' }}>
+                                                                                <div className="text-xs text-gray-800 truncate" title={match.team2 || (match.participants && match.participants[1] ? match.participants[1].name : '')}>
                                                                                     {match.team2 || (match.participants && match.participants[1] ? match.participants[1].name : 'Team 2')}
-                                                                                </span>
-                                                                                {/* Score from Kambi API or fallback - fixed width for alignment */}
-                                                                                <div className="w-6 text-center">
-                                                                                    {(match.kambiLiveData?.score || match.score?.team2 !== undefined) && (
-                                                                                        <span className="font-bold text-gray-900">
-                                                                                            {match.kambiLiveData?.score?.away || match.score?.team2 || '0'}
-                                                                                        </span>
-                                                                                    )}
                                                                                 </div>
                                                                             </div>
-                                                                        </div>
                                                                         </div>
                                                                     </Link>
                                                                 </div>
                                                                 
-                                                                {/* Cards and Corners + Betting Buttons Container */}
-                                                                <div className="flex items-center gap-3">
+                                                                {/* Cards and Corners + Scores + Betting Buttons Container */}
+                                                                <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
                                                                     {/* Cards and Corners - three separate columns like home page */}
                                                                     {match.kambiLiveData?.statistics?.football && (
-                                                                        <div className="flex items-center justify-center gap-2 text-xs">
+                                                                        <div className="flex items-center justify-center gap-1.5 text-xs">
                                                                             {/* Yellow cards column */}
                                                                             <div className="flex flex-col items-center justify-center gap-1">
                                                                                 <div className="w-2 h-2 bg-yellow-500 border-0"></div>
@@ -343,9 +325,9 @@ const MatchListPage = ({ config }) => {
                                                                                     <div className="text-xs">{(match.kambiLiveData?.statistics?.football?.away?.redCards || 0)}</div>
                                                                                 </div>
                                                                             </div>
-                                                                            {/* Corners column */}
-                                                                            <div className="flex flex-col items-center justify-top gap-1">
-                                                                                <div className="text-red-600 text-[10px]">🚩</div>
+                                                                            {/* Corners column - fix alignment */}
+                                                                            <div className="flex flex-col items-center justify-center gap-1">
+                                                                                <div className="text-red-600 text-[10px] leading-none">🚩</div>
                                                                                 <div className="text-[10px]">
                                                                                     <div className="text-xs">{(match.kambiLiveData?.statistics?.football?.home?.corners || 0)}</div>
                                                                                     <div className="text-xs">{(match.kambiLiveData?.statistics?.football?.away?.corners || 0)}</div>
@@ -353,6 +335,19 @@ const MatchListPage = ({ config }) => {
                                                                             </div>
                                                                         </div>
                                                                     )}
+                                                                    
+                                                                    {/* Live score display - positioned on the right, before odds */}
+                                                                    {match.kambiLiveData?.score ? (
+                                                                        <div className="text-sm font-bold text-gray-800 text-right mr-1 md:mr-2 flex-shrink-0">
+                                                                            <div>{match.kambiLiveData.score.home || '0'}</div>
+                                                                            <div>{match.kambiLiveData.score.away || '0'}</div>
+                                                                        </div>
+                                                                    ) : match.score?.team1 !== undefined ? (
+                                                                        <div className="text-sm font-bold text-gray-800 text-right mr-1 md:mr-2 flex-shrink-0">
+                                                                            <div>{match.score.team1 || '0'}</div>
+                                                                            <div>{match.score.team2 || '0'}</div>
+                                                                        </div>
+                                                                    ) : null}
                                                                     
                                                                     {/* Betting Buttons */}
                                                                     {!hideOdds && (

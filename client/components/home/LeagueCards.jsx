@@ -85,8 +85,9 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
             
             <Link href={`/matches/${match.id}`}>
                 <div className="cursor-pointer hover:bg-gray-50 -mx-4 px-4 py-1 rounded">
-                    <div className="flex items-center justify-between">
-                        <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                        {/* Team names - with max width constraint on mobile */}
+                        <div className="flex-1 min-w-0 max-w-[calc(100%-140px)] md:max-w-none">
                             <div className="text-[12px] mb-1 truncate" title={match.team1 || match.homeName}>
                                 {(match.team1 || match.homeName || '').length > 15 ? `${(match.team1 || match.homeName || '').slice(0, 15)}...` : (match.team1 || match.homeName || '')}
                             </div>
@@ -97,7 +98,7 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                         
                         {/* Cards + Corners display in the middle - always show in In-Play (default 0-0) */}
                         {isInPlay && (
-                            <div className="text-xs text-gray-600 text-center mx-2">
+                            <div className="text-xs text-gray-600 text-center mx-1 md:mx-2 flex-shrink-0">
                                 <div className="flex items-center justify-center gap-2">
                                     <div className="flex items-center justify-center gap-2">
                                         {/* Debug: single console for cards/corners structure */}
@@ -133,22 +134,23 @@ const MatchItem = ({ match, isInPlay, createBetHandler, buttonsReady, getOddButt
                         
                         {/* Live score display from Kambi API - vertically on the right */}
                         {match.kambiLiveData?.score ? (
-                            <div className="text-sm font-bold text-gray-800 text-right mr-2">
+                            <div className="text-sm font-bold text-gray-800 text-right mr-1 md:mr-2 flex-shrink-0">
                                 <div>{match.kambiLiveData.score.home || '0'}</div>
                                 <div>{match.kambiLiveData.score.away || '0'}</div>
                             </div>
                         ) : match.liveData?.score ? (
-                            <div className="text-sm font-bold text-gray-800 text-right mr-2">
+                            <div className="text-sm font-bold text-gray-800 text-right mr-1 md:mr-2 flex-shrink-0">
                                 <div>{match.liveData.score.split(' - ')[0] || '0'}</div>
                                 <div>{match.liveData.score.split(' - ')[1] || '0'}</div>
                             </div>
                         ) : isInPlay && match.isLive ? (
-                            <div className="text-sm font-bold text-gray-800 text-right mr-2">
+                            <div className="text-sm font-bold text-gray-800 text-right mr-1 md:mr-2 flex-shrink-0">
                                 <div>0</div>
                                 <div>0</div>
                             </div>
                         ) : null}
                         
+                        {/* Odds buttons - ensure they stay visible with flex-shrink-0 */}
                         <div className="flex items-center flex-shrink-0">
                             {!hideOdds && (
                                 <div 
