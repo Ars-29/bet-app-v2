@@ -50,6 +50,19 @@ class UnibetDirectService {
    */
   async getBetOffers(eventId) {
     try {
+      // ✅ FIX: Validate that eventId is numeric before making API call
+      if (!eventId) {
+        throw new Error('Event ID is required');
+      }
+      
+      const isNumeric = /^\d+$/.test(String(eventId));
+      if (!isNumeric) {
+        console.warn(`⚠️ [NEXT PROXY] Invalid eventId format: "${eventId}" (expected numeric ID)`);
+        throw new Error(
+          `Invalid event ID format. Expected numeric ID, but received: "${eventId}". This appears to be a slug instead of an event ID.`
+        );
+      }
+      
       console.log(`🔍 [NEXT PROXY] Fetching bet offers via Next.js API proxy for event: ${eventId}`);
       
       // Use Next.js API route as proxy (handles CORS)

@@ -79,8 +79,22 @@ export const fetchBetOffersForLiveMatches = createAsyncThunk(
         return {};
       }
       
+      // ✅ FIX: Filter out non-numeric IDs (slugs, etc.) - only process numeric event IDs
+      const numericMatchIds = matchIds.filter(id => {
+        const isNumeric = /^\d+$/.test(String(id));
+        if (!isNumeric) {
+          console.warn(`⚠️ [BETOFFERS] Skipping non-numeric match ID: "${id}" (expected numeric event ID)`);
+        }
+        return isNumeric;
+      });
+      
+      if (numericMatchIds.length === 0) {
+        console.warn(`⚠️ [BETOFFERS] No valid numeric match IDs to fetch bet offers for`);
+        return {};
+      }
+      
       // Limit to max 10 matches at once to prevent overload and reduce delay
-      const limitedMatchIds = matchIds.slice(0, 10);
+      const limitedMatchIds = numericMatchIds.slice(0, 10);
       
       console.log(`🔍 [BETOFFERS] Fetching betoffers for ${limitedMatchIds.length} matches in parallel...`);
       

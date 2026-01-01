@@ -18,6 +18,22 @@ export async function GET(request, { params }) {
       );
     }
     
+    // ✅ FIX: Validate that eventId is numeric (Unibet API requires numeric IDs)
+    const isNumeric = /^\d+$/.test(eventId);
+    if (!isNumeric) {
+      console.warn(`⚠️ [NEXT API] Invalid eventId format: "${eventId}" (expected numeric ID)`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid event ID format',
+          message: `Event ID must be numeric. Received: "${eventId}". This appears to be a slug instead of an event ID.`,
+          eventId,
+          timestamp: new Date().toISOString()
+        },
+        { status: 400 }
+      );
+    }
+    
     const url = `${UNIBET_BETOFFERS_API}/${eventId}.json?lang=en_AU&market=AU`;
     
     console.log(`🔍 [NEXT API] Proxying Unibet bet offers request for event: ${eventId}`);
