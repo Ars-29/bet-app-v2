@@ -246,19 +246,34 @@ const initializeApp = async () => {
     // 2.5. Explicitly initialize agenda jobs after a short delay to ensure MongoDB is ready
     // This ensures jobs are scheduled even if "ready" event doesn't fire
     // ✅ FIX: Run in background to avoid blocking
+    console.log('[App] ⏳ Waiting 2 seconds before initializing agenda jobs...');
     setTimeout(() => {
       (async () => {
         try {
+          console.log('[App] ========================================');
+          console.log('[App] 🔄 Initializing agenda jobs (including League Mapping update)...');
+          console.log('[App] ========================================');
+          
           const { initializeAgendaJobs } = await import('./config/agendaJobs.js');
-          console.log('[App] 🔄 Explicitly initializing agenda jobs (non-blocking)...');
+          console.log('[App] ✅ initializeAgendaJobs imported successfully');
+          console.log('[App] 🔄 Calling initializeAgendaJobs()...');
+          
           await initializeAgendaJobs();
           
+          console.log('[App] ========================================');
           console.log('[App] ✅ Agenda jobs initialized successfully');
+          console.log('[App] ✅ League Mapping update should be running in background');
           console.log('[App] ✅ Server fully ready to accept requests');
+          console.log('[App] ========================================');
           
         } catch (error) {
-          console.error('[App] ❌ Error initializing agenda jobs:', error);
+          console.error('[App] ========================================');
+          console.error('[App] ❌ ERROR initializing agenda jobs');
+          console.error('[App] ========================================');
+          console.error('[App] Error message:', error.message);
+          console.error('[App] Error name:', error.name);
           console.error('[App] Error stack:', error.stack);
+          console.error('[App] ========================================');
           // Don't block server startup
         }
       })(); // Immediately invoked async function - runs in background

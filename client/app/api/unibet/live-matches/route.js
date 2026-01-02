@@ -4,6 +4,8 @@
 // Same extraction and filtering logic as backend server/src/routes/unibet-api/live-matches.js
 import { NextResponse } from 'next/server';
 import { filterMatchesByAllowedLeagues, getLeagueFilterStats } from '@/lib/utils/leagueFilter.js';
+import axios from 'axios';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 const UNIBET_LIVE_MATCHES_API = 'https://www.unibet.com.au/sportsbook-feeds/views/filter/football/all/matches';
 
@@ -38,6 +40,16 @@ let kambiCache = {
 
 const KAMBI_CACHE_DURATION = 5000; // Use cached data for 5 seconds to avoid rate limits
 const KAMBI_RETRY_DELAY = 2000; // Wait 2 seconds before retry on 410
+
+// Proxy configuration (for 410 fallback)
+const PROXY_CONFIG = {
+  host: process.env.KAMBI_PROXY_HOST || '104.252.62.178',
+  port: process.env.KAMBI_PROXY_PORT || '5549',
+  username: process.env.KAMBI_PROXY_USER || 'xzskxfzx',
+  password: process.env.KAMBI_PROXY_PASS || 't3xvzuubsk2d'
+};
+
+const PROXY_URL = `http://${PROXY_CONFIG.username}:${PROXY_CONFIG.password}@${PROXY_CONFIG.host}:${PROXY_CONFIG.port}`;
 
 // Helper function to extract football matches (SAME AS BACKEND - exact copy)
 function extractFootballMatches(data) {
@@ -186,6 +198,40 @@ function extractFootballMatches(data) {
   };
 }
 
+// Function to fetch Kambi data through proxy (fallback for 410)
+async function fetchKambiLiveDataViaProxy() {
+  try {
+    console.log(`🔄 [NEXT API] Fetching Kambi data via PROXY (410 fallback)...`);
+    
+    const url = `${KAMBI_LIVE_API_URL}?lang=en_AU&market=AU&client_id=2&channel_id=1&ncid=${Date.now()}`;
+    
+    // Create proxy agent
+    const httpsAgent = new HttpsProxyAgent(PROXY_URL);
+    
+    // Use axios with proxy (more reliable than fetch for proxy)
+    const response = await axios.get(url, {
+      headers: KAMBI_LIVE_HEADERS,
+      httpsAgent: httpsAgent,
+      httpAgent: httpsAgent,
+      timeout: 5000, // 5 seconds for proxy
+      validateStatus: () => true // Don't throw on non-200
+    });
+    
+    if (response.status === 200 && response.data && response.data.liveEvents) {
+      console.log(`✅ [NEXT API] Successfully fetched Kambi data via PROXY:`, {
+        hasLiveEvents: !!response.data.liveEvents,
+        totalEvents: response.data.liveEvents?.length || 0
+      });
+      return response.data;
+    }
+    
+    throw new Error(`Proxy request returned ${response.status}`);
+  } catch (error) {
+    console.error(`❌ [NEXT API] Proxy fallback failed:`, error.message);
+    return null;
+  }
+}
+
 // Function to fetch live data from Kambi API (score, matchClock, statistics)
 async function fetchKambiLiveData(retryCount = 0) {
   try {
@@ -229,15 +275,41 @@ async function fetchKambiLiveData(retryCount = 0) {
     clearTimeout(timeoutId);
     
     if (!response.ok) {
-      // ✅ Special handling for 410 (Gone) - retry once after delay
-      if (response.status === 410 && retryCount === 0) {
-        console.warn(`⚠️ [NEXT API] Kambi API returned 410, retrying after ${KAMBI_RETRY_DELAY}ms...`);
-        kambiCache.isFetching = false;
-        await new Promise(resolve => setTimeout(resolve, KAMBI_RETRY_DELAY));
-        return fetchKambiLiveData(1); // Retry once
+      // ✅ Special handling for 410 (Gone) - try proxy as fallback
+      if (response.status === 410) {
+        if (retryCount === 0) {
+          console.warn(`⚠️ [NEXT API] Kambi API returned 410, trying PROXY fallback...`);
+          kambiCache.isFetching = false;
+          
+          // Try proxy fallback
+          const proxyData = await fetchKambiLiveDataViaProxy();
+          if (proxyData) {
+            // Update cache with proxy data
+            kambiCache.data = proxyData;
+            kambiCache.lastUpdated = Date.now();
+            console.log(`✅ [NEXT API] Proxy fallback successful!`);
+            return proxyData;
+          }
+          
+          // If proxy also failed, retry direct after delay
+          console.warn(`⚠️ [NEXT API] Proxy fallback failed, retrying direct after ${KAMBI_RETRY_DELAY}ms...`);
+          await new Promise(resolve => setTimeout(resolve, KAMBI_RETRY_DELAY));
+          return fetchKambiLiveData(1); // Retry direct once
+        } else {
+          // Already retried, try proxy one more time
+          console.warn(`⚠️ [NEXT API] Direct retry also returned 410, trying PROXY one last time...`);
+          const proxyData = await fetchKambiLiveDataViaProxy();
+          if (proxyData) {
+            kambiCache.data = proxyData;
+            kambiCache.lastUpdated = Date.now();
+            kambiCache.isFetching = false;
+            console.log(`✅ [NEXT API] Proxy fallback successful on second attempt!`);
+            return proxyData;
+          }
+        }
       }
       
-      // ✅ For 410 on retry, or other errors, use cached data if available
+      // ✅ For other errors or if proxy failed, use cached data if available
       if (kambiCache.data && kambiCache.lastUpdated) {
         console.warn(`⚠️ [NEXT API] Kambi API returned ${response.status}, using cached data`);
         kambiCache.isFetching = false;
@@ -267,6 +339,18 @@ async function fetchKambiLiveData(retryCount = 0) {
     return null;
   } catch (error) {
     kambiCache.isFetching = false;
+    
+    // ✅ If direct fetch failed and we haven't tried proxy yet, try proxy
+    if (retryCount === 0 && (error.message.includes('aborted') || error.message.includes('timeout') || error.name === 'AbortError')) {
+      console.warn(`⚠️ [NEXT API] Direct connection failed (${error.message}), trying PROXY fallback...`);
+      const proxyData = await fetchKambiLiveDataViaProxy();
+      if (proxyData) {
+        kambiCache.data = proxyData;
+        kambiCache.lastUpdated = Date.now();
+        console.log(`✅ [NEXT API] Proxy fallback successful after direct failure!`);
+        return proxyData;
+      }
+    }
     
     // ✅ If fetch failed but we have cached data, use it
     if (kambiCache.data && kambiCache.lastUpdated) {
@@ -604,4 +688,7 @@ export async function GET(request) {
     );
   }
 }
+
+// Ensure Node.js runtime (required for proxy agent and axios)
+export const runtime = 'nodejs';
 

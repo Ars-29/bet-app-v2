@@ -168,7 +168,7 @@ export default function BetManagement() {
         // Special handling for cancelled/canceled
         if (filterStatus === "cancelled") {
           if (betStatus !== "canceled" && betStatus !== "cancelled") {
-            return false;
+        return false;
           }
         } else {
           if (betStatus !== filterStatus) {
