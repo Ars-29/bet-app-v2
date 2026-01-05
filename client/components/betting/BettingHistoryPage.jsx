@@ -482,10 +482,12 @@ const BettingHistoryPage = ({ userId }) => {
           {isCombo && (
             <div
               style={{
-                maxHeight: isExpanded ? '1000px' : '0px',
-                overflow: 'hidden',
+                maxHeight: isExpanded ? '500px' : '0px',
+                overflowY: isExpanded ? 'auto' : 'hidden',
+                overflowX: 'hidden',
                 transition: 'max-height 0.3s ease',
               }}
+              className="dropdown-scrollbar"
             >
               <CombinationBetLegs bet={bet} />
             </div>
