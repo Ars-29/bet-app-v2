@@ -73,10 +73,22 @@ export class FotmobController {
                 });
             }
 
-            const date = req.params.date || new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            // ✅ FIX: Use Pakistani timezone for default date
+            let date;
+            if (req.params.date) {
+                date = req.params.date; // YYYY-MM-DD format
+            } else {
+                // Get today's date in Pakistani timezone
+                const now = new Date();
+                const pakistaniDate = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+                const year = pakistaniDate.getFullYear();
+                const month = String(pakistaniDate.getMonth() + 1).padStart(2, '0');
+                const day = String(pakistaniDate.getDate()).padStart(2, '0');
+                date = `${year}-${month}-${day}`; // YYYY-MM-DD
+            }
             const dateStr = date.replace(/-/g, ''); // YYYYMMDD
 
-            console.log(`Refreshing FotMob cache for date: ${date} (${dateStr})`);
+            console.log(`Refreshing FotMob cache for date: ${date} (${dateStr}) - Pakistani timezone`);
 
             // Use direct API call (same as refreshMultidayCache)
             const timezone = 'Asia/Karachi';
@@ -168,7 +180,9 @@ export class FotmobController {
 
             const days = req.body.days || 20; // Default 20 days (21 total including yesterday)
             const forceRefresh = req.body.forceRefresh || false; // Force refresh flag (for 9:30 PM and server start)
-            const startDate = new Date();
+            // ✅ FIX: Use Pakistani timezone for start date
+            const now = new Date();
+            const startDate = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
             
             // Load existing cache to check what data we already have
             const multiDayFile = path.join(STORAGE_PATH, 'fotmob_multiday_cache.json');
@@ -201,12 +215,19 @@ export class FotmobController {
 
             // Start from yesterday (i = -1) to include previous day
             for (let i = -1; i < days; i++) {
+                // ✅ FIX: Calculate date in Pakistani timezone
                 const date = new Date(startDate);
                 date.setDate(date.getDate() + i);
-                const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
-                const dateFormatted = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+                
+                // Get date components in Pakistani timezone
+                const pakistaniDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+                const year = pakistaniDate.getFullYear();
+                const month = String(pakistaniDate.getMonth() + 1).padStart(2, '0');
+                const day = String(pakistaniDate.getDate()).padStart(2, '0');
+                const dateStr = `${year}${month}${day}`;
+                const dateFormatted = `${year}-${month}-${day}`; // YYYY-MM-DD format
 
-                console.log(`\n[FotMob] Processing date ${i + 2}/${days + 1}: ${dateFormatted} (${dateStr})`);
+                console.log(`\n[FotMob] Processing date ${i + 2}/${days + 1}: ${dateFormatted} (${dateStr}) - Pakistani timezone`);
 
                 // Check if we already have valid data for this date (unless force refresh)
                 if (!forceRefresh && cacheData[dateStr]) {

@@ -191,26 +191,28 @@ const scheduleLeagueMappingJob = async () => {
   
   if (!leagueMappingJobScheduled) {
     try {
-      // Schedule at 1:30 PM (13:30) Pakistan Time
+      // ✅ FIX: Schedule every 12 hours (at 00:00 and 12:00 Pakistan Time)
       // Cron syntax: "minute hour dayOfMonth month dayOfWeek"
       // IMPORTANT: Agenda.js uses server's LOCAL timezone for cron
-      // - On local dev (PKT): "30 13 * * *" = 1:30 PM PKT
-      // - On Render (UTC): "30 8 * * *" = 8:30 UTC = 1:30 PM PKT
+      // - On local dev (PKT): "0 0,12 * * *" = 00:00 and 12:00 PKT
+      // - On Render (UTC): "0 19,7 * * *" = 19:00 and 07:00 UTC = 00:00 and 12:00 PKT
       // Since we want same time on both, we need to detect timezone
       const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const isUTC = serverTimezone === 'UTC' || process.env.TZ === 'UTC';
-      // Schedule job for 1:30 PM PKT (13:30 PKT) = 8:30 UTC
-      const cronExpression = isUTC ? "30 8 * * *" : "30 13 * * *"; // UTC: 8:30 = 1:30 PM PKT, PKT: 13:30 = 1:30 PM PKT
+      // Schedule job every 12 hours: 00:00 and 12:00 PKT
+      // UTC: 19:00 (previous day) and 07:00 = 00:00 and 12:00 PKT
+      // PKT: 00:00 and 12:00 = 00:00 and 12:00 PKT
+      const cronExpression = isUTC ? "0 19,7 * * *" : "0 0,12 * * *";
       
       console.log('[Agenda] ========================================');
       console.log('[Agenda] Scheduling League Mapping auto-update job...');
-      console.log('[Agenda] Target Time: 13:30 PM (1:30 PM) PKT');
+      console.log('[Agenda] Target Time: Every 12 hours (00:00 and 12:00 PKT)');
       console.log(`[Agenda] Server Timezone: ${serverTimezone} (isUTC: ${isUTC})`);
       console.log(`[Agenda] Cron Expression: "${cronExpression}"`);
       if (isUTC) {
-        console.log('[Agenda] Using UTC cron: "30 8 * * *" = 8:30 UTC = 1:30 PM PKT');
+        console.log('[Agenda] Using UTC cron: "0 19,7 * * *" = 19:00 and 07:00 UTC = 00:00 and 12:00 PKT');
       } else {
-        console.log('[Agenda] Using PKT cron: "30 13 * * *" = 1:30 PM PKT');
+        console.log('[Agenda] Using PKT cron: "0 0,12 * * *" = 00:00 and 12:00 PKT');
       }
       console.log('[Agenda] ========================================');
       

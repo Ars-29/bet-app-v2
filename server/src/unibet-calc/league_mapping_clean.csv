@@ -40,3 +40,25 @@ Unibet_ID,Unibet_Name,Fotmob_ID,Fotmob_Name,Match_Type,Country/Region
 1000305993,"1. Lig",165,"1. Lig",Exact Match,Turkey
 1000095233,Supercopa,139,Super Cup,Different Name,Spain
 1000094633,"Trophée des Champions",207,"Super Cup",Different Name,France
+1000094970,"Paulista A1",10244,"Paulista A1",Exact Match,Brazil
+2000052731,"2nd Division",9100,"2. Division",Different Name,Cyprus
+1000094984,"FA Cup",132,"FA Cup",Exact Match,England
+2000050345,"FA Trophy",9253,"FA Trophy",Exact Match,England
+1000095485,"National League",117,"National League",Exact Match,England
+2000055849,"Super League (W)",9227,"WSL",Different Name,England
+2000080468,"The Championship (W)",9294,"WSL 2",Different Name,England
+1000094990,"Coupe de France",134,"Coupe de France",Exact Match,France
+1000094994,"Bundesliga",54,"Bundesliga",Exact Match,Germany
+1000094996,"Super League",135,"Super League",Exact Match,Greece
+2000122597,"Super League 2",8815,"Super League 2 Grp. B",Different Name,Greece
+1000095002,"Serie B",86,"Serie B",Exact Match,Italy
+1000451251,"Liga de Expansion MX",8976,"Liga de Expansion MX Clausura",Different Name,Mexico
+1000094112,"Liga MX",230,"Liga MX Clausura",Different Name,Mexico
+1000094980,"Eredivisie",57,"Eredivisie",Exact Match,Netherlands
+2000095410,"Tweede Divisie",9195,"Tweede Divisie",Exact Match,Netherlands
+2000050064,"Irish Cup",9389,"Irish Cup",Different Name,Northern Ireland
+1000095045,"Championship",123,"Championship",Exact Match,Scotland
+1000095047,"Scottish Premiership",64,"Premiership",Different Name,Scotland
+1000095049,"La Liga",87,"LaLiga",Different Name,Spain
+1000094708,"La Liga 2",140,"LaLiga2",Different Name,Spain
+2000051626,"Primera División (W)",9907,"Liga F",Different Name,Spain

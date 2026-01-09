@@ -368,7 +368,36 @@ class LeagueMappingAutoUpdate {
                 throw new Error('Invalid Fotmob response format');
             }
 
-            console.log(`[LeagueMapping] Found ${data.leagues.length} leagues in Fotmob data`);
+            // ✅ DETAILED LOGGING: Analyze the API response
+            console.log(`[LeagueMapping] 📥 FotMob API Response Analysis:`);
+            console.log(`[LeagueMapping]   - Date requested: ${dateStr}`);
+            console.log(`[LeagueMapping]   - API URL: ${apiUrl}`);
+            console.log(`[LeagueMapping]   - Response status: ${response.status}`);
+            console.log(`[LeagueMapping]   - Total leagues in API response: ${data.leagues.length}`);
+            
+            // Count leagues with and without matches
+            const leaguesWithMatches = data.leagues.filter(l => l.matches && Array.isArray(l.matches) && l.matches.length > 0).length;
+            const leaguesWithoutMatches = data.leagues.filter(l => !l.matches || !Array.isArray(l.matches) || l.matches.length === 0).length;
+            console.log(`[LeagueMapping]   - Leagues WITH matches: ${leaguesWithMatches}`);
+            console.log(`[LeagueMapping]   - Leagues WITHOUT matches: ${leaguesWithoutMatches}`);
+            
+            // Count groups vs regular leagues
+            const groupLeagues = data.leagues.filter(l => l.isGroup === true).length;
+            const regularLeagues = data.leagues.filter(l => !l.isGroup).length;
+            console.log(`[LeagueMapping]   - Group leagues: ${groupLeagues}`);
+            console.log(`[LeagueMapping]   - Regular leagues: ${regularLeagues}`);
+            
+            // Log first 10 league names for verification
+            console.log(`[LeagueMapping] 📋 First 10 leagues from API:`);
+            data.leagues.slice(0, 10).forEach((l, i) => {
+                const name = l.name || l.parentLeagueName || 'Unknown';
+                const matchCount = (l.matches && Array.isArray(l.matches)) ? l.matches.length : 0;
+                const isGroup = l.isGroup ? ' (GROUP)' : '';
+                console.log(`[LeagueMapping]   ${i + 1}. "${name}"${isGroup} (${l.ccode || 'N/A'}) - ${matchCount} matches`);
+            });
+            
+            // ✅ IMPORTANT: Return ALL leagues, don't filter
+            console.log(`[LeagueMapping] ✅ Returning ALL ${data.leagues.length} leagues (no filtering applied)`);
             return data.leagues;
         } catch (error) {
             console.error('[LeagueMapping] Error fetching Fotmob matches:', error.message);
@@ -719,40 +748,79 @@ class LeagueMappingAutoUpdate {
                 
                 console.log(`[LeagueMapping] 🤖 Using Gemini AI fallback (${keyName}) for: ${unibetLeague.name} (${unibetLeague.country || 'Unknown country'})`);
                 
+                // ✅ FIX: Send ALL matches (not just 5) - complete API data
                 // Prepare Unibet league data for Gemini
                 const unibetData = {
                     leagueName: unibetLeague.englishName || unibetLeague.name,
                     country: unibetLeague.country || '',
-                    matches: (unibetLeague.matches || []).slice(0, 5).map(m => ({
+                    matches: (unibetLeague.matches || []).map(m => ({
                         homeTeam: m.homeName,
                         awayTeam: m.awayName,
                         startTime: m.start
                     }))
                 };
 
+                // ✅ FIX: Send ALL FotMob leagues (NO LIMIT) - complete API data
+                // IMPORTANT: We send ALL leagues from fotmobLeagues array, not just 25 or any limited subset
+                console.log(`[LeagueMapping] 📥 Received ${fotmobLeagues.length} FotMob leagues to process for Gemini`);
+                
                 // Prepare FotMob leagues data (simplified for Gemini)
+                // Include ALL leagues, even if they have no matches (for Priority 1 name matching)
                 const fotmobData = fotmobLeagues.map(league => ({
                     id: String(league.primaryId || league.id),
                     name: (league.isGroup && league.parentLeagueName) 
                         ? league.parentLeagueName 
                         : (league.name || league.parentLeagueName || ''),
                     country: league.ccode || '',
-                    matches: (league.matches || []).slice(0, 5).map(m => ({
+                    matches: (league.matches || []).map(m => ({
                         homeTeam: m.home?.name || m.home?.longName || '',
                         awayTeam: m.away?.name || m.away?.longName || '',
                         startTime: m.status?.utcTime || m.time || ''
                     }))
                 }));
+                
+                // ✅ VERIFY: Log total leagues being sent (should match fotmobLeagues.length)
+                console.log(`[LeagueMapping] ✅ Prepared ${fotmobData.length} FotMob leagues for Gemini (should match ${fotmobLeagues.length})`);
+                
+                // ✅ DEBUG: Log what leagues are being sent to Gemini (especially for La Liga)
+                const laligaLeagues = fotmobData.filter(l => 
+                    l.name.toLowerCase().includes('laliga') || 
+                    l.name.toLowerCase().includes('la liga') ||
+                    (l.country === 'ESP' && l.name.toLowerCase().includes('liga'))
+                );
+                if (laligaLeagues.length > 0) {
+                    console.log(`[LeagueMapping] 🔍 Found ${laligaLeagues.length} La Liga related leagues in FotMob data:`);
+                    laligaLeagues.forEach(l => {
+                        console.log(`   - ID: ${l.id}, Name: "${l.name}", Country: ${l.country}`);
+                    });
+                } else {
+                    console.log(`[LeagueMapping] ⚠️ WARNING: No La Liga related leagues found in FotMob data!`);
+                    console.log(`[LeagueMapping] 📋 Sample FotMob league names (first 20):`);
+                    fotmobData.slice(0, 20).forEach(l => {
+                        console.log(`   - "${l.name}" (${l.country})`);
+                    });
+                }
+                // ✅ VERIFY: Log total leagues being sent (should be ALL, not limited)
+                console.log(`[LeagueMapping] 📤 Sending ${fotmobData.length} total FotMob leagues to Gemini for "${unibetData.leagueName}" (ALL leagues, NO LIMIT)`);
+                console.log(`[LeagueMapping] 📊 Input: ${fotmobLeagues.length} leagues from API → Output: ${fotmobData.length} leagues to Gemini`);
+                console.log(`[LeagueMapping] 📊 Unibet league has ${unibetData.matches.length} matches (ALL matches included)`);
+                const totalFotmobMatches = fotmobData.reduce((sum, l) => sum + l.matches.length, 0);
+                console.log(`[LeagueMapping] 📊 FotMob leagues have ${totalFotmobMatches} total matches (ALL matches included)`);
+                
+                // ✅ DEBUG: Count leagues with and without matches
+                const leaguesWithMatches = fotmobData.filter(l => l.matches.length > 0).length;
+                const leaguesWithoutMatches = fotmobData.filter(l => l.matches.length === 0).length;
+                console.log(`[LeagueMapping] 📊 Breakdown: ${leaguesWithMatches} leagues with matches, ${leaguesWithoutMatches} leagues without matches`);
 
                 // Initialize Gemini
                 const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
-                const prompt = `You are a football league matching expert. I need to find which FotMob league matches a given Unibet league.
+                const prompt = `You are a football league matching expert. I need to find which FotMob league matches a given Unibet league using TWO PRIORITIES.
 
 **Unibet League:**
 - Name: "${unibetData.leagueName}"
 - Country: "${unibetData.country}"
-- Sample Matches:
+- All Matches (${unibetData.matches.length} total):
 ${unibetData.matches.map((m, i) => `  ${i + 1}. ${m.homeTeam} vs ${m.awayTeam} (Time: ${m.startTime})`).join('\n')}
 
 **Available FotMob Leagues:**
@@ -760,37 +828,56 @@ ${fotmobData.map((league, idx) => `
 ${idx + 1}. League Name: "${league.name}"
    - ID: ${league.id}
    - Country: "${league.country}"
-   - Sample Matches:
+   - All Matches (${league.matches.length} total):
 ${league.matches.map((m, i) => `     ${i + 1}. ${m.homeTeam} vs ${m.awayTeam} (Time: ${m.startTime})`).join('\n')}
 `).join('\n')}
 
 **Task:**
 Find the FotMob league that matches the Unibet league "${unibetData.leagueName}" from "${unibetData.country}".
 
-**Matching Criteria:**
-1. League names should be similar (e.g., "La Liga" = "La Liga", "Premier League" = "Premier League")
-2. Countries should match (e.g., "Spain" = "ESP", "England" = "ENG")
-3. Team names in matches should match (e.g., "Celta Vigo" = "Celta Vigo", "Valencia" = "Valencia")
-4. Match times should be similar (within 30 minutes)
+**MATCHING PRIORITY (Follow in this exact order):**
 
-**Important:**
-- If team names match between Unibet and FotMob matches, that's a strong indicator
-- You don't need ALL matches to match - even 1-2 matching teams is enough
+**PRIORITY 1: EXACT LEAGUE NAME MATCH (Check this FIRST)**
+- Compare league names by NORMALIZING them:
+  - Remove ALL spaces, underscores, hyphens, and special characters
+  - Convert to lowercase
+  - Examples:
+    * "La Liga" → "laliga"
+    * "LaLiga" → "laliga"  
+    * "Premier_League" → "premierleague"
+    * "Premier League" → "premierleague"
+    * "Serie A" → "seriea"
+- Countries MUST match (e.g., "Spain" = "ESP", "England" = "ENG")
 - Country code mapping: Spain=ESP, England=ENG, France=FRA, Italy=ITA, Germany=GER, etc.
-- For La Liga specifically: Unibet "La Liga" (Spain) should match FotMob "La Liga" (ESP)
+- If normalized league names match AND countries match → THIS IS THE MATCH (return immediately)
+
+**PRIORITY 2: TEAM NAMES + EXACT MATCH TIME (Only if Priority 1 fails)**
+- If league names don't match after normalization, check match data:
+- For each Unibet match, find a FotMob match where:
+  1. Team names match (home team = home team, away team = away team)
+  2. Match time is EXACTLY the same (same date and time, not approximate)
+- If you find at least ONE match where both teams AND exact time match → THIS IS THE MATCH
+- Team name matching should be flexible (ignore case, small variations are OK)
+
+**Important Rules:**
+- ALWAYS try Priority 1 FIRST (league name match)
+- Only use Priority 2 if Priority 1 finds NO match
+- For Priority 1: "La Liga" (Unibet) = "LaLiga" (FotMob) = SAME (both normalize to "laliga")
+- For Priority 2: Analyze the data and find the best match based on the team names and time. Team names must match AND time must be EXACT
 
 **Response Format (JSON only, no other text):**
 {
   "matched": true/false,
   "fotmobLeagueId": "12345" (if matched),
   "fotmobLeagueName": "La Liga" (if matched),
-  "reason": "Brief explanation of why this match was found"
+  "priority": "1" or "2" (which priority method was used - 1 for name match, 2 for team+time match),
+  "reason": "Brief explanation of why this match was found (e.g., 'League name normalized match' or 'Team names and exact time matched')"
 }
 
 If no match found, return:
 {
   "matched": false,
-  "reason": "Why no match was found"
+  "reason": "Why no match was found (e.g., 'No league name match found and no matching teams with exact time')"
 }`;
 
                 console.log(`[LeagueMapping] 📤 Sending request to Gemini (${keyName})...`);
@@ -1403,10 +1490,26 @@ If no match found, return:
             await this.loadExistingMappings();
             console.log('[LeagueMapping] ✅ Step 1 complete: Existing mappings loaded');
 
-            // 2. Get today's date
-            const today = new Date();
-            const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
-            console.log(`[LeagueMapping] 📅 Step 2: Processing date: ${dateStr}`);
+            // 2. Get today's date in Pakistani timezone (Asia/Karachi)
+            // ✅ FIX: Use Pakistani timezone instead of UTC to get correct date
+            const now = new Date();
+            // Get date components in Pakistani timezone
+            const pakistaniDate = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+            const year = pakistaniDate.getFullYear();
+            const month = String(pakistaniDate.getMonth() + 1).padStart(2, '0');
+            const day = String(pakistaniDate.getDate()).padStart(2, '0');
+            const dateStr = `${year}${month}${day}`;
+            
+            // Log both UTC and Pakistani time for debugging
+            const utcDateStr = now.toISOString().split('T')[0].replace(/-/g, '');
+            const pakistaniTimeStr = now.toLocaleString("en-US", { 
+                timeZone: "Asia/Karachi",
+                dateStyle: "full",
+                timeStyle: "long"
+            });
+            console.log(`[LeagueMapping] 📅 Step 2: Processing date: ${dateStr} (Pakistani timezone)`);
+            console.log(`[LeagueMapping] 📅 UTC date would be: ${utcDateStr} (not using - using PKT instead)`);
+            console.log(`[LeagueMapping] 📅 Pakistani time: ${pakistaniTimeStr}`);
 
             // 3. Fetch Unibet matches
             console.log('[LeagueMapping] 🌐 Step 3: Fetching Unibet matches...');
@@ -1438,12 +1541,21 @@ If no match found, return:
                     continue;
                 }
 
-                // Skip if already in CSV (by Unibet ID) - normalize to string for comparison
+                // ✅ FIX: Check database FIRST before processing
                 const unibetIdStr = String(unibetLeague.id);
-                if (this.existingMappings.has(unibetIdStr)) {
-                    console.log(`[LeagueMapping] ⚠️ Skipping ${unibetLeague.name} - Unibet ID ${unibetIdStr} already exists in CSV`);
-                    skippedCount++;
-                    continue;
+                const unibetIdNum = parseInt(unibetLeague.id);
+                
+                // Check if league already exists in database
+                try {
+                    const existingInDB = await LeagueMapping.findOne({ unibetId: unibetIdNum });
+                    if (existingInDB) {
+                        console.log(`[LeagueMapping] ⚠️ Skipping ${unibetLeague.name} - Unibet ID ${unibetIdStr} already exists in DATABASE (Fotmob ID: ${existingInDB.fotmobId})`);
+                        skippedCount++;
+                        continue;
+                    }
+                } catch (dbError) {
+                    console.error(`[LeagueMapping] ❌ Error checking database for Unibet ID ${unibetIdStr}:`, dbError.message);
+                    // Continue processing if DB check fails (don't skip)
                 }
 
                 // Skip if no matches (can't compare)
@@ -1519,7 +1631,8 @@ If no match found, return:
                         fotmobName: fotmobLeague.name, // Already using parentLeagueName for groups
                         exactMatch: fotmobLeague.exactMatch,
                         country: unibetLeague.country || '',
-                        unibetUrl: constructedUrl // ✅ Add Unibet URL
+                        unibetUrl: constructedUrl, // ✅ Add Unibet URL
+                        fotmobUrl: `https://www.fotmob.com/leagues/${fotmobId}` // ✅ Add Fotmob URL
                     };
 
                     const success = await this.addMappingToCsv(mappingData);
