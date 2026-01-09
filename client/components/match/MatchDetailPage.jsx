@@ -230,14 +230,19 @@ const MatchDetailPage = ({ matchId }) => {
                 })
                 .map(offer => {
                     const offerName = offer.criterion?.label || offer.criterion?.englishLabel || offer.betOfferType?.name;
+                    // ✅ FIX: Check both betOffer.suspended AND outcome.status for suspension
+                    const isOfferSuspended = offer.suspended === true;
                     return ({
                         id: offer.id,
                         name: offerName,
+                        suspended: isOfferSuspended, // ✅ Preserve offer-level suspension
                         outcomes: (offer.outcomes || []).map(outcome => ({
                         id: outcome.id,
                         name: outcome.label || outcome.participant || outcome.name, // Use participant name if available, otherwise use label
                         odds: outcome.odds / 1000, // Convert from Unibet format (13000 -> 13.00)
                         status: outcome.status,
+                        // ✅ FIX: Check both offer.suspended AND outcome.status
+                        suspended: isOfferSuspended || (outcome.status && outcome.status !== 'OPEN'),
                         line: outcome.line, // Include line value for Over/Under markets (raw)
                         handicap: outcome.line != null ? (outcome.line / 1000) : null, // Convert handicap line (1000 -> 1.0)
                         participant: outcome.participant,
@@ -262,23 +267,30 @@ const MatchDetailPage = ({ matchId }) => {
                     }
                     return isImplemented;
                 })
-                .map(offer => ({
-                    id: offer.id,
-                    name: offer.criterion?.label || offer.criterion?.englishLabel || offer.betOfferType?.name,
-                    outcomes: (offer.outcomes || []).map(outcome => ({
-                        id: outcome.id,
-                        name: outcome.label || outcome.participant || outcome.name, // Use participant name if available, otherwise use label
-                        odds: outcome.odds / 1000,
-                        status: outcome.status,
-                        line: outcome.line, // Include line value for Over/Under markets
-                        handicap: outcome.line != null ? (outcome.line / 1000) : null, // Convert handicap line (1000 -> 1.0)
-                        participant: outcome.participant,
-                        participantId: outcome.participantId,
-                        eventParticipantId: outcome.eventParticipantId,
-                        marketId: offer.id, // ✅ Use betOffer ID as marketId
-                        market_id: offer.id // ✅ Also set market_id for compatibility
-                    }))
-                }));
+                .map(offer => {
+                    // ✅ FIX: Check both betOffer.suspended AND outcome.status for suspension
+                    const isOfferSuspended = offer.suspended === true;
+                    return {
+                        id: offer.id,
+                        name: offer.criterion?.label || offer.criterion?.englishLabel || offer.betOfferType?.name,
+                        suspended: isOfferSuspended, // ✅ Preserve offer-level suspension
+                        outcomes: (offer.outcomes || []).map(outcome => ({
+                            id: outcome.id,
+                            name: outcome.label || outcome.participant || outcome.name, // Use participant name if available, otherwise use label
+                            odds: outcome.odds / 1000,
+                            status: outcome.status,
+                            // ✅ FIX: Check both offer.suspended AND outcome.status
+                            suspended: isOfferSuspended || (outcome.status && outcome.status !== 'OPEN'),
+                            line: outcome.line, // Include line value for Over/Under markets
+                            handicap: outcome.line != null ? (outcome.line / 1000) : null, // Convert handicap line (1000 -> 1.0)
+                            participant: outcome.participant,
+                            participantId: outcome.participantId,
+                            eventParticipantId: outcome.eventParticipantId,
+                            marketId: offer.id, // ✅ Use betOffer ID as marketId
+                            market_id: offer.id // ✅ Also set market_id for compatibility
+                        }))
+                    };
+                });
         }
         
         // Create proper market categorization (like unibet-api app)
@@ -311,6 +323,9 @@ const MatchDetailPage = ({ matchId }) => {
                             odds: []
                         };
                     }
+                    // ✅ FIX: Check if market itself is suspended (from offer.suspended)
+                    const isMarketSuspended = market.suspended === true;
+                    
                     market.outcomes.forEach(outcome => {
                         const lowerMarket = String(marketName || '').toLowerCase();
                         const lineValueNormalized = outcome.line != null ? outcome.line / 1000 : null;
@@ -325,7 +340,8 @@ const MatchDetailPage = ({ matchId }) => {
                                 label: scoreStr, // display score text
                                 value: outcome.odds,
                                 name: scoreStr,
-                                suspended: outcome.status !== 'OPEN',
+                                // ✅ FIX: Check both market.suspended AND outcome.status
+                                suspended: isMarketSuspended || (outcome.suspended === true) || (outcome.status && outcome.status !== 'OPEN'),
                                 marketId: outcome.marketId || outcome.market_id || market.id, // ✅ Preserve marketId
                                 market_id: outcome.marketId || outcome.market_id || market.id // ✅ Also set market_id
                             });
@@ -384,7 +400,8 @@ const MatchDetailPage = ({ matchId }) => {
                             name: displayName,
                             marketId: outcome.marketId || outcome.market_id || market.id, // ✅ Preserve marketId
                             market_id: outcome.marketId || outcome.market_id || market.id, // ✅ Also set market_id
-                            suspended: outcome.status !== 'OPEN',
+                            // ✅ FIX: Check both market.suspended AND outcome.suspended/status
+                            suspended: isMarketSuspended || (outcome.suspended === true) || (outcome.status && outcome.status !== 'OPEN'),
                             line: lineValueNormalized,
                             // Provide both total (for Over/Under) and handicap (for Asian/Handicap lines)
                             total: (displayLabel.startsWith('Over ') || displayLabel.startsWith('Under ')) && lineValueNormalized != null ? lineValueNormalized : null,
@@ -951,6 +968,8 @@ function buildScorerMarkets(markets, participants = []) {
     const addedKeys = new Set();
 
     markets.forEach(market => {
+        // ✅ FIX: Check if market itself is suspended
+        const isMarketSuspended = market.suspended === true;
         const criterionLabel = market?.name || market?.criterion?.label || market?.criterion?.englishLabel || 'To Score';
         (market.outcomes || []).forEach(oc => {
             const rawName = oc.participant || oc.name || oc.englishLabel || '';
@@ -961,7 +980,16 @@ function buildScorerMarkets(markets, participants = []) {
             const uniqueKey = `${key}|${String(oc.participantId || '').trim() || rawName.toLowerCase()}`;
             if (addedKeys.has(uniqueKey)) return;
             addedKeys.add(uniqueKey);
-            byTeamCriterion.get(key).push({ player: rawName, outcome: oc, market });
+            // ✅ FIX: Pass market suspension info along with outcome
+            byTeamCriterion.get(key).push({ 
+                player: rawName, 
+                outcome: { 
+                    ...oc, 
+                    // ✅ Preserve suspended status from both market and outcome
+                    suspended: isMarketSuspended || (oc.suspended === true) || (oc.status && oc.status !== 'OPEN')
+                }, 
+                market 
+            });
         });
     });
 
@@ -978,7 +1006,8 @@ function buildScorerMarkets(markets, participants = []) {
                 // Odds were already converted to decimal earlier; don't divide again
                 value: Number(r.outcome.odds || 0),
                 name: r.player,
-                suspended: (r.outcome.status || '') !== 'OPEN',
+                // ✅ FIX: Use suspended status from outcome (already set in line 989 with market + outcome check)
+                suspended: r.outcome.suspended === true,
                 participant: r.player,
                 participantId: r.outcome.participantId,
                 eventParticipantId: r.outcome.eventParticipantId,
