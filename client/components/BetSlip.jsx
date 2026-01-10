@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,9 +32,6 @@ import {
 } from '@/lib/features/betSlip/betSlipSlice';
 import { fetchUserBets } from '@/lib/features/bets/betsSlice';
 import { selectIsAuthenticated, selectUser } from '@/lib/features/auth/authSlice';
-import { selectMatches } from '@/lib/features/matches/matchesSlice';
-import { selectLeagues } from '@/lib/features/leagues/leaguesSlice';
-import { selectLiveMatches } from '@/lib/features/matches/liveMatchesSlice';
 import LoginDialog from '@/components/auth/LoginDialog';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -59,9 +56,6 @@ const BetSlip = () => {
     const placeBetDisabled = useSelector(selectPlaceBetDisabled);
     const isAuthenticated = useSelector(selectIsAuthenticated);
     const user = useSelector(selectUser);
-    const matchesState = useSelector(selectMatches);
-    const leaguesState = useSelector(selectLeagues);
-    const liveMatchesState = useSelector(selectLiveMatches);
     const betSlipRef = useRef(null);
     const [isPlacingBet, setIsPlacingBet] = React.useState(false);
     const isMobile = useIsMobile();
@@ -70,36 +64,6 @@ const BetSlip = () => {
     const [pendingPlaceBet, setPendingPlaceBet] = useState(false);
     const [countdown, setCountdown] = useState(0);
     const [stabilityWait, setStabilityWait] = useState(false);
-    const [initialOdds, setInitialOdds] = useState({}); // Store initial odds when countdown starts
-    const [initialBetIds, setInitialBetIds] = useState([]); // Store bet IDs to track
-
-    const executePlaceBet = useCallback(async () => {
-        setIsPlacingBet(true);
-        try {
-            const resultAction = await dispatch(placeBetThunk());
-            if (placeBetThunk.fulfilled.match(resultAction)) {
-                toast.success('Bet placed successfully!');
-                // Refresh betting history after successful bet placement
-                dispatch(fetchUserBets({}));
-            } else {
-                // Improved error handling: show backend error if available
-                let errorMsg =
-                    resultAction.payload?.error?.message ||
-                    resultAction.payload?.message ||
-                    resultAction.error?.message ||
-                    (typeof resultAction.payload === 'string' ? resultAction.payload : null) ||
-                    'Failed to place bet.';
-                toast.error(errorMsg);
-            }
-        } catch (err) {
-            // Try to show backend error if available
-            const backendMsg = err?.response?.data?.error?.message || err?.response?.data?.message || err?.message;
-            toast.error(backendMsg || 'Failed to place bet.');
-        } finally {
-            setIsPlacingBet(false);
-            setPendingPlaceBet(false);
-        }
-    }, [dispatch]);
 
     // Effect for countdown
     useEffect(() => {
@@ -109,17 +73,11 @@ const BetSlip = () => {
                 setCountdown(prev => prev - 1);
             }, 1000);
         } else if (countdown === 0 && pendingPlaceBet) {
-            // Countdown finished - check one final time before placing
-            if (!placeBetDisabled) {
-                executePlaceBet();
-            } else {
-                // Odds changed at the last moment - cancel
-                setPendingPlaceBet(false);
-                toast.warning('Bet placement cancelled - odds changed during validation');
-            }
+            // Countdown finished - always attempt to place bet with current odds
+            executePlaceBet();
         }
         return () => clearTimeout(timer);
-    }, [countdown, pendingPlaceBet, placeBetDisabled, executePlaceBet]);
+    }, [countdown, pendingPlaceBet]);
 
     // Effect for odds change monitoring during pending state
     useEffect(() => {
@@ -128,177 +86,8 @@ const BetSlip = () => {
             console.log('⏸️ Bet placement stopped - odds changed during validation');
             setPendingPlaceBet(false);
             setCountdown(0);
-            toast.warning('Bet placement cancelled - odds changed during validation period');
         }
     }, [placeBetDisabled, pendingPlaceBet]);
-
-    // ✅ NEW: Store initial odds when countdown starts
-    useEffect(() => {
-        if (pendingPlaceBet && countdown === 5) {
-            // Store initial odds and bet IDs
-            const oddsMap = {};
-            const betIds = [];
-            bets.forEach(bet => {
-                oddsMap[bet.id] = bet.odds;
-                betIds.push(bet.id);
-            });
-            setInitialOdds(oddsMap);
-            setInitialBetIds(betIds);
-        }
-    }, [pendingPlaceBet, countdown, bets]);
-
-    // ✅ NEW: Continuous monitoring during countdown (check every second for odds changes and suspension)
-    useEffect(() => {
-        if (!pendingPlaceBet || countdown === 0) return;
-
-        const checkInterval = setInterval(() => {
-            // Check if any bet odds values changed
-            const oddsChanged = bets.some(bet => {
-                // ✅ ADD: Check if bet exists and has required properties
-                if (!bet || !bet.id || !bet.odds) return false;
-                
-                const initialOdd = initialOdds[bet.id];
-                if (!initialOdd) return false;
-                const currentOdd = bet.odds;
-                // Compare with small tolerance for floating point
-                return Math.abs(parseFloat(currentOdd) - parseFloat(initialOdd)) > 0.001;
-            });
-
-            if (oddsChanged) {
-                console.log('⏸️ Bet placement stopped - odds values changed');
-                setPendingPlaceBet(false);
-                setCountdown(0);
-                toast.warning('Bet placement cancelled - odds values changed during validation');
-                return;
-            }
-
-            // Check if placeBetDisabled (odds changed via Redux)
-            if (placeBetDisabled) {
-                console.log('⏸️ Bet placement stopped - odds changed (Redux)');
-                setPendingPlaceBet(false);
-                setCountdown(0);
-                toast.warning('Bet placement cancelled - odds changed during validation');
-                return;
-            }
-
-            // ✅ NEW: Check if any odds got suspended
-            // Helper function to get match data from state
-            const getMatchDataFromState = (matchId, matchesState, leaguesState) => {
-                // ✅ ADD: Check if matchId exists
-                if (!matchId) return null;
-                
-                // First try to get from match details (individual match page)
-                let matchData = matchesState?.matchDetailsV2?.[matchId]?.matchData;
-                
-                if (matchData) {
-                    return matchData;
-                }
-                
-                // If not found, try to get from league data (league page)
-                if (leaguesState?.matchesByLeague) {
-                    for (const leagueId in leaguesState.matchesByLeague) {
-                        const leagueData = leaguesState.matchesByLeague[leagueId];
-                        if (leagueData && leagueData.matches && Array.isArray(leagueData.matches)) {
-                            const leagueMatch = leagueData.matches.find(match => match.id === matchId);
-                            if (leagueMatch) {
-                                return {
-                                    data: {
-                                        groupId: leagueMatch.groupId,
-                                        group: leagueMatch.group,
-                                        betOffers: leagueMatch.betOffers || [],
-                                    },
-                                    matchData: {
-                                        data: {
-                                            betOffers: leagueMatch.betOffers || [],
-                                        }
-                                    }
-                                };
-                            }
-                        }
-                    }
-                }
-                
-                return null;
-            };
-
-            // Helper function to check suspension
-            const checkSuspension = (bet) => {
-                // ✅ ADD: Check if bet and bet.match exist
-                if (!bet || !bet.match || !bet.match.id || !bet.oddId) {
-                    return false; // Can't check suspension without match data
-                }
-                
-                const matchData = getMatchDataFromState(bet.match.id, matchesState, leaguesState);
-                
-                // Check suspension status from match detail data (betOffers)
-                if (matchData?.matchData?.data?.betOffers) {
-                    const betOffers = matchData.matchData.data.betOffers;
-                    for (const offer of betOffers) {
-                        if (offer.outcomes && Array.isArray(offer.outcomes)) {
-                            const outcome = offer.outcomes.find(o => o.id === bet.oddId);
-                            if (outcome && outcome.status !== 'OPEN') {
-                                return true;
-                            }
-                        }
-                    }
-                }
-                
-                // Check from league matches data
-                if (matchData?.data?.betOffers) {
-                    const betOffers = matchData.data.betOffers;
-                    for (const offer of betOffers) {
-                        if (offer.outcomes && Array.isArray(offer.outcomes)) {
-                            const outcome = offer.outcomes.find(o => o.id === bet.oddId);
-                            if (outcome && outcome.status !== 'OPEN') {
-                                return true;
-                            }
-                        }
-                    }
-                }
-                
-                // Check from live matches if it's a live bet
-                if (bet.inplay && liveMatchesState) {
-                    const liveMatches = liveMatchesState.matches || [];
-                    const liveMatch = liveMatches.find(m => m && m.id === bet.match.id);
-                    
-                    if (liveMatch?.mainBetOffer?.outcomes) {
-                        const outcome = liveMatch.mainBetOffer.outcomes.find(o => 
-                            (o.id === bet.oddId) || (o.outcomeId === bet.oddId)
-                        );
-                        if (outcome && outcome.status !== 'OPEN') {
-                            return true;
-                        }
-                    }
-                    
-                    if (liveMatch?.liveOdds?.outcomes) {
-                        const outcome = liveMatch.liveOdds.outcomes.find(o => 
-                            (o.id === bet.oddId) || (o.outcomeId === bet.oddId)
-                        );
-                        if (outcome && outcome.status !== 'OPEN') {
-                            return true;
-                        }
-                    }
-                }
-                
-                return false;
-            };
-
-            // ✅ ADD: Filter out invalid bets before checking suspension
-            const hasSuspendedOdds = bets
-                .filter(bet => bet && bet.match && bet.match.id && bet.oddId) // Only check valid bets
-                .some(bet => checkSuspension(bet));
-
-            if (hasSuspendedOdds) {
-                console.log('⏸️ Bet placement stopped - odds suspended');
-                setPendingPlaceBet(false);
-                setCountdown(0);
-                toast.error('Bet placement cancelled - one or more odds are now suspended');
-                return;
-            }
-        }, 1000); // Check every second
-
-        return () => clearInterval(checkInterval);
-    }, [pendingPlaceBet, countdown, bets, initialOdds, placeBetDisabled, matchesState, leaguesState, liveMatchesState]);
 
     // Calculate totals when relevant data changes
     useEffect(() => {
@@ -435,17 +224,37 @@ const BetSlip = () => {
             }
         }
 
-        // Store initial odds before starting countdown
-        const oddsMap = {};
-        bets.forEach(bet => {
-            oddsMap[bet.id] = bet.odds;
-        });
-        setInitialOdds(oddsMap);
-        setInitialBetIds(bets.map(b => b.id));
-
         // Start 5-second validation
         setPendingPlaceBet(true);
         setCountdown(5);
+    };
+
+    const executePlaceBet = async () => {
+        setIsPlacingBet(true);
+        try {
+            const resultAction = await dispatch(placeBetThunk());
+            if (placeBetThunk.fulfilled.match(resultAction)) {
+                toast.success('Bet placed successfully!');
+                // Refresh betting history after successful bet placement
+                dispatch(fetchUserBets({}));
+            } else {
+                // Improved error handling: show backend error if available
+                let errorMsg =
+                    resultAction.payload?.error?.message ||
+                    resultAction.payload?.message ||
+                    resultAction.error?.message ||
+                    (typeof resultAction.payload === 'string' ? resultAction.payload : null) ||
+                    'Failed to place bet.';
+                toast.error(errorMsg);
+            }
+        } catch (err) {
+            // Try to show backend error if available
+            const backendMsg = err?.response?.data?.error?.message || err?.response?.data?.message || err?.message;
+            toast.error(backendMsg || 'Failed to place bet.');
+        } finally {
+            setIsPlacingBet(false);
+            setPendingPlaceBet(false);
+        }
     };
 
     const getTabCount = (tab) => {
