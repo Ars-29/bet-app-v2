@@ -33,6 +33,15 @@ const BettingHistoryPage = ({ userId }) => {
   // State for table view expansion
   const [expandedTableBets, setExpandedTableBets] = useState(new Set());
 
+  // ✅ FIX: Helper function to show cancelled/canceled as "pending" for users
+  const getDisplayStatus = (status) => {
+    const statusLower = status?.toLowerCase();
+    if (statusLower === 'cancelled' || statusLower === 'canceled') {
+      return 'pending';
+    }
+    return status;
+  };
+
   useEffect(() => {
     if (userId && user && user.role === 'admin') {
       dispatch(fetchBetsByUserId(userId));
@@ -238,12 +247,10 @@ const BettingHistoryPage = ({ userId }) => {
                               ? 'text-emerald-600 bg-emerald-50 border-emerald-200 text-xs'
                               : leg.status.toLowerCase() === 'lost'
                               ? 'text-rose-600 bg-rose-50 border-rose-200 text-xs'
-                              : leg.status.toLowerCase() === 'cancelled' || leg.status.toLowerCase() === 'canceled'
-                              ? 'text-gray-600 bg-gray-50 border-gray-200 text-xs'
                               : 'text-amber-600 bg-amber-50 border-amber-200 text-xs'
                           }
                         >
-                          {leg.status}
+                          {getDisplayStatus(leg.status)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -372,12 +379,10 @@ const BettingHistoryPage = ({ userId }) => {
                     ? 'text-emerald-600 bg-emerald-50 border-emerald-200 text-xs'
                     : bet.status.toLowerCase() === 'lost'
                     ? 'text-rose-600 bg-rose-50 border-rose-200 text-xs'
-                    : bet.status.toLowerCase() === 'cancelled' || bet.status.toLowerCase() === 'canceled'
-                    ? 'text-gray-600 bg-gray-50 border-gray-200 text-xs'
                     : 'text-amber-600 bg-amber-50 border-amber-200 text-xs'
                 }
               >
-                {bet.status}
+                {getDisplayStatus(bet.status)}
               </Badge>
               {getBetTypeBadge(bet)}
             </div>
@@ -516,12 +521,10 @@ const BettingHistoryPage = ({ userId }) => {
                         ? 'text-emerald-600 bg-emerald-50 border-emerald-200 text-xs'
                         : leg.status.toLowerCase() === 'lost'
                         ? 'text-rose-600 bg-rose-50 border-rose-200 text-xs'
-                        : leg.status.toLowerCase() === 'cancelled' || leg.status.toLowerCase() === 'canceled'
-                        ? 'text-gray-600 bg-gray-50 border-gray-200 text-xs'
                         : 'text-amber-600 bg-amber-50 border-amber-200 text-xs'
                     }
                   >
-                    {leg.status}
+                    {getDisplayStatus(leg.status)}
                   </Badge>
                 </div>
                 <div className="space-y-1 text-xs">
@@ -819,12 +822,10 @@ const BettingHistoryPage = ({ userId }) => {
                                       ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
                                       : item.status.toLowerCase() === 'lost'
                                       ? 'text-rose-600 bg-rose-50 border-rose-200'
-                                      : item.status.toLowerCase() === 'cancelled' || item.status.toLowerCase() === 'canceled'
-                                      ? 'text-gray-600 bg-gray-50 border-gray-200'
                                       : 'text-amber-600 bg-amber-50 border-amber-200'
                                   }
                                 >
-                                  {item.status}
+                                  {getDisplayStatus(item.status)}
                                 </Badge>
                               </TableCell>
                               <TableCell>

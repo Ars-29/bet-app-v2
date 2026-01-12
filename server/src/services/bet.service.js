@@ -942,6 +942,9 @@ class BetService {
         combination: processedLegs, // All legs including the first one
         totalOdds,
         potentialPayout,
+        // ✅ NEW: Initialize retry counts when bet is placed
+        maxRetryCount: 3,
+        retryCount: 0,
       });
 
       await bet.save();
@@ -955,7 +958,8 @@ class BetService {
       }
       
       console.log(`[placeBet] Combination bet scheduled for latest check time: ${this.formatTo12Hour(latestCheckTime)} (when all matches will be finished)`);
-      await this.scheduleBetOutcomeCheck(bet._id, latestCheckTime, firstLegData.matchData.id);
+      // ✅ REMOVED: Schedule outcome check - processPendingBets job handles all bet processing every 5 seconds
+      // await this.scheduleBetOutcomeCheck(bet._id, latestCheckTime, firstLegData.matchData.id);
 
       // Fetch the updated user
       const updatedUser = await User.findById(userId);
@@ -1818,6 +1822,9 @@ class BetService {
       selection,
       inplay,
       betDetails,
+      // ✅ NEW: Initialize retry counts when bet is placed
+      maxRetryCount: 3,
+      retryCount: 0,
       // Optional unibet parity metadata for Phase 1
       unibetMeta: this.buildUnibetMetaFromPayload(
         { 
@@ -1912,8 +1919,8 @@ class BetService {
       `[placeBet] Current time (UTC): ${this.getCurrentUTCTime12Hour()}`
     );
 
-    // Schedule outcome check
-    await this.scheduleBetOutcomeCheck(bet._id, betOutcomeCheckTime, matchId);
+    // ✅ REMOVED: Schedule outcome check - processPendingBets job handles all bet processing every 5 seconds
+    // await this.scheduleBetOutcomeCheck(bet._id, betOutcomeCheckTime, matchId);
 
     // Fetch the updated user (with new balance)
     const updatedUser = await User.findById(userId);
@@ -2557,20 +2564,20 @@ class BetService {
             err.message.includes("NETWORK_ERROR")
           ) {
             console.log(
-              `[processSingleBetOutcome] Network error for betId: ${betId}. Rescheduling for retry in 10 minutes.`
+              `[processSingleBetOutcome] Network error for betId: ${betId}. Will be retried by processPendingBets job.`
             );
 
-            // Reschedule for retry in 10 minutes due to network issues
-            const runAt = new Date(Date.now() + 10 * 60 * 1000);
-            agenda.schedule(runAt, "checkBetOutcome", {
-              betId,
-              matchId: bet.matchId,
-            });
+            // ✅ REMOVED: Rescheduling - processPendingBets job will retry automatically every 5 seconds
+            // const runAt = new Date(Date.now() + 10 * 60 * 1000);
+            // agenda.schedule(runAt, "checkBetOutcome", {
+            //   betId,
+            //   matchId: bet.matchId,
+            // });
 
             return {
               betId: bet._id,
               status: bet.status,
-              message: "Network error, rescheduled for retry",
+              message: "Network error, will be retried by processPendingBets job",
             };
           }
 
@@ -2599,45 +2606,11 @@ class BetService {
       const matchStartTime = this.parseMatchStartTime(matchData.starting_at);
       const newBetOutcomeCheckTime = this.calculateBetOutcomeCheckTime(matchStartTime); // 2h 5min after match start
 
-      // If match hasn't started yet or is in progress, reschedule for proper time
-      if (
-        !matchData.state ||
-        matchData.state.id === 1 ||
-        (matchData.state.id >= 2 && matchData.state.id <= 4)
-      ) {
-        console.log(
-          `[processSingleBetOutcome] Match is not yet finished (state: ${matchData.state?.name}). Rescheduling for proper bet outcome check time: ${this.formatTo12Hour(newBetOutcomeCheckTime)} (2h 5min after match start)`
-        );
-        
-        // Only reschedule if the new time is in the future
-        const now = new Date();
-        if (newBetOutcomeCheckTime > now) {
-          agenda.schedule(newBetOutcomeCheckTime, "checkBetOutcome", {
-            betId,
-            matchId: bet.matchId,
-          });
-        } else {
-          // If even the proper time is in the past, check again in 10 minutes
-          const runAt = new Date(Date.now() + 10 * 60 * 1000);
-          console.log(
-            `[processSingleBetOutcome] Proper bet outcome check time is in the past. Rescheduling for 10 minutes from now: ${this.formatTo12Hour(runAt)}`
-          );
-          agenda.schedule(runAt, "checkBetOutcome", {
-            betId,
-            matchId: bet.matchId,
-          });
-        }
-      } else {
-        // For other states, check again in 10 minutes
-        const runAt = new Date(Date.now() + 10 * 60 * 1000);
-        console.log(
-          `[processSingleBetOutcome] Unknown match state. Rescheduling for 10 minutes from now: ${this.formatTo12Hour(runAt)}`
-        );
-        agenda.schedule(runAt, "checkBetOutcome", {
-          betId,
-          matchId: bet.matchId,
-        });
-      }
+      // ✅ REMOVED: Rescheduling - processPendingBets job will check automatically every 5 seconds
+      // Match not finished yet, will be checked by processPendingBets job
+      console.log(
+        `[processSingleBetOutcome] Match is not yet finished (state: ${matchData.state?.name}). Will be checked by processPendingBets job every 5 seconds.`
+      );
 
       return {
         betId,
@@ -2818,17 +2791,17 @@ class BetService {
         console.log(`[processCombinationBetOutcome] Bet status kept as pending because some legs are still pending`);
       }
       
-      // Reschedule for 10 minutes from now
-      const runAt = new Date(Date.now() + 10 * 60 * 1000);
-      agenda.schedule(runAt, "checkBetOutcome", {
-        betId,
-        matchId: bet.matchId,
-      });
+      // ✅ REMOVED: Rescheduling - processPendingBets job will check automatically every 5 seconds
+      // const runAt = new Date(Date.now() + 10 * 60 * 1000);
+      // agenda.schedule(runAt, "checkBetOutcome", {
+      //   betId,
+      //   matchId: bet.matchId,
+      // });
 
       return {
         betId: bet._id,
         status: 'pending', // ✅ FIX: Return pending status if any leg is pending
-        message: "Not all legs finished, rescheduled",
+        message: "Not all legs finished, will be checked by processPendingBets job",
       };
     }
 
@@ -2849,12 +2822,12 @@ class BetService {
         { $set: { status: 'pending' } }
       );
       
-      // Reschedule
-      const runAt = new Date(Date.now() + 10 * 60 * 1000);
-      agenda.schedule(runAt, "checkBetOutcome", {
-        betId,
-        matchId: bet.matchId,
-      });
+      // ✅ REMOVED: Rescheduling - processPendingBets job will check automatically every 5 seconds
+      // const runAt = new Date(Date.now() + 10 * 60 * 1000);
+      // agenda.schedule(runAt, "checkBetOutcome", {
+      //   betId,
+      //   matchId: bet.matchId,
+      // });
       
       return {
         betId: bet._id,
@@ -3418,27 +3391,26 @@ class BetService {
               results.push(result);
             }
           } else {
-            // For matches that are not finished, reschedule the bets for later
+            // ✅ REMOVED: Rescheduling - processPendingBets job will check automatically every 5 seconds
+            // For matches that are not finished, bets will be checked by processPendingBets job
             console.log(
-              `Match ${matchId} is not finished (state: ${match.state?.name}), rescheduling bets`
+              `Match ${matchId} is not finished (state: ${match.state?.name}), will be checked by processPendingBets job`
             );
             for (const bet of betsByMatch[matchId]) {
-              // Reschedule for the estimated match end time or 30 minutes later if that's in the past
-              const now = new Date();
-              let newScheduleTime = new Date(bet.estimatedMatchEnd);
-
-              if (newScheduleTime <= now) {
-                newScheduleTime = new Date(Date.now() + 30 * 60 * 1000);
-              }
-
-              agenda.schedule(newScheduleTime, "checkBetOutcome", {
-                betId: bet._id,
-                matchId: bet.matchId,
-              });
+              // ✅ REMOVED: Rescheduling - processPendingBets job handles this
+              // const now = new Date();
+              // let newScheduleTime = new Date(bet.estimatedMatchEnd);
+              // if (newScheduleTime <= now) {
+              //   newScheduleTime = new Date(Date.now() + 30 * 60 * 1000);
+              // }
+              // agenda.schedule(newScheduleTime, "checkBetOutcome", {
+              //   betId: bet._id,
+              //   matchId: bet.matchId,
+              // });
               results.push({
                 betId: bet._id,
                 status: bet.status,
-                message: "Match not finished, rescheduled",
+                message: "Match not finished, will be checked by processPendingBets job",
               });
             }
           }
@@ -3625,76 +3597,61 @@ class BetService {
             }
           }
         } else {
-          // For matches that are not finished, reschedule the bets for later
+          // ✅ REMOVED: Rescheduling - processPendingBets job will check automatically every 5 seconds
+          // For matches that are not finished, bets will be checked by processPendingBets job
           console.log(
-            `Match ${match.id} is not finished (state: ${match.state?.name}), rescheduling bets`
+            `Match ${match.id} is not finished (state: ${match.state?.name}), will be checked by processPendingBets job`
           );
           for (const bet of betsByMatch[match.id]) {
-            // Calculate proper rescheduling time based on match start time (2h 5min after start)
-            const matchStartTime = this.parseMatchStartTime(match.starting_at);
-            const properBetOutcomeCheckTime = this.calculateBetOutcomeCheckTime(matchStartTime); // 2h 5min after match start
-            
-            // Determine appropriate scheduling time
-            const now = new Date();
-            let newScheduleTime;
-
-            // If match hasn't started yet (state.id === 1), schedule for proper time
-            if (match.state?.id === 1) {
-              newScheduleTime = properBetOutcomeCheckTime;
-              if (newScheduleTime <= now) {
-                // If somehow the proper time is in the past, schedule for 30 minutes later
-                newScheduleTime = new Date(Date.now() + 30 * 60 * 1000);
-              }
-            }
-            // If match is in progress (state.id between 2-4), schedule for proper time
-            else if (match.state?.id >= 2 && match.state?.id <= 4) {
-              newScheduleTime = properBetOutcomeCheckTime;
-              if (newScheduleTime <= now) {
-                // If somehow the proper time is in the past, schedule for 30 minutes later
-                newScheduleTime = new Date(Date.now() + 30 * 60 * 1000);
-              }
-            }
-            // For other states, check again in 30 minutes
-            else {
-              newScheduleTime = new Date(Date.now() + 30 * 60 * 1000);
-            }
-
-            agenda.schedule(newScheduleTime, "checkBetOutcome", {
-              betId: bet._id,
-              matchId: bet.matchId,
-            });
-
-            console.log(
-              `Rescheduled bet ${bet._id} for ${this.formatTo12Hour(
-                newScheduleTime
-              )}`
-            );
+            // ✅ REMOVED: Rescheduling - processPendingBets job handles this
+            // const matchStartTime = this.parseMatchStartTime(match.starting_at);
+            // const properBetOutcomeCheckTime = this.calculateBetOutcomeCheckTime(matchStartTime);
+            // const now = new Date();
+            // let newScheduleTime;
+            // if (match.state?.id === 1) {
+            //   newScheduleTime = properBetOutcomeCheckTime;
+            //   if (newScheduleTime <= now) {
+            //     newScheduleTime = new Date(Date.now() + 30 * 60 * 1000);
+            //   }
+            // } else if (match.state?.id >= 2 && match.state?.id <= 4) {
+            //   newScheduleTime = properBetOutcomeCheckTime;
+            //   if (newScheduleTime <= now) {
+            //     newScheduleTime = new Date(Date.now() + 30 * 60 * 1000);
+            //   }
+            // } else {
+            //   newScheduleTime = new Date(Date.now() + 30 * 60 * 1000);
+            // }
+            // agenda.schedule(newScheduleTime, "checkBetOutcome", {
+            //   betId: bet._id,
+            //   matchId: bet.matchId,
+            // });
 
             results.push({
               betId: bet._id,
               status: bet.status,
-              message: "Match not finished, rescheduled",
+              message: "Match not finished, will be checked by processPendingBets job",
             });
           }
         }
       }
 
-      // Handle matches not found in API response
+      // ✅ REMOVED: Rescheduling - processPendingBets job will check automatically every 5 seconds
+      // Handle matches not found in API response - will be retried by processPendingBets job
       for (const matchId of matchIds) {
         if (
           !matches.find((m) => m.id == matchId || m.id === parseInt(matchId))
         ) {
           for (const bet of betsByMatch[matchId]) {
-            // Reschedule for 30 minutes later
-            const newScheduleTime = new Date(Date.now() + 30 * 60 * 1000);
-            agenda.schedule(newScheduleTime, "checkBetOutcome", {
-              betId: bet._id,
-              matchId,
-            });
+            // ✅ REMOVED: Rescheduling - processPendingBets job handles this
+            // const newScheduleTime = new Date(Date.now() + 30 * 60 * 1000);
+            // agenda.schedule(newScheduleTime, "checkBetOutcome", {
+            //   betId: bet._id,
+            //   matchId,
+            // });
             results.push({
               betId: bet._id,
               status: bet.status,
-              message: "Match data not found, rescheduled",
+              message: "Match data not found, will be retried by processPendingBets job",
             });
           }
         }

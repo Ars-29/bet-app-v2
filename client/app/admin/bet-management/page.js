@@ -165,8 +165,8 @@ export default function BetManagement() {
         const betStatus = bet.status.toLowerCase();
         const filterStatus = filter.toLowerCase();
         
-        // Special handling for cancelled/canceled
-        if (filterStatus === "cancelled") {
+        // Special handling for cancelled/canceled (now "to_be_corrected")
+        if (filterStatus === "to_be_corrected") {
           if (betStatus !== "canceled" && betStatus !== "cancelled") {
         return false;
           }
@@ -287,17 +287,80 @@ export default function BetManagement() {
     }
   };
 
+  // ✅ NEW: Helper function to show status based on retry count for admins
+  const getDisplayStatusForAdmin = (bet) => {
+    // If bet is a status string (for legs), use simple conversion
+    if (typeof bet === 'string') {
+      const statusLower = bet.toLowerCase();
+      if (statusLower === 'cancelled' || statusLower === 'canceled') {
+        return 'To be corrected';
+      }
+      return bet;
+    }
+    
+    // For bet objects, check maxRetryCount
+    const status = bet.status?.toLowerCase() || '';
+    const maxRetryCount = bet.maxRetryCount ?? 3; // Default to 3 if not set
+    
+    // For pending bets
+    if (status === 'pending') {
+      if (maxRetryCount > 0) {
+        return 'pending'; // Show as pending if retries available
+      } else {
+        return 'To be corrected'; // Show as "To be corrected" if no retries left
+      }
+    }
+    
+    // For cancelled bets
+    if (status === 'cancelled' || status === 'canceled') {
+      if (maxRetryCount > 0) {
+        return 'pending'; // Show as pending (will be retried)
+      } else {
+        return 'To be corrected'; // Show as "To be corrected" (no more retries)
+      }
+    }
+    
+    // For other statuses, return as is
+    return bet.status || 'pending';
+  };
+  
+  // Legacy function for backward compatibility (for legs that pass status string)
+  const getDisplayStatus = (status) => {
+    if (typeof status === 'object' && status !== null) {
+      return getDisplayStatusForAdmin(status);
+    }
+    const statusLower = status?.toLowerCase();
+    if (statusLower === 'cancelled' || statusLower === 'canceled') {
+      return 'To be corrected';
+    }
+    return status;
+  };
+
   const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
+    // Handle both string status and bet object
+    const statusStr = typeof status === 'object' && status !== null 
+      ? getDisplayStatusForAdmin(status) 
+      : status?.toLowerCase() || '';
+    
+    switch (statusStr.toLowerCase()) {
       case "won":
         return "text-emerald-600 bg-emerald-50 border-emerald-200";
       case "lost":
         return "text-rose-600 bg-rose-50 border-rose-200";
       case "pending":
         return "text-amber-600 bg-amber-50 border-amber-200";
+      case "to be corrected":
+        return "text-orange-600 bg-orange-50 border-orange-200"; // Orange for "To be corrected"
       case "cancelled":
       case "canceled":
-        return "text-gray-600 bg-gray-50 border-gray-200";
+        // Check if this is a bet object with maxRetryCount
+        if (typeof status === 'object' && status !== null) {
+          const displayStatus = getDisplayStatusForAdmin(status);
+          if (displayStatus === 'pending') {
+            return "text-amber-600 bg-amber-50 border-amber-200"; // Pending color if retries available
+          }
+        }
+        return "text-orange-600 bg-orange-50 border-orange-200"; // Orange for "To be corrected"
       default:
         return "text-gray-600 bg-gray-50 border-gray-200";
     }
@@ -398,9 +461,9 @@ export default function BetManagement() {
           <div className="flex items-center gap-2 mb-3">
             <Badge
               variant="outline"
-              className={getStatusColor(bet.status)}
+              className={getStatusColor(bet)}
             >
-              {bet.status}
+              {getDisplayStatusForAdmin(bet)}
             </Badge>
             {getBetTypeBadge(bet)}
           </div>
@@ -503,13 +566,15 @@ export default function BetManagement() {
                 onValueChange={(newStatus) => handleStatusChange(bet._id, bet.status, newStatus)}
               >
                 <SelectTrigger className="h-8 w-24 text-xs">
-                  <SelectValue />
+                  <SelectValue>
+                    {getDisplayStatusForAdmin(bet)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="won">Won</SelectItem>
                   <SelectItem value="lost">Lost</SelectItem>
-                  <SelectItem value="canceled">Canceled</SelectItem>
+                  <SelectItem value="cancelled">To be corrected</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -547,17 +612,9 @@ export default function BetManagement() {
                   <span className="font-medium text-purple-600 text-sm">Leg {index + 1}</span>
                   <Badge
                     variant="outline"
-                    className={
-                      leg.status.toLowerCase() === 'won' 
-                        ? 'text-emerald-600 bg-emerald-50 border-emerald-200 text-xs'
-                        : leg.status.toLowerCase() === 'lost'
-                        ? 'text-rose-600 bg-rose-50 border-rose-200 text-xs'
-                        : leg.status.toLowerCase() === 'cancelled' || leg.status.toLowerCase() === 'canceled'
-                        ? 'text-gray-600 bg-gray-50 border-gray-200 text-xs'
-                        : 'text-amber-600 bg-amber-50 border-amber-200 text-xs'
-                    }
+                    className={getStatusColor(leg.status) + " text-xs"}
                   >
-                    {leg.status}
+                    {getDisplayStatus(leg.status)}
                   </Badge>
                 </div>
                 <div className="space-y-1 text-xs">
@@ -668,17 +725,9 @@ export default function BetManagement() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={
-                            leg.status.toLowerCase() === 'won' 
-                              ? 'text-emerald-600 bg-emerald-50 border-emerald-200 text-xs'
-                              : leg.status.toLowerCase() === 'lost'
-                              ? 'text-rose-600 bg-rose-50 border-rose-200 text-xs'
-                              : leg.status.toLowerCase() === 'cancelled' || leg.status.toLowerCase() === 'canceled'
-                              ? 'text-gray-600 bg-gray-50 border-gray-200 text-xs'
-                              : 'text-amber-600 bg-amber-50 border-amber-200 text-xs'
-                          }
+                          className={getStatusColor(leg.status) + " text-xs"}
                         >
-                          {leg.status}
+                          {getDisplayStatus(leg.status)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -904,11 +953,11 @@ export default function BetManagement() {
                                 </span>
                               </SelectItem>
                               <SelectItem
-                                value="cancelled"
-                                className="py-2 px-3 text-gray-600"
+                                value="to_be_corrected"
+                                className="py-2 px-3 text-orange-600"
                               >
-                                Cancelled
-                                <span className="ml-2 text-xs bg-gray-50 px-2 py-0.5 rounded-full text-gray-600">
+                                To be corrected
+                                <span className="ml-2 text-xs bg-orange-50 px-2 py-0.5 rounded-full text-orange-600">
                                   {
                                     allBets.filter(
                                       (bet) =>
@@ -1282,7 +1331,7 @@ export default function BetManagement() {
                 className="flex items-center gap-1 py-1 px-3"
               >
                 <span>
-                  Status: {filter === "cancelled" ? "Cancelled" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  Status: {filter === "to_be_corrected" ? "To be corrected" : filter === "cancelled" ? "Cancelled" : filter.charAt(0).toUpperCase() + filter.slice(1)}
                 </span>
                 <button
                   className="ml-1 cursor-pointer"
@@ -1529,7 +1578,7 @@ export default function BetManagement() {
             <CardContent className="px-5 py-0">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-gray-600 mb-1">Cancelled</p>
+                  <p className="text-xs font-medium text-orange-600 mb-1">To be corrected</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {
                       filteredBets.filter(
@@ -1687,9 +1736,9 @@ export default function BetManagement() {
                               <TableCell>
                                 <Badge
                                   variant="outline"
-                                  className={getStatusColor(bet.status)}
+                                  className={getStatusColor(bet)}
                                 >
-                                  {bet.status}
+                                  {getDisplayStatusForAdmin(bet)}
                                 </Badge>
                               </TableCell>
                               <TableCell>
@@ -1789,14 +1838,15 @@ export default function BetManagement() {
                                     onValueChange={(newStatus) => handleStatusChange(bet._id, bet.status, newStatus)}
                                   >
                                     <SelectTrigger className="h-8 w-24 text-xs">
-                                      <SelectValue />
+                                      <SelectValue>
+                                        {getDisplayStatus(bet.status)}
+                                      </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="pending">Pending</SelectItem>
                                       <SelectItem value="won">Won</SelectItem>
                                       <SelectItem value="lost">Lost</SelectItem>
-                                      <SelectItem value="canceled">Canceled</SelectItem>
-                                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                                      <SelectItem value="cancelled">To be corrected</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>

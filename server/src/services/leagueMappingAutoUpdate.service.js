@@ -9,6 +9,7 @@ import { GoogleGenAI } from '@google/genai';
 import { normalizeTeamName, calculateNameSimilarity } from '../unibet-calc/utils/fotmob-helpers.js';
 import { waitForRateLimit } from '../utils/geminiRateLimiter.js';
 import LeagueMapping from '../models/LeagueMapping.js';
+import FailedLeagueMappingAttempt from '../models/FailedLeagueMappingAttempt.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,11 +19,38 @@ class LeagueMappingAutoUpdate {
         // ✅ REMOVED: clientCsvPath - No longer needed, frontend uses backend API
         this.serverCsvPath = path.join(__dirname, '../unibet-calc/league_mapping_clean.csv');
         this.urlsCsvPath = path.join(__dirname, '../unibet-calc/league_mapping_with_urls.csv');
+        this.tempDir = path.join(__dirname, '../temp'); // ✅ NEW: Temp directory for debug files
+        
+        // ✅ Helper function to get PKT timestamp string
+        this.getPKTTimeString = () => {
+            const now = new Date();
+            const pktTime = now.toLocaleString("en-US", { 
+                timeZone: "Asia/Karachi",
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            // Format: "01/13/2026, 02:39:20" -> "2026-01-13T02:39:20+05:00 (PKT)"
+            const [datePart, timePart] = pktTime.split(', ');
+            const [month, day, year] = datePart.split('/');
+            return `${year}-${month}-${day}T${timePart}+05:00 (PKT)`;
+        };
+        
+        // ✅ Create temp directory if it doesn't exist
+        if (!fs.existsSync(this.tempDir)) {
+            fs.mkdirSync(this.tempDir, { recursive: true });
+            console.log(`[LeagueMapping] 📁 Created temp directory: ${this.tempDir}`);
+        }
         
         // ✅ Add path verification logging
         console.log('[LeagueMapping] 📁 File paths initialized:');
         console.log(`[LeagueMapping]   - Server CSV: ${this.serverCsvPath}`);
         console.log(`[LeagueMapping]   - URLs CSV: ${this.urlsCsvPath}`);
+        console.log(`[LeagueMapping]   - Temp Dir: ${this.tempDir}`);
         console.log(`[LeagueMapping]   - URLs CSV exists: ${fs.existsSync(this.urlsCsvPath)}`);
         console.log(`[LeagueMapping]   - Current working directory: ${process.cwd()}`);
         console.log(`[LeagueMapping]   - __dirname: ${__dirname}`);
@@ -93,8 +121,7 @@ class LeagueMappingAutoUpdate {
                         matchType,
                         country
                     });
-                    // Track Fotmob ID to prevent duplicate mappings
-                    this.existingFotmobIds.add(fotmobIdStr);
+                    // ✅ REMOVED: Track Fotmob ID - Now allow multiple Unibet IDs per Fotmob ID
                 }
             }
             
@@ -396,12 +423,255 @@ class LeagueMappingAutoUpdate {
                 console.log(`[LeagueMapping]   ${i + 1}. "${name}"${isGroup} (${l.ccode || 'N/A'}) - ${matchCount} matches`);
             });
             
-            // ✅ IMPORTANT: Return ALL leagues, don't filter
-            console.log(`[LeagueMapping] ✅ Returning ALL ${data.leagues.length} leagues (no filtering applied)`);
-            return data.leagues;
+            // ✅ NEW: Filter matches - only include non-finished matches from TODAY
+            // ✅ STRICT: Exclude Esports and Club Friendly Matches
+            const filteredLeagues = data.leagues
+                .filter(league => {
+                    // ✅ STRICT: Filter out Esports leagues
+                    const leagueName = (league.name || '').toLowerCase();
+                    if (leagueName.includes('esports') || leagueName.includes('esport')) {
+                        console.log(`[LeagueMapping] ⏭️ Skipping Esports league from Fotmob: ${league.name}`);
+                        return false;
+                    }
+                    
+                    // ✅ STRICT: Filter out Club Friendly Matches
+                    if (leagueName.includes('club friendly') || leagueName.includes('club friendly matches')) {
+                        console.log(`[LeagueMapping] ⏭️ Skipping Club Friendly Matches league from Fotmob: ${league.name}`);
+                        return false;
+                    }
+                    
+                    return true;
+                })
+                .map(league => {
+                    if (!league.matches || !Array.isArray(league.matches)) {
+                        return league;
+                    }
+                    
+                    const filteredMatches = league.matches.filter(match => {
+                        const status = match.status || {};
+                        const isNotFinished = status.finished === false;
+                        const isNotStarted = status.started === false;
+                        
+                        // ✅ NEW: Verify match date is today (not tomorrow)
+                        const matchTimeUTC = new Date(match.status?.utcTime || match.timeTS);
+                        const matchTimePKT = new Date(matchTimeUTC.toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+                        const matchDateStr = `${matchTimePKT.getFullYear()}${String(matchTimePKT.getMonth() + 1).padStart(2, '0')}${String(matchTimePKT.getDate()).padStart(2, '0')}`;
+                        const isTodayDate = matchDateStr === dateStr;
+                        
+                        return isNotFinished && isNotStarted && isTodayDate;
+                    });
+                    
+                    return {
+                        ...league,
+                        matches: filteredMatches
+                    };
+                }).filter(league => league.matches && league.matches.length > 0);
+            
+            console.log(`[LeagueMapping] ✅ Filtered to ${filteredLeagues.length} leagues with non-finished matches (from ${data.leagues.length} total leagues)`);
+            
+            // ✅ NEW: Save filtered response to temp file for debugging
+            try {
+                const tempFilePath = path.join(this.tempDir, `fotmob_filtered_${dateStr}.json`);
+                await fs.promises.writeFile(tempFilePath, JSON.stringify({
+                    date: dateStr,
+                    timestamp: this.getPKTTimeString(), // ✅ FIX: Use PKT time instead of UTC
+                    totalLeagues: data.leagues.length,
+                    filteredLeagues: filteredLeagues.length,
+                    leagues: filteredLeagues
+                }, null, 2));
+                console.log(`[LeagueMapping] 💾 Saved filtered Fotmob response to: ${tempFilePath}`);
+            } catch (saveError) {
+                console.warn(`[LeagueMapping] ⚠️ Failed to save temp file:`, saveError.message);
+            }
+            
+            return filteredLeagues;
         } catch (error) {
             console.error('[LeagueMapping] Error fetching Fotmob matches:', error.message);
             throw error;
+        }
+    }
+
+    /**
+     * Fetch Fotmob matches for tomorrow (next day)
+     * ✅ NEW: Added to fetch tomorrow's matches for better league mapping
+     */
+    async fetchFotmobMatchesTomorrow(dateStr) {
+        console.log(`[LeagueMapping] Fetching Fotmob matches for TOMORROW (12hr filter)...`);
+        
+        try {
+            // Calculate tomorrow's date
+            const today = new Date();
+            const year = parseInt(dateStr.substring(0, 4));
+            const month = parseInt(dateStr.substring(4, 6)) - 1; // Month is 0-indexed
+            const day = parseInt(dateStr.substring(6, 8));
+            const todayDate = new Date(year, month, day);
+            const tomorrowDate = new Date(todayDate);
+            tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+            
+            const tomorrowYear = tomorrowDate.getFullYear();
+            const tomorrowMonth = String(tomorrowDate.getMonth() + 1).padStart(2, '0');
+            const tomorrowDay = String(tomorrowDate.getDate()).padStart(2, '0');
+            const tomorrowDateStr = `${tomorrowYear}${tomorrowMonth}${tomorrowDay}`;
+            
+            console.log(`[LeagueMapping] 📅 Tomorrow's date: ${tomorrowDateStr}`);
+            
+            const timezone = 'Asia/Karachi';
+            const ccode3 = 'PAK';
+            const apiUrl = `https://www.fotmob.com/api/data/matches?date=${tomorrowDateStr}&timezone=${encodeURIComponent(timezone)}&ccode3=${ccode3}`;
+
+            // Get x-mas token (required for authentication)
+            let xmasToken = null;
+            try {
+                console.log(`[LeagueMapping] 🔑 Attempting to fetch x-mas token for tomorrow...`);
+                const xmasResponse = await Promise.race([
+                    axios.get('http://46.101.91.154:6006/', { timeout: 5000 }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('x-mas token fetch timeout')), 8000))
+                ]);
+                xmasToken = xmasResponse.data?.['x-mas'];
+                if (xmasToken) {
+                    console.log(`[LeagueMapping] ✅ Got x-mas token for tomorrow`);
+                } else {
+                    console.warn(`[LeagueMapping] ⚠️ x-mas token response missing token`);
+                }
+            } catch (xmasError) {
+                console.warn(`[LeagueMapping] ⚠️ Could not get x-mas token (${xmasError.message}), trying without it...`);
+            }
+
+            const headers = {
+                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+                'Accept': 'application/json',
+                'Referer': 'https://www.fotmob.com/'
+            };
+
+            if (xmasToken) {
+                headers['x-mas'] = xmasToken;
+            }
+
+            const response = await axios.get(apiUrl, { headers, timeout: 30000 });
+            const data = response.data;
+
+            if (!data.leagues || !Array.isArray(data.leagues)) {
+                console.warn(`[LeagueMapping] ⚠️ Invalid Fotmob response format for tomorrow`);
+                return [];
+            }
+
+            console.log(`[LeagueMapping] 📥 FotMob Tomorrow API Response:`);
+            console.log(`[LeagueMapping]   - Tomorrow date: ${tomorrowDateStr}`);
+            console.log(`[LeagueMapping]   - Total leagues: ${data.leagues.length}`);
+            
+            // ✅ FIX: Calculate tomorrow's first 12 hours (00:01 AM to 12:01 PM PKT)
+            // Create tomorrow date start: 00:01 AM PKT
+            const tomorrowStartPKTStr = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}T00:01:00+05:00`;
+            const tomorrowStartPKT = new Date(tomorrowStartPKTStr);
+            
+            // Create tomorrow date end: 12:01 PM PKT (first 12 hours)
+            const tomorrowEndPKTStr = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}T12:01:00+05:00`;
+            const tomorrowEndPKT = new Date(tomorrowEndPKTStr);
+            
+            const startTimeStr = tomorrowStartPKT.toLocaleString("en-US", { 
+                timeZone: "Asia/Karachi",
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            const endTimeStr = tomorrowEndPKT.toLocaleString("en-US", { 
+                timeZone: "Asia/Karachi",
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            
+            console.log(`[LeagueMapping] ⏰ Tomorrow's window: ${startTimeStr} to ${endTimeStr} PKT`);
+            
+            // ✅ FIX: Filter matches - only include matches within tomorrow's first 12 hours (00:01 AM to 12:01 PM PKT)
+            // ✅ STRICT: Exclude Esports and Club Friendly Matches
+            const filteredLeagues = data.leagues
+                .filter(league => {
+                    // ✅ STRICT: Filter out Esports leagues
+                    const leagueName = (league.name || '').toLowerCase();
+                    if (leagueName.includes('esports') || leagueName.includes('esport')) {
+                        console.log(`[LeagueMapping] ⏭️ Skipping Esports league from Fotmob (tomorrow): ${league.name}`);
+                        return false;
+                    }
+                    
+                    // ✅ STRICT: Filter out Club Friendly Matches
+                    if (leagueName.includes('club friendly') || leagueName.includes('club friendly matches')) {
+                        console.log(`[LeagueMapping] ⏭️ Skipping Club Friendly Matches league from Fotmob (tomorrow): ${league.name}`);
+                        return false;
+                    }
+                    
+                    return true;
+                })
+                .map(league => {
+                    if (!league.matches || !Array.isArray(league.matches)) {
+                        return league;
+                    }
+                    
+                    const filteredMatches = league.matches.filter(match => {
+                        // Check status
+                        const status = match.status || {};
+                        const isNotFinished = status.finished === false;
+                        const isNotStarted = status.started === false;
+                        
+                        if (!isNotFinished || !isNotStarted) {
+                            return false;
+                        }
+                        
+                        // ✅ Check if match time is within tomorrow's first 12 hours (00:01 AM to 12:01 PM PKT)
+                        // Match time is already in UTC, and Date objects store UTC timestamps internally
+                        // So we can compare directly: matchTimeUTC >= tomorrowStartPKT && matchTimeUTC <= tomorrowEndPKT
+                        const matchTimeUTC = new Date(match.status?.utcTime || match.timeTS);
+                        
+                        // Match should be >= tomorrow 00:01 AM PKT and <= tomorrow 12:01 PM PKT
+                        // (Date objects compare by UTC timestamp internally, so this works correctly)
+                        const isWithinTomorrowFirst12Hours = matchTimeUTC >= tomorrowStartPKT && matchTimeUTC <= tomorrowEndPKT;
+                        
+                        return isWithinTomorrowFirst12Hours;
+                    });
+                    
+                    return {
+                        ...league,
+                        matches: filteredMatches
+                    };
+                }).filter(league => league.matches && league.matches.length > 0);
+            
+            console.log(`[LeagueMapping] ✅ Filtered to ${filteredLeagues.length} leagues with matches within tomorrow's first 12 hours (00:01 AM to 12:01 PM PKT)`);
+            
+            // ✅ NEW: Save filtered response to temp file for debugging
+            try {
+                const tempFilePath = path.join(this.tempDir, `fotmob_filtered_tomorrow_${tomorrowDateStr}.json`);
+                await fs.promises.writeFile(tempFilePath, JSON.stringify({
+                    date: tomorrowDateStr,
+                    timestamp: this.getPKTTimeString(),
+                    window: {
+                        start: tomorrowStartPKT.toISOString(),
+                        end: tomorrowEndPKT.toISOString(),
+                        startStr: startTimeStr,
+                        endStr: endTimeStr,
+                        description: "Tomorrow's first 12 hours (00:01 AM to 12:01 PM PKT)"
+                    },
+                    totalLeagues: data.leagues.length,
+                    filteredLeagues: filteredLeagues.length,
+                    leagues: filteredLeagues
+                }, null, 2));
+                console.log(`[LeagueMapping] 💾 Saved filtered Fotmob tomorrow response to: ${tempFilePath}`);
+            } catch (saveError) {
+                console.warn(`[LeagueMapping] ⚠️ Failed to save temp file:`, saveError.message);
+            }
+            
+            return filteredLeagues;
+        } catch (error) {
+            console.error('[LeagueMapping] Error fetching Fotmob matches for tomorrow:', error.message);
+            // Don't throw - return empty array if tomorrow fetch fails
+            return [];
         }
     }
 
@@ -748,7 +1018,7 @@ class LeagueMappingAutoUpdate {
                 
                 console.log(`[LeagueMapping] 🤖 Using Gemini AI fallback (${keyName}) for: ${unibetLeague.name} (${unibetLeague.country || 'Unknown country'})`);
                 
-                // ✅ FIX: Send ALL matches (not just 5) - complete API data
+                // ✅ FIX: Filter matches - only send non-finished matches to Gemini
                 // Prepare Unibet league data for Gemini
                 const unibetData = {
                     leagueName: unibetLeague.englishName || unibetLeague.name,
@@ -758,6 +1028,7 @@ class LeagueMappingAutoUpdate {
                         awayTeam: m.awayName,
                         startTime: m.start
                     }))
+                    // Note: Unibet matches are already filtered (only upcoming/live)
                 };
 
                 // ✅ FIX: Send ALL FotMob leagues (NO LIMIT) - complete API data
@@ -765,19 +1036,30 @@ class LeagueMappingAutoUpdate {
                 console.log(`[LeagueMapping] 📥 Received ${fotmobLeagues.length} FotMob leagues to process for Gemini`);
                 
                 // Prepare FotMob leagues data (simplified for Gemini)
+                // ✅ FIX: Filter matches - only include non-finished matches
                 // Include ALL leagues, even if they have no matches (for Priority 1 name matching)
-                const fotmobData = fotmobLeagues.map(league => ({
-                    id: String(league.primaryId || league.id),
-                    name: (league.isGroup && league.parentLeagueName) 
-                        ? league.parentLeagueName 
-                        : (league.name || league.parentLeagueName || ''),
-                    country: league.ccode || '',
-                    matches: (league.matches || []).map(m => ({
-                        homeTeam: m.home?.name || m.home?.longName || '',
-                        awayTeam: m.away?.name || m.away?.longName || '',
-                        startTime: m.status?.utcTime || m.time || ''
-                    }))
-                }));
+                const fotmobData = fotmobLeagues.map(league => {
+                    // Filter matches: only non-finished and not started
+                    const filteredMatches = (league.matches || []).filter(m => {
+                        const status = m.status || {};
+                        const isNotFinished = status.finished === false;
+                        const isNotStarted = status.started === false;
+                        return isNotFinished && isNotStarted;
+                    });
+                    
+                    return {
+                        id: String(league.primaryId || league.id),
+                        name: (league.isGroup && league.parentLeagueName) 
+                            ? league.parentLeagueName 
+                            : (league.name || league.parentLeagueName || ''),
+                        country: league.ccode || '',
+                        matches: filteredMatches.map(m => ({
+                            homeTeam: m.home?.name || m.home?.longName || '',
+                            awayTeam: m.away?.name || m.away?.longName || '',
+                            startTime: m.status?.utcTime || m.time || ''
+                        }))
+                    };
+                });
                 
                 // ✅ VERIFY: Log total leagues being sent (should match fotmobLeagues.length)
                 console.log(`[LeagueMapping] ✅ Prepared ${fotmobData.length} FotMob leagues for Gemini (should match ${fotmobLeagues.length})`);
@@ -880,6 +1162,25 @@ If no match found, return:
   "reason": "Why no match was found (e.g., 'No league name match found and no matching teams with exact time')"
 }`;
 
+                // ✅ NEW: Save Gemini request to temp file for debugging
+                try {
+                    const requestFilePath = path.join(this.tempDir, `gemini_request_${unibetLeague.id}_${Date.now()}.json`);
+                    await fs.promises.writeFile(requestFilePath, JSON.stringify({
+                        timestamp: this.getPKTTimeString(), // ✅ FIX: Use PKT time instead of UTC
+                        unibetLeague: {
+                            id: unibetLeague.id,
+                            name: unibetData.leagueName,
+                            country: unibetData.country,
+                            matches: unibetData.matches
+                        },
+                        fotmobLeagues: fotmobData,
+                        prompt: prompt
+                    }, null, 2));
+                    console.log(`[LeagueMapping] 💾 Saved Gemini request to: ${requestFilePath}`);
+                } catch (saveError) {
+                    console.warn(`[LeagueMapping] ⚠️ Failed to save Gemini request:`, saveError.message);
+                }
+                
                 console.log(`[LeagueMapping] 📤 Sending request to Gemini (${keyName})...`);
                 
                 const response = await ai.models.generateContent({
@@ -889,6 +1190,21 @@ If no match found, return:
 
                 const responseText = (response.text || '').trim();
                 console.log(`[LeagueMapping] 📥 Gemini response (${keyName}): ${responseText.substring(0, 200)}...`);
+                
+                // ✅ NEW: Save Gemini response to temp file for debugging
+                try {
+                    const responseFilePath = path.join(this.tempDir, `gemini_response_${unibetLeague.id}_${Date.now()}.json`);
+                    await fs.promises.writeFile(responseFilePath, JSON.stringify({
+                        timestamp: this.getPKTTimeString(), // ✅ FIX: Use PKT time instead of UTC
+                        unibetLeagueId: unibetLeague.id,
+                        unibetLeagueName: unibetData.leagueName,
+                        responseText: responseText,
+                        fullResponse: response
+                    }, null, 2));
+                    console.log(`[LeagueMapping] 💾 Saved Gemini response to: ${responseFilePath}`);
+                } catch (saveError) {
+                    console.warn(`[LeagueMapping] ⚠️ Failed to save Gemini response:`, saveError.message);
+                }
 
                 // Parse JSON response
                 let geminiResult;
@@ -964,16 +1280,21 @@ If no match found, return:
         const unibetIdStr = String(mapping.unibetId);
         const fotmobIdStr = String(mapping.fotmobId);
         
-        // ✅ Check for duplicates before adding
-        if (this.existingMappings.has(unibetIdStr)) {
-            console.log(`[LeagueMapping] ⚠️ Skipping duplicate Unibet ID: ${unibetIdStr} (${mapping.unibetName})`);
-            return false;
+        // ✅ FIX: Check DB (source of truth) for duplicates before adding
+        try {
+            const unibetIdNum = parseInt(mapping.unibetId);
+            const existingInDB = await LeagueMapping.findOne({ unibetId: unibetIdNum });
+            if (existingInDB) {
+                console.log(`[LeagueMapping] ⚠️ Skipping duplicate Unibet ID: ${unibetIdStr} (${mapping.unibetName}) - already exists in DB`);
+                return false;
+            }
+        } catch (dbError) {
+            console.error(`[LeagueMapping] ❌ Error checking DB for duplicate:`, dbError.message);
+            // Continue processing if DB check fails
         }
         
-        if (this.existingFotmobIds.has(fotmobIdStr)) {
-            console.log(`[LeagueMapping] ⚠️ Skipping duplicate Fotmob ID: ${fotmobIdStr} (${mapping.fotmobName})`);
-            return false;
-        }
+        // ✅ REMOVED: Check for existing Fotmob ID - Now allow multiple Unibet IDs per Fotmob ID
+        // Multiple Unibet leagues (like "Segunda RFEF 5") can map to one Fotmob league (primaryId: 9138)
         
         const matchType = mapping.exactMatch ? 'Exact Match' : 'Different Name';
         const row = [
@@ -1001,21 +1322,8 @@ If no match found, return:
 
             // ✅ REMOVED: Client CSV update - Frontend now uses backend API
             // Append to server CSV file only
+            // ✅ REMOVED: CSV duplicate check - DB is source of truth, CSV is just for backup
             if (fs.existsSync(this.serverCsvPath)) {
-                // ✅ Additional check: Parse CSV to verify no duplicate in file
-                const content = await fs.promises.readFile(this.serverCsvPath, 'utf8');
-                const lines = content.split('\n');
-                for (const line of lines) {
-                    if (!line.trim()) continue;
-                    const parts = line.split(',');
-                    const existingUnibetId = parts[0]?.trim().replace(/"/g, '');
-                    const existingFotmobId = parts[2]?.trim().replace(/"/g, '');
-                    if (existingUnibetId === unibetIdStr || existingFotmobId === fotmobIdStr) {
-                        console.log(`[LeagueMapping] ⚠️ Duplicate found in CSV file - skipping: Unibet=${unibetIdStr}, Fotmob=${fotmobIdStr}`);
-                        return false;
-                    }
-                }
-                
                 await ensureNewline(this.serverCsvPath);
                 await fs.promises.appendFile(this.serverCsvPath, row + '\n', 'utf8');
                 console.log(`[LeagueMapping] ✅ Added to server CSV: ${mapping.unibetName} → ${mapping.fotmobName}`);
@@ -1032,8 +1340,7 @@ If no match found, return:
                 matchType,
                 country: mapping.country || ''
             });
-            // Track Fotmob ID (normalize to string)
-            this.existingFotmobIds.add(fotmobIdStr);
+            // ✅ REMOVED: Track Fotmob ID - Now allow multiple Unibet IDs per Fotmob ID
             
             return true;
 
@@ -1065,16 +1372,13 @@ If no match found, return:
             const fotmobId = parseInt(mapping.fotmobId);
             const matchType = mapping.exactMatch ? 'Exact Match' : 'Different Name';
             
-            // Check if mapping already exists
+            // ✅ FIX: Only check unibetId (allow multiple unibetIds per fotmobId)
             const existing = await LeagueMapping.findOne({
-                $or: [
-                    { unibetId: unibetId },
-                    { fotmobId: fotmobId }
-                ]
+                unibetId: unibetId
             });
             
             if (existing) {
-                console.log(`[LeagueMapping] ⚠️ Mapping already exists in DB - Unibet ID: ${unibetId}, Fotmob ID: ${fotmobId}`);
+                console.log(`[LeagueMapping] ⚠️ Mapping already exists in DB - Unibet ID: ${unibetId} (Fotmob ID: ${existing.fotmobId})`);
                 return false;
             }
             
@@ -1518,10 +1822,71 @@ If no match found, return:
             const unibetLeagues = await this.fetchUnibetMatches(dateStr);
             console.log(`[LeagueMapping] ✅ Step 3 complete: Found ${unibetLeagues.length} Unibet leagues`);
 
-            // 4. Fetch Fotmob matches
-            console.log('[LeagueMapping] 🌐 Step 4: Fetching Fotmob matches...');
-            const fotmobLeagues = await this.fetchFotmobMatches(dateStr);
-            console.log(`[LeagueMapping] ✅ Step 4 complete: Found ${fotmobLeagues.length} Fotmob leagues`);
+            // 4. Fetch Fotmob matches (today)
+            console.log('[LeagueMapping] 🌐 Step 4: Fetching Fotmob matches for TODAY...');
+            let fotmobLeagues = await this.fetchFotmobMatches(dateStr);
+            
+            // ✅ FIX: Filter today's matches - only include non-finished matches from TODAY
+            fotmobLeagues = fotmobLeagues.map(league => {
+                if (!league.matches || !Array.isArray(league.matches)) {
+                    return league;
+                }
+                
+                const filteredMatches = league.matches.filter(match => {
+                    const status = match.status || {};
+                    const isNotFinished = status.finished === false;
+                    const isNotStarted = status.started === false;
+                    
+                    // ✅ NEW: Verify match date is today (not tomorrow)
+                    const matchTimeUTC = new Date(match.status?.utcTime || match.timeTS);
+                    const matchTimePKT = new Date(matchTimeUTC.toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+                    const matchDateStr = `${matchTimePKT.getFullYear()}${String(matchTimePKT.getMonth() + 1).padStart(2, '0')}${String(matchTimePKT.getDate()).padStart(2, '0')}`;
+                    const isTodayDate = matchDateStr === dateStr;
+                    
+                    return isNotFinished && isNotStarted && isTodayDate;
+                });
+                
+                return {
+                    ...league,
+                    matches: filteredMatches
+                };
+            }).filter(league => league.matches && league.matches.length > 0);
+            
+            console.log(`[LeagueMapping] ✅ Step 4a complete: Found ${fotmobLeagues.length} Fotmob leagues (today, non-finished matches only)`);
+            
+            // 4b. Fetch Fotmob matches (tomorrow) - ✅ NEW
+            console.log('[LeagueMapping] 🌐 Step 4b: Fetching Fotmob matches for TOMORROW (12hr filter)...');
+            const fotmobLeaguesTomorrow = await this.fetchFotmobMatchesTomorrow(dateStr);
+            console.log(`[LeagueMapping] ✅ Step 4b complete: Found ${fotmobLeaguesTomorrow.length} Fotmob leagues (tomorrow, within 12hrs, non-finished matches only)`);
+            
+            // ✅ Save today's leagues separately before combining
+            const fotmobLeaguesToday = [...fotmobLeagues];
+            
+            // Combine today and tomorrow leagues
+            fotmobLeagues = [...fotmobLeagues, ...fotmobLeaguesTomorrow];
+            console.log(`[LeagueMapping] ✅ Step 4 complete: Total ${fotmobLeagues.length} Fotmob leagues (${fotmobLeaguesToday.length} today + ${fotmobLeaguesTomorrow.length} tomorrow)`);
+            
+            // ✅ NEW: Save combined filtered data for verification (what will be sent to Gemini/Unibet matching)
+            try {
+                const combinedFilePath = path.join(this.tempDir, `fotmob_combined_filtered_${dateStr}.json`);
+                await fs.promises.writeFile(combinedFilePath, JSON.stringify({
+                    date: dateStr,
+                    timestamp: this.getPKTTimeString(),
+                    summary: {
+                        todayLeaguesCount: fotmobLeaguesToday.length,
+                        tomorrowLeaguesCount: fotmobLeaguesTomorrow.length,
+                        totalCombinedLeagues: fotmobLeagues.length,
+                        description: "This is the filtered data that will be used for matching with Unibet leagues and sent to Gemini"
+                    },
+                    todayLeagues: fotmobLeaguesToday,
+                    tomorrowLeagues: fotmobLeaguesTomorrow,
+                    allCombinedLeagues: fotmobLeagues
+                }, null, 2));
+                console.log(`[LeagueMapping] 💾 Saved combined filtered data to: ${combinedFilePath}`);
+                console.log(`[LeagueMapping] 📊 Combined data breakdown: ${fotmobLeaguesToday.length} today + ${fotmobLeaguesTomorrow.length} tomorrow = ${fotmobLeagues.length} total`);
+            } catch (saveError) {
+                console.warn(`[LeagueMapping] ⚠️ Failed to save combined data:`, saveError.message);
+            }
 
             // 5. Process each Unibet league
             console.log('[LeagueMapping] 🔄 Step 5: Processing leagues and finding matches...');
@@ -1554,11 +1919,21 @@ If no match found, return:
                 const unibetIdStr = String(unibetLeague.id);
                 const unibetIdNum = parseInt(unibetLeague.id);
                 
-                // Check if league already exists in database
+                // Check if league already exists in database (successful mapping)
                 try {
                     const existingInDB = await LeagueMapping.findOne({ unibetId: unibetIdNum });
                     if (existingInDB) {
                         console.log(`[LeagueMapping] ⚠️ Skipping ${unibetLeague.name} - Unibet ID ${unibetIdStr} already exists in DATABASE (Fotmob ID: ${existingInDB.fotmobId})`);
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    // ✅ NEW: Check if mapping was previously attempted and failed (separate collection)
+                    const failedAttempt = await FailedLeagueMappingAttempt.findOne({ 
+                        unibetId: unibetIdNum
+                    });
+                    if (failedAttempt) {
+                        console.log(`[LeagueMapping] ⚠️ Skipping ${unibetLeague.name} - Previous mapping attempt failed (Unibet ID: ${unibetIdStr}, Attempts: ${failedAttempt.attemptCount})`);
                         skippedCount++;
                         continue;
                     }
@@ -1584,7 +1959,8 @@ If no match found, return:
                 }
 
                 if (fotmobLeague) {
-                    const fotmobId = String(fotmobLeague.id);
+                    // ✅ FIX: Use primaryId instead of id (primaryId is the actual league ID, id might be group ID)
+                    const fotmobId = String(fotmobLeague.primaryId || fotmobLeague.id);
                     const unibetIdStr = String(unibetLeague.id);
                     
                     // ✅ VALIDATION: Only save properly mapped leagues (must have valid Fotmob ID)
@@ -1595,28 +1971,23 @@ If no match found, return:
                         continue;
                     }
                     
-                    // ✅ Check if this Fotmob ID is already mapped to any Unibet league
-                    // Normalize to string for comparison
-                    if (this.existingFotmobIds.has(fotmobId)) {
-                        console.log(`[LeagueMapping] ⚠️ Skipping ${unibetLeague.name} - Fotmob ID ${fotmobId} already mapped to another league`);
-                        skippedCount++;
-                        continue;
-                    }
+                    // ✅ REMOVED: Check for existing Fotmob ID mapping - Now allow multiple Unibet IDs per Fotmob ID
+                    // Multiple Unibet leagues (like "Segunda RFEF 5") can map to one Fotmob league (primaryId: 9138)
                     
-                    // ✅ Double check: Verify the combination doesn't exist
-                    // Normalize Unibet ID to string for comparison
-                    const existingMapping = this.existingMappings.get(unibetIdStr);
-                    if (existingMapping && String(existingMapping.fotmobId) === fotmobId) {
-                        console.log(`[LeagueMapping] ⚠️ Skipping ${unibetLeague.name} - Combination (Unibet ID: ${unibetIdStr}, Fotmob ID: ${fotmobId}) already exists`);
-                        skippedCount++;
-                        continue;
-                    }
-                    
-                    // ✅ Additional check: Verify Unibet ID doesn't already exist (should be caught above, but extra safety)
-                    if (this.existingMappings.has(unibetIdStr)) {
-                        console.log(`[LeagueMapping] ⚠️ Skipping ${unibetLeague.name} - Unibet ID ${unibetIdStr} already exists in CSV`);
-                        skippedCount++;
-                        continue;
+                    // ✅ FIX: Check DB (source of truth) - Verify the combination doesn't exist
+                    try {
+                        const existingMappingInDB = await LeagueMapping.findOne({
+                            unibetId: unibetIdNum,
+                            fotmobId: fotmobIdNum
+                        });
+                        if (existingMappingInDB) {
+                            console.log(`[LeagueMapping] ⚠️ Skipping ${unibetLeague.name} - Combination (Unibet ID: ${unibetIdStr}, Fotmob ID: ${fotmobId}) already exists in DB`);
+                            skippedCount++;
+                            continue;
+                        }
+                    } catch (dbError) {
+                        console.error(`[LeagueMapping] ❌ Error checking DB for combination:`, dbError.message);
+                        // Continue processing if DB check fails
                     }
                     
                     // ✅ VALIDATION: Must have valid Fotmob name
@@ -1648,8 +2019,7 @@ If no match found, return:
 
                     if (success) {
                         newMappingsCount++;
-                        // Track the new Fotmob ID (normalize to string)
-                        this.existingFotmobIds.add(String(fotmobId));
+                        // ✅ REMOVED: Track Fotmob ID - Now allow multiple Unibet IDs per Fotmob ID
                         
                         // ✅ NEW: Save to Database (only properly mapped leagues)
                         try {
@@ -1671,6 +2041,43 @@ If no match found, return:
                     }
                 } else {
                     notFoundCount++;
+                    
+                    // ✅ NEW: Save unsuccessful mapping attempt to separate collection
+                    try {
+                        const unibetIdNum = parseInt(unibetLeague.id);
+                        const existingFailed = await FailedLeagueMappingAttempt.findOne({ 
+                            unibetId: unibetIdNum
+                        });
+                        
+                        if (!existingFailed) {
+                            // Create a new entry to track failed mapping
+                            const failedMapping = new FailedLeagueMappingAttempt({
+                                unibetId: unibetIdNum,
+                                unibetName: unibetLeague.englishName || unibetLeague.name,
+                                country: unibetLeague.country || '',
+                                unibetUrl: this.constructUnibetUrl({
+                                    unibetName: unibetLeague.englishName || unibetLeague.name,
+                                    country: unibetLeague.country || ''
+                                }),
+                                mappingAttempted: true,
+                                mappingFailed: true,
+                                lastMappingAttempt: new Date(),
+                                attemptCount: 1
+                            });
+                            
+                            await failedMapping.save();
+                            console.log(`[LeagueMapping] 📝 Saved failed mapping attempt for: ${unibetLeague.name} (Unibet ID: ${unibetIdNum})`);
+                        } else {
+                            // Update last attempt time and increment count
+                            existingFailed.lastMappingAttempt = new Date();
+                            existingFailed.attemptCount = (existingFailed.attemptCount || 0) + 1;
+                            await existingFailed.save();
+                            console.log(`[LeagueMapping] 📝 Updated failed mapping attempt for: ${unibetLeague.name} (Unibet ID: ${unibetIdNum}, Attempts: ${existingFailed.attemptCount})`);
+                        }
+                    } catch (error) {
+                        console.warn(`[LeagueMapping] ⚠️ Failed to save unsuccessful mapping for ${unibetLeague.name}:`, error.message);
+                        // Don't fail the whole job if this fails
+                    }
                 }
             }
 

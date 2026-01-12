@@ -177,3 +177,6 @@ Unibet_ID,Unibet_URL,Unibet_Name,Fotmob_URL,Fotmob_Name,Match_Type,Country/Regio
 2010133908,https://www.unibet.com.au/betting/sports/filter/football/world_cup_2026,World Cup 2026,https://www.fotmob.com/leagues/77,World Cup,Different Name,International,false
 2010203832,https://www.unibet.com.au/betting/sports/filter/football/afc_champions_league_2,AFC Champions League 2,https://www.fotmob.com/leagues/9469,AFC Champions League Two,Exact Match,International,false
 2010205606,https://www.unibet.com.au/betting/sports/filter/football/europa_cup__w_,Europa Cup (W),https://www.fotmob.com/leagues/11129,UEFA Women's Europa Cup,Different Name,International,false
+1000095061,https://www.unibet.com.au/betting/sports/filter/football/turkey/turkiye_kupasi,Türkiye kupasi,https://www.fotmob.com/leagues/151,Cup Grp. A,Different Name,Turkey
+2000054642,https://www.unibet.com.au/betting/sports/filter/football/england/isthmian_league_premier_division,Isthmian League Premier Division,https://www.fotmob.com/leagues/8947,Isthmian Premier Division,Different Name,England
+1000259859,https://www.unibet.com.au/betting/sports/filter/football/egypt/cup,Cup,https://www.fotmob.com/leagues/9941,Cup,Exact Match,Egypt

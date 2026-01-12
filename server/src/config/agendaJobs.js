@@ -4,6 +4,7 @@ import LiveFixturesService from "../services/LiveFixtures.service.js";
 import { UnibetCalcController } from "../controllers/unibetCalc.controller.js";
 import { FotmobController } from "../controllers/fotmob.controller.js";
 import LeagueMappingAutoUpdate from "../services/leagueMappingAutoUpdate.service.js";
+import Bet from "../models/Bet.js"; // ✅ NEW: Import Bet model for cancelled bets job
 
 // Get LiveFixtures service instance
 const getLiveFixturesService = () => {
@@ -119,6 +120,37 @@ const cancelBetProcessingJob = async () => {
   console.log('[Agenda] Automated bet processing job cancelled successfully');
 };
 
+// ✅ NEW: Function to schedule cancelled bets processing job
+let cancelledBetsJobScheduled = false;
+const scheduleCancelledBetsJob = async () => {
+  if (!cancelledBetsJobScheduled) {
+    try {
+      console.log('[Agenda] ⚙️ Scheduling cancelled bets processing job...');
+      console.log('[Agenda] ⚙️ Job will run every 10 minutes');
+      
+      // ✅ FIX: Add timeout to prevent hanging
+      const jobPromise = agenda.every("10 minutes", "processCancelledBets");
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout: agenda.every() took too long (10s)')), 10000)
+      );
+      const job = await Promise.race([jobPromise, timeoutPromise]);
+      
+      cancelledBetsJobScheduled = true;
+      console.log('[Agenda] ✅ Cancelled bets processing job scheduled successfully');
+      console.log(`[Agenda] ✅ Job ID: ${job.attrs._id}`);
+      console.log(`[Agenda] ✅ Next run: ${job.attrs.nextRunAt}`);
+      console.log(`[Agenda] ✅ Repeat interval: ${job.attrs.repeatInterval}`);
+    } catch (error) {
+      console.error('[Agenda] ❌ Failed to schedule cancelled bets processing job:', error);
+      console.error('[Agenda] ❌ Error stack:', error.stack);
+      // Don't throw - continue with other jobs
+      console.warn('[Agenda] ⚠️ Continuing despite cancelled bets job scheduling failure...');
+    }
+  } else {
+    console.log('[Agenda] ⚠️ Cancelled bets processing job already scheduled, skipping...');
+  }
+};
+
 // Function to schedule FotMob cache refresh job
 const scheduleFotmobCacheJob = async () => {
   if (!fotmobCacheJobScheduled) {
@@ -191,28 +223,28 @@ const scheduleLeagueMappingJob = async () => {
   
   if (!leagueMappingJobScheduled) {
     try {
-      // ✅ FIX: Schedule every 12 hours (at 00:00 and 12:00 Pakistan Time)
+      // ✅ FIX: Schedule every 12 hours (at 00:01 and 12:01 Pakistan Time)
       // Cron syntax: "minute hour dayOfMonth month dayOfWeek"
       // IMPORTANT: Agenda.js uses server's LOCAL timezone for cron
-      // - On local dev (PKT): "0 0,12 * * *" = 00:00 and 12:00 PKT
-      // - On Render (UTC): "0 19,7 * * *" = 19:00 and 07:00 UTC = 00:00 and 12:00 PKT
+      // - On local dev (PKT): "1 0,12 * * *" = 00:01 and 12:01 PKT
+      // - On Render (UTC): "1 19,7 * * *" = 19:01 and 07:01 UTC = 00:01 and 12:01 PKT
       // Since we want same time on both, we need to detect timezone
       const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const isUTC = serverTimezone === 'UTC' || process.env.TZ === 'UTC';
-      // Schedule job every 12 hours: 00:00 and 12:00 PKT
-      // UTC: 19:00 (previous day) and 07:00 = 00:00 and 12:00 PKT
-      // PKT: 00:00 and 12:00 = 00:00 and 12:00 PKT
-      const cronExpression = isUTC ? "0 19,7 * * *" : "0 0,12 * * *";
+      // Schedule job every 12 hours: 00:01 and 12:01 PKT
+      // UTC: 19:01 (previous day) and 07:01 = 00:01 and 12:01 PKT
+      // PKT: 00:01 and 12:01 = 00:01 and 12:01 PKT
+      const cronExpression = isUTC ? "1 19,7 * * *" : "1 0,12 * * *";
       
       console.log('[Agenda] ========================================');
       console.log('[Agenda] Scheduling League Mapping auto-update job...');
-      console.log('[Agenda] Target Time: Every 12 hours (00:00 and 12:00 PKT)');
+      console.log('[Agenda] Target Time: Every 12 hours (00:01 and 12:01 PKT)');
       console.log(`[Agenda] Server Timezone: ${serverTimezone} (isUTC: ${isUTC})`);
       console.log(`[Agenda] Cron Expression: "${cronExpression}"`);
       if (isUTC) {
-        console.log('[Agenda] Using UTC cron: "0 19,7 * * *" = 19:00 and 07:00 UTC = 00:00 and 12:00 PKT');
+        console.log('[Agenda] Using UTC cron: "1 19,7 * * *" = 19:01 and 07:01 UTC = 00:01 and 12:01 PKT');
       } else {
-        console.log('[Agenda] Using PKT cron: "0 0,12 * * *" = 00:00 and 12:00 PKT');
+        console.log('[Agenda] Using PKT cron: "1 0,12 * * *" = 00:01 and 12:01 PKT');
       }
       console.log('[Agenda] ========================================');
       
@@ -339,6 +371,13 @@ export const checkFixtureCacheAndManageJobs = async () => {
   await scheduleBetProcessingJob();
   } catch (error) {
     console.error('[Agenda] ❌ Failed to schedule bet processing job in checkFixtureCacheAndManageJobs:', error.message);
+  }
+  
+  console.log('[Agenda] Scheduling cancelled bets processing job...');
+  try {
+    await scheduleCancelledBetsJob();
+  } catch (error) {
+    console.error('[Agenda] ❌ Failed to schedule cancelled bets job in checkFixtureCacheAndManageJobs:', error.message);
   }
   
   console.log('[Agenda] Scheduling FotMob multi-day cache refresh job...');
@@ -504,6 +543,121 @@ agenda.define("processPendingBets", async (job) => {
     // ✅ CRITICAL FIX: Force event loop to continue even on error
     setImmediate(() => {
       console.log(`[Agenda] 🔄 Event loop released after processPendingBets error`);
+    });
+  }
+});
+
+// ✅ NEW: Define cancelled bets processing job (runs every 10 minutes)
+agenda.define("processCancelledBets", async (job) => {
+  try {
+    const startTime = new Date();
+    console.log(`\n[Agenda] ========================================`);
+    console.log(`[Agenda] 🚀 Job "processCancelledBets" STARTING`);
+    console.log(`[Agenda] ========================================`);
+    console.log(`[Agenda] ⏰ Time: ${startTime.toISOString()}`);
+    console.log(`[Agenda] 📋 Job ID: ${job.attrs._id}`);
+    console.log(`[Agenda] 🔍 Checking for cancelled bets with retries remaining...`);
+    
+    const unibetCalcController = new UnibetCalcController();
+    
+    // Query: Only cancelled bets with maxRetryCount > 0
+    const query = {
+      status: { $in: ['cancelled', 'canceled'] },
+      maxRetryCount: { $gt: 0 }
+    };
+    
+    const bets = await Bet.find(query)
+      .sort({ createdAt: 1 })
+      .limit(50);
+    
+    console.log(`[Agenda] 📊 Found ${bets.length} cancelled bets with retries remaining`);
+    
+    if (bets.length === 0) {
+      console.log(`[Agenda] ✅ No cancelled bets to process`);
+      return;
+    }
+    
+    let processed = 0;
+    let stillCancelled = 0;
+    let resolved = 0;
+    
+    // Process each cancelled bet with 1 minute delay
+    for (let i = 0; i < bets.length; i++) {
+      const bet = bets[i];
+      const betNumber = i + 1;
+      
+      try {
+        console.log(`\n[Agenda] 🔄 Processing cancelled bet ${betNumber}/${bets.length}`);
+        console.log(`[Agenda]    - Bet ID: ${bet._id}`);
+        console.log(`[Agenda]    - Current Status: ${bet.status}`);
+        console.log(`[Agenda]    - Max Retry Count: ${bet.maxRetryCount}`);
+        console.log(`[Agenda]    - Retry Count: ${bet.retryCount}`);
+        
+        let result;
+        const betType = bet.combination && bet.combination.length > 0 ? 'combination' : 'single';
+        
+        if (betType === 'combination') {
+          result = await unibetCalcController.processCombinationBetInternal(bet);
+        } else {
+          result = await unibetCalcController.processSingleBet(bet);
+        }
+        
+        processed++;
+        
+        // If bet is still cancelled after processing, decrement maxRetryCount
+        if (result.status === 'cancelled' || result.status === 'canceled') {
+          stillCancelled++;
+          await Bet.findByIdAndUpdate(bet._id, {
+            $inc: { maxRetryCount: -1 },
+            $set: { retryCount: bet.maxRetryCount - 1 }
+          });
+          console.log(`[Agenda]    - Still cancelled, decremented maxRetryCount: ${bet.maxRetryCount} → ${bet.maxRetryCount - 1}`);
+        } else {
+          resolved++;
+          console.log(`[Agenda]    - ✅ Resolved! New status: ${result.status}`);
+        }
+        
+        // Add 1 minute delay before next bet (except for last one)
+        if (i < bets.length - 1) {
+          console.log(`[Agenda] ⏳ Waiting 1 minute before processing next cancelled bet...`);
+          await new Promise(resolve => setTimeout(resolve, 60 * 1000)); // 1 minute delay
+        }
+        
+      } catch (error) {
+        console.error(`[Agenda] ❌ Error processing cancelled bet ${bet._id}:`, error.message);
+        // Continue with next bet
+      }
+    }
+    
+    const endTime = new Date();
+    const duration = ((endTime.getTime() - startTime.getTime()) / 1000).toFixed(2);
+    
+    console.log(`\n[Agenda] ========================================`);
+    console.log(`[Agenda] ✅ Job "processCancelledBets" COMPLETED`);
+    console.log(`[Agenda] ========================================`);
+    console.log(`[Agenda] ⏰ Completed at: ${endTime.toISOString()}`);
+    console.log(`[Agenda] ⏱️ Duration: ${duration}s`);
+    console.log(`[Agenda] 📊 Summary: ${processed} processed, ${resolved} resolved, ${stillCancelled} still cancelled`);
+    console.log(`[Agenda] ========================================\n`);
+    
+    // ✅ CRITICAL FIX: Force event loop to continue immediately
+    setImmediate(() => {
+      console.log(`[Agenda] 🔄 Event loop released after processCancelledBets`);
+    });
+  } catch (error) {
+    const errorTime = new Date();
+    console.error(`\n[Agenda] ========================================`);
+    console.error(`[Agenda] ❌ Job "processCancelledBets" FAILED`);
+    console.error(`[Agenda] ========================================`);
+    console.error(`[Agenda] ⏰ Error at: ${errorTime.toISOString()}`);
+    console.error(`[Agenda] ❌ Error:`, error);
+    console.error(`[Agenda] 📋 Error message:`, error.message);
+    console.error(`[Agenda] 📋 Error stack:`, error.stack);
+    console.error(`[Agenda] ========================================\n`);
+    
+    // ✅ CRITICAL FIX: Force event loop to continue even on error
+    setImmediate(() => {
+      console.log(`[Agenda] 🔄 Event loop released after processCancelledBets error`);
     });
   }
 });
@@ -743,6 +897,7 @@ export const initializeAgendaJobs = async () => {
       { name: 'updateInplayMatches' },
       { name: 'refreshHomepageCache' },
       { name: 'processPendingBets' },
+      { name: 'processCancelledBets' }, // ✅ NEW: Cancel cancelled bets job
       { name: 'refreshFotmobMultidayCache' },
       { name: 'updateLeagueMapping' },
       { name: 'checkBetOutcome' }

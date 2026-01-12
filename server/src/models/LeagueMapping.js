@@ -14,8 +14,8 @@ const leagueMappingSchema = new mongoose.Schema({
     fotmobId: {
         type: Number,
         required: true,
-        unique: true,
         index: true
+        // ✅ REMOVED: unique: true - Allow multiple Unibet IDs to map to one Fotmob ID
     },
     fotmobName: {
         type: String,
@@ -58,8 +58,10 @@ leagueMappingSchema.pre('save', function(next) {
     next();
 });
 
-// Compound index to prevent duplicate combinations
-leagueMappingSchema.index({ unibetId: 1, fotmobId: 1 }, { unique: true });
+// Compound index (non-unique) to support multiple unibetIds per fotmobId
+leagueMappingSchema.index({ unibetId: 1, fotmobId: 1 });
+// Index for querying by fotmobId (for finding all unibetIds mapped to a fotmobId)
+leagueMappingSchema.index({ fotmobId: 1 });
 
 const LeagueMapping = mongoose.model('LeagueMapping', leagueMappingSchema);
 

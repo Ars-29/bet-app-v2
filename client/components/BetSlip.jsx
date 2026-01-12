@@ -79,7 +79,7 @@ const BetSlip = () => {
         } else if (countdown === 0 && pendingPlaceBet) {
             // Countdown finished - check one final time before placing
             if (!placeBetDisabled) {
-                executePlaceBet();
+            executePlaceBet();
             } else {
                 // Odds changed at the last moment - cancel
                 setPendingPlaceBet(false);

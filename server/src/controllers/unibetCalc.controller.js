@@ -31,9 +31,12 @@ export class UnibetCalcController {
             if (onlyPending) {
                 // Remove time-based filtering - we will check match status from Unibet API and FotMob instead
                 // This allows us to process bets based on actual match status, not estimated time
-                const query = { status: 'pending' };
+                // ✅ FIX: Only process pending bets (cancelled bets are handled by processCancelledBets job)
+                const query = { 
+                    status: 'pending'
+                };
                 
-                console.log(`📊 [processAll] 🔍 Querying database for pending bets...`);
+                console.log(`📊 [processAll] 🔍 Querying database for pending bets only...`);
                 console.log(`📊 [processAll]    - Query: ${JSON.stringify(query)}`);
                 console.log(`📊 [processAll]    - Sort: { createdAt: 1 }`);
                 console.log(`📊 [processAll]    - Limit: ${parseInt(limit)}`);
@@ -159,7 +162,29 @@ export class UnibetCalcController {
                         console.log(`✅ [processAll]    - Debug Info: ${JSON.stringify(result.debugInfo, null, 2)}`);
                     }
                     
+                    // ✅ NEW: If bet became cancelled, decrement maxRetryCount
+                    if (result.status === 'cancelled' || result.status === 'canceled') {
+                        try {
+                            const updatedBet = await Bet.findById(bet._id);
+                            if (updatedBet && updatedBet.maxRetryCount > 0) {
+                                await Bet.findByIdAndUpdate(bet._id, {
+                                    $inc: { maxRetryCount: -1 },
+                                    $set: { retryCount: updatedBet.maxRetryCount - 1 }
+                                });
+                                console.log(`✅ [processAll]    - Decremented maxRetryCount: ${updatedBet.maxRetryCount} → ${updatedBet.maxRetryCount - 1}`);
+                            }
+                        } catch (retryError) {
+                            console.warn(`⚠️ [processAll] Failed to update retry count: ${retryError.message}`);
+                        }
+                    }
+                    
                     results.push(result);
+                    
+                    // ✅ NEW: Add 1 minute delay before processing next bet (except for last bet)
+                    if (i < bets.length - 1) {
+                        console.log(`⏳ [processAll] Waiting 1 minute before processing next bet...`);
+                        await new Promise(resolve => setTimeout(resolve, 60 * 1000)); // 1 minute delay
+                    }
                     
                 } catch (error) {
                     console.error(`\n❌ [processAll] ========================================`);
