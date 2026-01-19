@@ -5173,11 +5173,59 @@ class BetOutcomeCalculator {
             }
             
             if (!playerId) {
+                // ✅ If Gemini returned NO_MATCH, mark bet as LOST instead of cancelled
+                if (geminiNoMatch) {
+                    console.log(`   ⚠️ Gemini returned NO_MATCH - player not found in match, marking bet as LOST`);
+                    return {
+                        status: 'lost',
+                        reason: 'Player not found in match (Gemini AI confirmed NO_MATCH)',
+                        actualOutcome: 'Player not found',
+                        debugInfo: { participantName, geminiNoMatch: true }
+                    };
+                }
                 console.log(`   ❌ Unable to resolve player ID`);
                 return { status: 'cancelled', reason: 'Unable to resolve player for To Score market', debugInfo: { participantName } };
             }
             
             console.log(`   - Final Player ID: ${playerId}`);
+            
+            // ✅ NEW: Check if player is unavailable (injured/suspended/international duty)
+            // If player is unavailable, bet should be LOST (not cancelled)
+            const awayUnavailable = matchDetails?.content?.lineup?.awayTeam?.unavailable || [];
+            const homeUnavailable = matchDetails?.content?.lineup?.homeTeam?.unavailable || [];
+            const unavailablePlayers = [...(Array.isArray(awayUnavailable) ? awayUnavailable : []), 
+                                         ...(Array.isArray(homeUnavailable) ? homeUnavailable : [])];
+            
+            if (unavailablePlayers.length > 0) {
+                const unavailablePlayer = unavailablePlayers.find(p => 
+                    Number(p?.id || p?.playerId) === Number(playerId)
+                );
+                
+                if (unavailablePlayer) {
+                    const unavailabilityType = unavailablePlayer?.unavailability?.type || 'unknown';
+                    const reason = unavailablePlayer?.unavailability?.expectedReturn || 'N/A';
+                    const playerName = unavailablePlayer?.name || participantName || 'Unknown';
+                    
+                    console.log(`   ⚠️ Player is unavailable:`);
+                    console.log(`   - Player: ${playerName}`);
+                    console.log(`   - Type: ${unavailabilityType}`);
+                    console.log(`   - Expected Return: ${reason}`);
+                    console.log(`   - Bet will be marked as LOST (player did not play)`);
+                    
+                    return {
+                        status: 'lost',
+                        actualOutcome: `Player unavailable (${unavailabilityType})`,
+                        debugInfo: { 
+                            playerId: Number(playerId), 
+                            participantName, 
+                            unavailabilityType,
+                            expectedReturn: reason,
+                            source: 'unavailable_check'
+                        },
+                        reason: `Player To Score${isAtLeast2 ? ' (2+)' : ''}: Player "${playerName}" is unavailable (${unavailabilityType}) - did not play → LOST`
+                    };
+                }
+            }
             
             // Get goals for this player - use getGoalEvents and filter by playerId from goals
             // This is more reliable than getPlayerEvents which might have ID mismatch issues
@@ -5700,6 +5748,48 @@ class BetOutcomeCalculator {
             }
             
             if (value === null) {
+                // ✅ NEW: Check if player is unavailable (injured/suspended/international duty)
+                // If player is unavailable, bet should be LOST (not cancelled)
+                if (playerId) {
+                    const awayUnavailable = matchDetails?.content?.lineup?.awayTeam?.unavailable || [];
+                    const homeUnavailable = matchDetails?.content?.lineup?.homeTeam?.unavailable || [];
+                    const unavailablePlayers = [...(Array.isArray(awayUnavailable) ? awayUnavailable : []), 
+                                                 ...(Array.isArray(homeUnavailable) ? homeUnavailable : [])];
+                    
+                    if (unavailablePlayers.length > 0) {
+                        const unavailablePlayer = unavailablePlayers.find(p => 
+                            Number(p?.id || p?.playerId) === Number(playerId)
+                        );
+                        
+                        if (unavailablePlayer) {
+                            const unavailabilityType = unavailablePlayer?.unavailability?.type || 'unknown';
+                            const reason = unavailablePlayer?.unavailability?.expectedReturn || 'N/A';
+                            const playerName = unavailablePlayer?.name || participantName || 'Unknown';
+                            
+                            console.log(`   ⚠️ Player is unavailable:`);
+                            console.log(`   - Player: ${playerName}`);
+                            console.log(`   - Type: ${unavailabilityType}`);
+                            console.log(`   - Expected Return: ${reason}`);
+                            console.log(`   - Bet will be marked as LOST (player did not play)`);
+                            
+                            const lineStr = line !== null ? ` ${line}` : '';
+                            
+                            return {
+                                status: 'lost',
+                                actualOutcome: `Player unavailable (${unavailabilityType})`,
+                                debugInfo: { 
+                                    playerId: Number(playerId), 
+                                    participantName, 
+                                    unavailabilityType,
+                                    expectedReturn: reason,
+                                    source: 'unavailable_check'
+                                },
+                                reason: `Player Shots${lineStr}: Player "${playerName}" is unavailable (${unavailabilityType}) - did not play → LOST`
+                            };
+                        }
+                    }
+                }
+                
                 // ✅ If Gemini returned NO_MATCH, mark bet as LOST instead of cancelled
                 if (geminiNoMatch) {
                     console.log(`   ⚠️ Gemini returned NO_MATCH - player not found in match, marking bet as LOST`);
@@ -5753,16 +5843,78 @@ class BetOutcomeCalculator {
             console.log(`   - Outcome label: "${outcomeLabel}"`);
             console.log(`   - Is Yes: ${isYesSelection}, Is No: ${isNoSelection}, Has participant: ${!!participantName}`);
             console.log(`   - Final yesSelected: ${yesSelected}`);
-            let playerId = bet.participantId;
-            if (!playerId && participantName) {
-                playerId = await findPlayerIdByName(matchDetails, participantName);
+            
+            // ✅ FIX: Use findPlayerIdByName with Gemini fallback and capture geminiNoMatch
+            let playerId = null;
+            let geminiNoMatch = false;
+            if (participantName) {
+                console.log(`   - Looking up player ID by name: "${participantName}"`);
+                const result = await findPlayerIdByName(matchDetails, participantName);
+                playerId = result?.playerId || null;
+                geminiNoMatch = result?.geminiNoMatch || false;
+                console.log(`   - Found Player ID by name: ${playerId}${geminiNoMatch ? ' (Gemini NO_MATCH)' : ''}`);
             }
+            
+            // Fallback to bet.participantId only if name lookup failed
+            if (!playerId && bet.participantId) {
+                console.log(`   - Name lookup failed, using bet's participant ID: ${bet.participantId}`);
+                playerId = bet.participantId;
+            }
+            
             if (!playerId) {
+                // ✅ If Gemini returned NO_MATCH, mark bet as LOST instead of cancelled
+                if (geminiNoMatch) {
+                    console.log(`   ⚠️ Gemini returned NO_MATCH - player not found in match, marking bet as LOST`);
+                    return {
+                        status: 'lost',
+                        reason: 'Player not found in match (Gemini AI confirmed NO_MATCH)',
+                        actualOutcome: 'Player not found',
+                        debugInfo: { participantName, geminiNoMatch: true }
+                    };
+                }
                 return { status: 'cancelled', reason: 'Unable to resolve player for card market', debugInfo: { participantName } };
             }
             
             console.log(`🎯 PLAYER CARD MARKET: "${participantName}"`);
             console.log(`   - Player ID: ${playerId}`);
+            
+            // ✅ NEW: Check if player is unavailable (injured/suspended/international duty)
+            // If player is unavailable, bet should be LOST (not cancelled)
+            const awayUnavailable = matchDetails?.content?.lineup?.awayTeam?.unavailable || [];
+            const homeUnavailable = matchDetails?.content?.lineup?.homeTeam?.unavailable || [];
+            const unavailablePlayers = [...(Array.isArray(awayUnavailable) ? awayUnavailable : []), 
+                                         ...(Array.isArray(homeUnavailable) ? homeUnavailable : [])];
+            
+            if (unavailablePlayers.length > 0) {
+                const unavailablePlayer = unavailablePlayers.find(p => 
+                    Number(p?.id || p?.playerId) === Number(playerId)
+                );
+                
+                if (unavailablePlayer) {
+                    const unavailabilityType = unavailablePlayer?.unavailability?.type || 'unknown';
+                    const reason = unavailablePlayer?.unavailability?.expectedReturn || 'N/A';
+                    const playerName = unavailablePlayer?.name || participantName || 'Unknown';
+                    
+                    console.log(`   ⚠️ Player is unavailable:`);
+                    console.log(`   - Player: ${playerName}`);
+                    console.log(`   - Type: ${unavailabilityType}`);
+                    console.log(`   - Expected Return: ${reason}`);
+                    console.log(`   - Bet will be marked as LOST (player did not play)`);
+                    
+                    return {
+                        status: 'lost',
+                        actualOutcome: `Player unavailable (${unavailabilityType})`,
+                        debugInfo: { 
+                            playerId: Number(playerId), 
+                            participantName, 
+                            unavailabilityType,
+                            expectedReturn: reason,
+                            source: 'unavailable_check'
+                        },
+                        reason: `Player ${isRedOnly ? 'Red Card' : 'Card'}: Player "${playerName}" is unavailable (${unavailabilityType}) - did not play → LOST`
+                    };
+                }
+            }
             console.log(`   - Is Red Only: ${isRedOnly}`);
             console.log(`   - Yes Selected: ${yesSelected}`);
             
@@ -6368,15 +6520,88 @@ class BetOutcomeCalculator {
                 // Specific player bet - check if that specific player got a red card
                 console.log(`   - Checking specific player: "${selection}"`);
                 
-                // Find red cards for this specific player
-                const playerRedCards = redCardEvents.filter(card => {
-                    const playerName = card.player?.toLowerCase() || '';
-                    const cardPlayerName = card.playerName?.toLowerCase() || '';
-                    return playerName.includes(selection) || cardPlayerName.includes(selection) ||
-                           selection.includes(playerName) || selection.includes(cardPlayerName);
-                });
+                // ✅ FIX: Use proper player lookup with Gemini fallback
+                let participantName = bet.participant || bet.playerName || selection;
+                let playerId = null;
+                let geminiNoMatch = false;
                 
-                console.log(`   - Red cards for ${selection}: ${playerRedCards.length}`);
+                if (participantName) {
+                    console.log(`   - Looking up player ID by name: "${participantName}"`);
+                    const result = await findPlayerIdByName(matchDetails, participantName);
+                    playerId = result?.playerId || null;
+                    geminiNoMatch = result?.geminiNoMatch || false;
+                    console.log(`   - Found Player ID by name: ${playerId}${geminiNoMatch ? ' (Gemini NO_MATCH)' : ''}`);
+                }
+                
+                // ✅ NEW: Check if player is unavailable (injured/suspended/international duty)
+                // If player is unavailable, bet should be LOST (not cancelled)
+                if (playerId) {
+                    const awayUnavailable = matchDetails?.content?.lineup?.awayTeam?.unavailable || [];
+                    const homeUnavailable = matchDetails?.content?.lineup?.homeTeam?.unavailable || [];
+                    const unavailablePlayers = [...(Array.isArray(awayUnavailable) ? awayUnavailable : []), 
+                                                 ...(Array.isArray(homeUnavailable) ? homeUnavailable : [])];
+                    
+                    if (unavailablePlayers.length > 0) {
+                        const unavailablePlayer = unavailablePlayers.find(p => 
+                            Number(p?.id || p?.playerId) === Number(playerId)
+                        );
+                        
+                        if (unavailablePlayer) {
+                            const unavailabilityType = unavailablePlayer?.unavailability?.type || 'unknown';
+                            const playerName = unavailablePlayer?.name || participantName || 'Unknown';
+                            
+                            console.log(`   ⚠️ Player is unavailable: ${playerName} (${unavailabilityType}) - bet will be LOST`);
+                            
+                            return {
+                                status: 'lost',
+                                actualOutcome: `Player unavailable (${unavailabilityType})`,
+                                finalScore: `${ftHome}-${ftAway}`,
+                                redCardsCount: redCardEvents.length,
+                                matchId: matchDetails.general?.matchId,
+                                reason: `Player Red Card: Player "${playerName}" is unavailable (${unavailabilityType}) - did not play → LOST`,
+                                payout: 0,
+                                stake: bet.stake,
+                                odds: bet.odds
+                            };
+                        }
+                    }
+                }
+                
+                // ✅ If Gemini returned NO_MATCH, mark bet as LOST
+                if (!playerId && geminiNoMatch) {
+                    console.log(`   ⚠️ Gemini returned NO_MATCH - player not found in match, marking bet as LOST`);
+                    return {
+                        status: 'lost',
+                        actualOutcome: 'Player not found',
+                        finalScore: `${ftHome}-${ftAway}`,
+                        redCardsCount: redCardEvents.length,
+                        matchId: matchDetails.general?.matchId,
+                        reason: 'Player not found in match (Gemini AI confirmed NO_MATCH)',
+                        payout: 0,
+                        stake: bet.stake,
+                        odds: bet.odds
+                    };
+                }
+                
+                // Find red cards for this specific player - use playerId if available, otherwise fallback to name matching
+                let playerRedCards = [];
+                if (playerId) {
+                    // Use playerId for more accurate matching
+                    playerRedCards = redCardEvents.filter(card => {
+                        const cardPlayerId = card?.playerId || card?.player?.id;
+                        return cardPlayerId && Number(cardPlayerId) === Number(playerId);
+                    });
+                    console.log(`   - Red cards for player ID ${playerId}: ${playerRedCards.length}`);
+                } else {
+                    // Fallback to name matching
+                    playerRedCards = redCardEvents.filter(card => {
+                        const playerName = card.player?.toLowerCase() || '';
+                        const cardPlayerName = card.playerName?.toLowerCase() || '';
+                        return playerName.includes(selection) || cardPlayerName.includes(selection) ||
+                               selection.includes(playerName) || selection.includes(cardPlayerName);
+                    });
+                    console.log(`   - Red cards for ${selection} (name match): ${playerRedCards.length}`);
+                }
                 
                 // For player-specific bets, "Yes" means the player WILL get a red card
                 // So if the player got a red card, the bet WINS
@@ -6532,6 +6757,56 @@ class BetOutcomeCalculator {
                         matchedPlayerId = result?.playerId || null;
                         geminiNoMatch = result?.geminiNoMatch || false;
                         console.log(`   - Found Player ID by name: ${matchedPlayerId}${geminiNoMatch ? ' (Gemini NO_MATCH)' : ''}`);
+                    }
+                    
+                    // ✅ NEW: Check if player is unavailable (injured/suspended/international duty)
+                    // If player is unavailable, bet should be LOST (not cancelled)
+                    if (matchedPlayerId) {
+                        const awayUnavailable = matchDetails?.content?.lineup?.awayTeam?.unavailable || [];
+                        const homeUnavailable = matchDetails?.content?.lineup?.homeTeam?.unavailable || [];
+                        const unavailablePlayers = [...(Array.isArray(awayUnavailable) ? awayUnavailable : []), 
+                                                     ...(Array.isArray(homeUnavailable) ? homeUnavailable : [])];
+                        
+                        if (unavailablePlayers.length > 0) {
+                            const unavailablePlayer = unavailablePlayers.find(p => 
+                                Number(p?.id || p?.playerId) === Number(matchedPlayerId)
+                            );
+                            
+                            if (unavailablePlayer) {
+                                const unavailabilityType = unavailablePlayer?.unavailability?.type || 'unknown';
+                                const playerName = unavailablePlayer?.name || participantName || 'Unknown';
+                                
+                                console.log(`   ⚠️ Player is unavailable: ${playerName} (${unavailabilityType}) - bet will be LOST`);
+                                
+                                return {
+                                    status: 'lost',
+                                    actualOutcome: `Player unavailable (${unavailabilityType})`,
+                                    finalScore: `${ftHome}-${ftAway}`,
+                                    firstGoalScorer: goalEvents.length > 0 ? (goalEvents[0]?.player?.name || 'Unknown') : 'No goal',
+                                    matchId: matchDetails.general?.matchId,
+                                    reason: `First Goal Scorer: Player "${playerName}" is unavailable (${unavailabilityType}) - did not play → LOST`,
+                                    payout: 0,
+                                    stake: bet.stake,
+                                    odds: bet.odds
+                                };
+                            }
+                        }
+                    }
+                    
+                    // ✅ If Gemini returned NO_MATCH, mark bet as LOST
+                    if (!matchedPlayerId && geminiNoMatch) {
+                        console.log(`   ⚠️ Gemini returned NO_MATCH - player not found in match, marking bet as LOST`);
+                        return {
+                            status: 'lost',
+                            actualOutcome: 'Player not found',
+                            finalScore: `${ftHome}-${ftAway}`,
+                            firstGoalScorer: goalEvents.length > 0 ? (goalEvents[0]?.player?.name || 'Unknown') : 'No goal',
+                            matchId: matchDetails.general?.matchId,
+                            reason: 'Player not found in match (Gemini AI confirmed NO_MATCH)',
+                            payout: 0,
+                            stake: bet.stake,
+                            odds: bet.odds
+                        };
                     }
                     
                     // Check if the selected player scored the first goal
@@ -6916,10 +7191,13 @@ class BetOutcomeCalculator {
             console.log(`   - Bet Participant ID: ${bet.participantId}`);
             
             let playerId = null;
+            let geminiNoMatch = false;
             if (participantName) {
                 console.log(`   - Looking up player ID by name: "${participantName}"`);
-                playerId = await findPlayerIdByName(matchDetails, participantName);
-                console.log(`   - Found Player ID by name: ${playerId}`);
+                const result = await findPlayerIdByName(matchDetails, participantName);
+                playerId = result?.playerId || null;
+                geminiNoMatch = result?.geminiNoMatch || false;
+                console.log(`   - Found Player ID by name: ${playerId}${geminiNoMatch ? ' (Gemini NO_MATCH)' : ''}`);
             }
             
             // Fallback to bet.participantId only if name lookup failed
@@ -6929,6 +7207,20 @@ class BetOutcomeCalculator {
             }
             
             if (!playerId) {
+                // ✅ If Gemini returned NO_MATCH, mark bet as LOST instead of cancelled
+                if (geminiNoMatch) {
+                    console.log(`   ⚠️ Gemini returned NO_MATCH - player not found in match, marking bet as LOST`);
+                    return {
+                        status: 'lost',
+                        reason: 'Player not found in match (Gemini AI confirmed NO_MATCH)',
+                        actualOutcome: 'Player not found',
+                        finalScore: `${ftHome}-${ftAway}`,
+                        matchId: matchDetails.general?.matchId,
+                        payout: 0,
+                        stake: bet.stake,
+                        odds: bet.odds
+                    };
+                }
                 console.log(`❌ Player not found: ${participantName}`);
                 return {
                     status: 'cancelled',
@@ -6943,6 +7235,44 @@ class BetOutcomeCalculator {
             }
             
             console.log(`   - Final Player ID: ${playerId}`);
+            
+            // ✅ NEW: Check if player is unavailable (injured/suspended/international duty)
+            // If player is unavailable, bet should be LOST (not cancelled)
+            const awayUnavailable = matchDetails?.content?.lineup?.awayTeam?.unavailable || [];
+            const homeUnavailable = matchDetails?.content?.lineup?.homeTeam?.unavailable || [];
+            const unavailablePlayers = [...(Array.isArray(awayUnavailable) ? awayUnavailable : []), 
+                                         ...(Array.isArray(homeUnavailable) ? homeUnavailable : [])];
+            
+            if (unavailablePlayers.length > 0) {
+                const unavailablePlayer = unavailablePlayers.find(p => 
+                    Number(p?.id || p?.playerId) === Number(playerId)
+                );
+                
+                if (unavailablePlayer) {
+                    const unavailabilityType = unavailablePlayer?.unavailability?.type || 'unknown';
+                    const reason = unavailablePlayer?.unavailability?.expectedReturn || 'N/A';
+                    const playerName = unavailablePlayer?.name || participantName || 'Unknown';
+                    
+                    console.log(`   ⚠️ Player is unavailable:`);
+                    console.log(`   - Player: ${playerName}`);
+                    console.log(`   - Type: ${unavailabilityType}`);
+                    console.log(`   - Expected Return: ${reason}`);
+                    console.log(`   - Bet will be marked as LOST (player did not play)`);
+                    
+                    return {
+                        status: 'lost',
+                        actualOutcome: `Player unavailable (${unavailabilityType})`,
+                        finalScore: `${ftHome}-${ftAway}`,
+                        playerAssists: 0,
+                        playerName: playerName,
+                        matchId: matchDetails.general?.matchId,
+                        reason: `Player Assist: Player "${playerName}" is unavailable (${unavailabilityType}) - did not play → LOST`,
+                        payout: 0,
+                        stake: bet.stake,
+                        odds: bet.odds
+                    };
+                }
+            }
             
             // Get player assists from match events
             const assists = getPlayerAssists(matchDetails, Number(playerId));
@@ -7016,10 +7346,13 @@ class BetOutcomeCalculator {
             console.log(`   - Bet Participant ID: ${bet.participantId}`);
             
             let playerId = null;
+            let geminiNoMatch = false;
             if (participantName) {
                 console.log(`   - Looking up player ID by name: "${participantName}"`);
-                playerId = await findPlayerIdByName(matchDetails, participantName);
-                console.log(`   - Found Player ID by name: ${playerId}`);
+                const result = await findPlayerIdByName(matchDetails, participantName);
+                playerId = result?.playerId || null;
+                geminiNoMatch = result?.geminiNoMatch || false;
+                console.log(`   - Found Player ID by name: ${playerId}${geminiNoMatch ? ' (Gemini NO_MATCH)' : ''}`);
             }
             
             // Fallback to bet.participantId only if name lookup failed
@@ -7029,6 +7362,20 @@ class BetOutcomeCalculator {
             }
             
             if (!playerId) {
+                // ✅ If Gemini returned NO_MATCH, mark bet as LOST instead of cancelled
+                if (geminiNoMatch) {
+                    console.log(`   ⚠️ Gemini returned NO_MATCH - player not found in match, marking bet as LOST`);
+                    return {
+                        status: 'lost',
+                        reason: 'Player not found in match (Gemini AI confirmed NO_MATCH)',
+                        actualOutcome: 'Player not found',
+                        finalScore: `${ftHome}-${ftAway}`,
+                        matchId: matchDetails.general?.matchId,
+                        payout: 0,
+                        stake: bet.stake,
+                        odds: bet.odds
+                    };
+                }
                 console.log(`❌ Player not found: ${participantName}`);
                 return {
                     status: 'cancelled',
@@ -7043,6 +7390,46 @@ class BetOutcomeCalculator {
             }
             
             console.log(`   - Final Player ID: ${playerId}`);
+            
+            // ✅ NEW: Check if player is unavailable (injured/suspended/international duty)
+            // If player is unavailable, bet should be LOST (not cancelled)
+            const awayUnavailable = matchDetails?.content?.lineup?.awayTeam?.unavailable || [];
+            const homeUnavailable = matchDetails?.content?.lineup?.homeTeam?.unavailable || [];
+            const unavailablePlayers = [...(Array.isArray(awayUnavailable) ? awayUnavailable : []), 
+                                         ...(Array.isArray(homeUnavailable) ? homeUnavailable : [])];
+            
+            if (unavailablePlayers.length > 0) {
+                const unavailablePlayer = unavailablePlayers.find(p => 
+                    Number(p?.id || p?.playerId) === Number(playerId)
+                );
+                
+                if (unavailablePlayer) {
+                    const unavailabilityType = unavailablePlayer?.unavailability?.type || 'unknown';
+                    const reason = unavailablePlayer?.unavailability?.expectedReturn || 'N/A';
+                    const playerName = unavailablePlayer?.name || participantName || 'Unknown';
+                    
+                    console.log(`   ⚠️ Player is unavailable:`);
+                    console.log(`   - Player: ${playerName}`);
+                    console.log(`   - Type: ${unavailabilityType}`);
+                    console.log(`   - Expected Return: ${reason}`);
+                    console.log(`   - Bet will be marked as LOST (player did not play)`);
+                    
+                    return {
+                        status: 'lost',
+                        actualOutcome: `Player unavailable (${unavailabilityType})`,
+                        finalScore: `${ftHome}-${ftAway}`,
+                        playerGoals: 0,
+                        playerAssists: 0,
+                        playerTotal: 0,
+                        playerName: playerName,
+                        matchId: matchDetails.general?.matchId,
+                        reason: `Player Score Or Assist: Player "${playerName}" is unavailable (${unavailabilityType}) - did not play → LOST`,
+                        payout: 0,
+                        stake: bet.stake,
+                        odds: bet.odds
+                    };
+                }
+            }
             
             // Get player goals and assists from match events
             const { goals, assists, total } = getPlayerScoreOrAssist(matchDetails, Number(playerId));
@@ -7113,13 +7500,38 @@ class BetOutcomeCalculator {
                 };
             }
             
-            // Find player ID
-            let playerId = bet.participantId;
-            if (!playerId && participantName) {
-                playerId = await findPlayerIdByName(matchDetails, participantName);
+            // ✅ FIX: Use findPlayerIdByName with Gemini fallback and capture geminiNoMatch
+            let playerId = null;
+            let geminiNoMatch = false;
+            if (participantName) {
+                console.log(`   - Looking up player ID by name: "${participantName}"`);
+                const result = await findPlayerIdByName(matchDetails, participantName);
+                playerId = result?.playerId || null;
+                geminiNoMatch = result?.geminiNoMatch || false;
+                console.log(`   - Found Player ID by name: ${playerId}${geminiNoMatch ? ' (Gemini NO_MATCH)' : ''}`);
+            }
+            
+            // Fallback to bet.participantId only if name lookup failed
+            if (!playerId && bet.participantId) {
+                console.log(`   - Name lookup failed, using bet's participant ID: ${bet.participantId}`);
+                playerId = bet.participantId;
             }
             
             if (!playerId) {
+                // ✅ If Gemini returned NO_MATCH, mark bet as LOST instead of cancelled
+                if (geminiNoMatch) {
+                    console.log(`   ⚠️ Gemini returned NO_MATCH - player not found in match, marking bet as LOST`);
+                    return {
+                        status: 'lost',
+                        reason: 'Player not found in match (Gemini AI confirmed NO_MATCH)',
+                        actualOutcome: 'Player not found',
+                        finalScore: `${ftHome}-${ftAway}`,
+                        matchId: matchDetails.general?.matchId,
+                        payout: 0,
+                        stake: bet.stake,
+                        odds: bet.odds
+                    };
+                }
                 console.log(`❌ Player not found: ${participantName}`);
                 return {
                     status: 'cancelled',
@@ -7134,6 +7546,44 @@ class BetOutcomeCalculator {
             }
             
             console.log(`   - Player ID: ${playerId}`);
+            
+            // ✅ NEW: Check if player is unavailable (injured/suspended/international duty)
+            // If player is unavailable, bet should be LOST (not cancelled)
+            const awayUnavailable = matchDetails?.content?.lineup?.awayTeam?.unavailable || [];
+            const homeUnavailable = matchDetails?.content?.lineup?.homeTeam?.unavailable || [];
+            const unavailablePlayers = [...(Array.isArray(awayUnavailable) ? awayUnavailable : []), 
+                                         ...(Array.isArray(homeUnavailable) ? homeUnavailable : [])];
+            
+            if (unavailablePlayers.length > 0) {
+                const unavailablePlayer = unavailablePlayers.find(p => 
+                    Number(p?.id || p?.playerId) === Number(playerId)
+                );
+                
+                if (unavailablePlayer) {
+                    const unavailabilityType = unavailablePlayer?.unavailability?.type || 'unknown';
+                    const reason = unavailablePlayer?.unavailability?.expectedReturn || 'N/A';
+                    const playerName = unavailablePlayer?.name || participantName || 'Unknown';
+                    
+                    console.log(`   ⚠️ Player is unavailable:`);
+                    console.log(`   - Player: ${playerName}`);
+                    console.log(`   - Type: ${unavailabilityType}`);
+                    console.log(`   - Expected Return: ${reason}`);
+                    console.log(`   - Bet will be marked as LOST (player did not play)`);
+                    
+                    return {
+                        status: 'lost',
+                        actualOutcome: `Player unavailable (${unavailabilityType})`,
+                        finalScore: `${ftHome}-${ftAway}`,
+                        playerGoalsFromOutside: 0,
+                        playerName: playerName,
+                        matchId: matchDetails.general?.matchId,
+                        reason: `Player Score From Outside Penalty: Player "${playerName}" is unavailable (${unavailabilityType}) - did not play → LOST`,
+                        payout: 0,
+                        stake: bet.stake,
+                        odds: bet.odds
+                    };
+                }
+            }
             
             // Get player goals from outside penalty box
             const goalsFromOutside = getPlayerGoalsFromOutsidePenalty(matchDetails, Number(playerId));
@@ -7202,13 +7652,38 @@ class BetOutcomeCalculator {
                 };
             }
             
-            // Find player ID
-            let playerId = bet.participantId;
-            if (!playerId && participantName) {
-                playerId = await findPlayerIdByName(matchDetails, participantName);
+            // ✅ FIX: Use findPlayerIdByName with Gemini fallback and capture geminiNoMatch
+            let playerId = null;
+            let geminiNoMatch = false;
+            if (participantName) {
+                console.log(`   - Looking up player ID by name: "${participantName}"`);
+                const result = await findPlayerIdByName(matchDetails, participantName);
+                playerId = result?.playerId || null;
+                geminiNoMatch = result?.geminiNoMatch || false;
+                console.log(`   - Found Player ID by name: ${playerId}${geminiNoMatch ? ' (Gemini NO_MATCH)' : ''}`);
+            }
+            
+            // Fallback to bet.participantId only if name lookup failed
+            if (!playerId && bet.participantId) {
+                console.log(`   - Name lookup failed, using bet's participant ID: ${bet.participantId}`);
+                playerId = bet.participantId;
             }
             
             if (!playerId) {
+                // ✅ If Gemini returned NO_MATCH, mark bet as LOST instead of cancelled
+                if (geminiNoMatch) {
+                    console.log(`   ⚠️ Gemini returned NO_MATCH - player not found in match, marking bet as LOST`);
+                    return {
+                        status: 'lost',
+                        reason: 'Player not found in match (Gemini AI confirmed NO_MATCH)',
+                        actualOutcome: 'Player not found',
+                        finalScore: `${ftHome}-${ftAway}`,
+                        matchId: matchDetails.general?.matchId,
+                        payout: 0,
+                        stake: bet.stake,
+                        odds: bet.odds
+                    };
+                }
                 console.log(`❌ Player not found: ${participantName}`);
                 return {
                     status: 'cancelled',
@@ -7223,6 +7698,44 @@ class BetOutcomeCalculator {
             }
             
             console.log(`   - Player ID: ${playerId}`);
+            
+            // ✅ NEW: Check if player is unavailable (injured/suspended/international duty)
+            // If player is unavailable, bet should be LOST (not cancelled)
+            const awayUnavailable = matchDetails?.content?.lineup?.awayTeam?.unavailable || [];
+            const homeUnavailable = matchDetails?.content?.lineup?.homeTeam?.unavailable || [];
+            const unavailablePlayers = [...(Array.isArray(awayUnavailable) ? awayUnavailable : []), 
+                                         ...(Array.isArray(homeUnavailable) ? homeUnavailable : [])];
+            
+            if (unavailablePlayers.length > 0) {
+                const unavailablePlayer = unavailablePlayers.find(p => 
+                    Number(p?.id || p?.playerId) === Number(playerId)
+                );
+                
+                if (unavailablePlayer) {
+                    const unavailabilityType = unavailablePlayer?.unavailability?.type || 'unknown';
+                    const reason = unavailablePlayer?.unavailability?.expectedReturn || 'N/A';
+                    const playerName = unavailablePlayer?.name || participantName || 'Unknown';
+                    
+                    console.log(`   ⚠️ Player is unavailable:`);
+                    console.log(`   - Player: ${playerName}`);
+                    console.log(`   - Type: ${unavailabilityType}`);
+                    console.log(`   - Expected Return: ${reason}`);
+                    console.log(`   - Bet will be marked as LOST (player did not play)`);
+                    
+                    return {
+                        status: 'lost',
+                        actualOutcome: `Player unavailable (${unavailabilityType})`,
+                        finalScore: `${ftHome}-${ftAway}`,
+                        playerHeaderGoals: 0,
+                        playerName: playerName,
+                        matchId: matchDetails.general?.matchId,
+                        reason: `Player Score From Header: Player "${playerName}" is unavailable (${unavailabilityType}) - did not play → LOST`,
+                        payout: 0,
+                        stake: bet.stake,
+                        odds: bet.odds
+                    };
+                }
+            }
             
             // Get player header goals
             const headerGoals = getPlayerGoalsFromHeader(matchDetails, Number(playerId));
@@ -8292,98 +8805,143 @@ class BetOutcomeCalculator {
             
             if (!isMatchFinishedFromStatus && timeSinceStart !== null && timeSinceStart >= ESTIMATED_MATCH_DURATION) {
                 // Match should be finished (135 min passed) but FotMob says not finished
-                // ✅ FIX: Check if we've exceeded max retry time (1000 mins total instead of 285)
+                // ✅ FIX: At 500 minutes, refresh FotMob data and check match status again before cancelling
                 if (timeSinceStart >= MAX_TOTAL_TIME) {
                     console.log(`🚫 Match exceeded maximum retry time (${timeSinceStart.toFixed(1)} min > ${MAX_TOTAL_TIME} min)`);
                     console.log(`   - Retry count: ${bet.fotmobRetryCount || 0}/${MAX_RETRIES}`);
                     console.log(`   - Total time limit: ${MAX_TOTAL_TIME} minutes (~${(MAX_TOTAL_TIME/60).toFixed(1)} hours)`);
-                    console.log(`   - Cancelling bet due to match exceeding too much time`);
+                    console.log(`   - ⚠️ CRITICAL: Refreshing FotMob data to check match finish status one final time before cancelling...`);
                     
-                    // Cancel the bet with reason
-                    const cancelResult = await this.cancelBet(bet, 'MATCH_EXCEEDED_MAX_TIME', 
-                        `Match exceeded maximum processing time (${MAX_TOTAL_TIME} minutes / ${(MAX_TOTAL_TIME/60).toFixed(1)} hours). Match did not finish after ${timeSinceStart.toFixed(1)} minutes from start.`,
-                        { 
-                            timeSinceStart: timeSinceStart.toFixed(1),
-                            maxTotalTime: MAX_TOTAL_TIME,
-                            retryCount: bet.fotmobRetryCount || 0,
-                            maxRetries: MAX_RETRIES
-                        }
-                    );
-                    
-                    return {
-                        success: true,
-                        outcome: { 
-                            status: 'cancelled', 
-                            reason: `Match exceeded too much time (${timeSinceStart.toFixed(1)} min > ${MAX_TOTAL_TIME} min limit)` 
-                        },
-                        cancelled: true,
-                        reason: 'Match exceeded maximum retry time - bet cancelled'
-                    };
-                }
-                
-                // Check last FotMob check time to implement 5-minute retry
-                const lastFotmobCheckTime = bet.lastFotmobCheckTime ? new Date(bet.lastFotmobCheckTime) : betStartTime;
-                const timeSinceLastCheck = (currentTime.getTime() - lastFotmobCheckTime.getTime()) / (1000 * 60); // minutes
-                const RETRY_INTERVAL = 5; // 5 minutes between retries
-                const currentRetryCount = bet.fotmobRetryCount || 0;
-                
-                if (timeSinceLastCheck < RETRY_INTERVAL) {
-                    const remainingWait = RETRY_INTERVAL - timeSinceLastCheck;
-                    console.log(`⏳ Match not finished yet from FotMob (${timeSinceStart.toFixed(1)} min since start)`);
-                    console.log(`   - Last FotMob check: ${timeSinceLastCheck.toFixed(1)} minutes ago`);
-                    console.log(`   - Retry count: ${currentRetryCount}/${MAX_RETRIES}`);
-                    console.log(`   - Waiting ${remainingWait.toFixed(1)} more minutes before next FotMob retry`);
-                    
-                    // Update last check time in database (don't increment retry count yet - wait for actual retry)
+                    // ✅ CRITICAL FIX: Refresh FotMob data and re-check match finish status at 500 minutes
                     try {
-                        await this.db.collection('bets').updateOne(
-                            { _id: bet._id },
-                            { $set: { lastFotmobCheckTime: currentTime } }
-                        );
-                    } catch (updateError) {
-                        console.warn(`⚠️ Failed to update lastFotmobCheckTime: ${updateError.message}`);
-                    }
-                    
-                    return {
-                        success: true,
-                        outcome: { status: 'pending', reason: `Match not finished yet - will retry in ${remainingWait.toFixed(1)} minutes (retry ${currentRetryCount + 1}/${MAX_RETRIES})` },
-                        skipped: true,
-                        reason: 'Match not finished - waiting 5 minutes before next FotMob retry'
-                    };
-                } else {
-                    // Enough time passed - this is a new retry attempt
-                    const newRetryCount = currentRetryCount + 1;
-                    console.log(`✅ Enough time passed since last FotMob check (${timeSinceLastCheck.toFixed(1)} min) - proceeding with retry ${newRetryCount}/${MAX_RETRIES}`);
-                    
-                    // Update retry count and last check time
-                    try {
-                        await this.db.collection('bets').updateOne(
-                            { _id: bet._id },
-                            { 
-                                $set: { 
-                                    lastFotmobCheckTime: currentTime,
-                                    fotmobRetryCount: newRetryCount
-                                } 
-                            }
-                        );
-                    } catch (updateError) {
-                        console.warn(`⚠️ Failed to update retry count: ${updateError.message}`);
-                    }
-                    
-                    // Check if we've reached max retries
-                    if (newRetryCount >= MAX_RETRIES) {
-                        console.log(`🚫 Maximum retry count reached (${newRetryCount}/${MAX_RETRIES})`);
-                        console.log(`   - Time since start: ${timeSinceStart.toFixed(1)} minutes`);
-                        console.log(`   - Cancelling bet due to maximum retries exceeded`);
+                        console.log(`   - Reloading FotMob data for fresh status check...`);
+                        const refreshedFotmobData = await this.getCachedDailyMatches(betDate, bet);
                         
-                        // Cancel the bet with reason
-                        const cancelResult = await this.cancelBet(bet, 'MAX_RETRIES_EXCEEDED', 
-                            `Match did not finish after ${MAX_RETRIES} retry attempts (${MAX_RETRIES * 5} minutes) following the initial ${ESTIMATED_MATCH_DURATION} minute wait. Total time: ${timeSinceStart.toFixed(1)} minutes.`,
+                        if (refreshedFotmobData) {
+                            console.log(`   - Refreshed FotMob data loaded successfully`);
+                            const refreshedMatchResult = await this.findMatchingFotmobMatch(bet, refreshedFotmobData);
+                            
+                            if (refreshedMatchResult.match) {
+                                // Re-check match finish status with fresh data
+                                const refreshedMatchStatusFinished = refreshedMatchResult.match.status?.finished === true;
+                                const refreshedMatchStatusReason = refreshedMatchResult.match.status?.reason?.short?.toLowerCase() || '';
+                                const isMatchFinishedFromRefreshedStatus = refreshedMatchStatusFinished || 
+                                    refreshedMatchStatusReason.includes('ft') || 
+                                    refreshedMatchStatusReason.includes('full') || 
+                                    refreshedMatchStatusReason.includes('finished');
+                                
+                                console.log(`   - Refreshed match status check:`);
+                                console.log(`     - Match found: ${!!refreshedMatchResult.match}`);
+                                console.log(`     - Status finished: ${refreshedMatchStatusFinished}`);
+                                console.log(`     - Status reason: ${refreshedMatchResult.match.status?.reason?.short || 'N/A'}`);
+                                console.log(`     - Is finished: ${isMatchFinishedFromRefreshedStatus ? 'YES ✅' : 'NO ❌'}`);
+                                
+                                if (isMatchFinishedFromRefreshedStatus) {
+                                    console.log(`   ✅ MATCH IS FINISHED (from refreshed FotMob data) - proceeding with processing instead of cancelling`);
+                                    // Match is finished! Update the status and continue processing
+                                    // We'll continue to the detailed match fetch below
+                                    // Set isMatchFinishedFromStatus to true so we skip the cancellation logic
+                                    isMatchFinishedFromStatus = true;
+                                    // Update matchResult with refreshed data
+                                    matchResult.match = refreshedMatchResult.match;
+                                } else {
+                                    console.log(`   ❌ Match is still NOT finished after ${timeSinceStart.toFixed(1)} minutes - cancelling bet`);
+                                    console.log(`   - Cancelling bet due to match exceeding too much time AND confirmed not finished`);
+                                    
+                                    // Cancel the bet with reason
+                                    const cancelResult = await this.cancelBet(bet, 'MATCH_EXCEEDED_MAX_TIME', 
+                                        `Match exceeded maximum processing time (${MAX_TOTAL_TIME} minutes / ${(MAX_TOTAL_TIME/60).toFixed(1)} hours). Match confirmed NOT finished after ${timeSinceStart.toFixed(1)} minutes from start (checked with refreshed FotMob data).`,
+                                        { 
+                                            timeSinceStart: timeSinceStart.toFixed(1),
+                                            maxTotalTime: MAX_TOTAL_TIME,
+                                            retryCount: bet.fotmobRetryCount || 0,
+                                            maxRetries: MAX_RETRIES,
+                                            finalStatusCheck: {
+                                                matchFound: true,
+                                                statusFinished: refreshedMatchStatusFinished,
+                                                statusReason: refreshedMatchResult.match.status?.reason?.short || 'N/A',
+                                                isFinished: false
+                                            }
+                                        }
+                                    );
+                                    
+                                    return {
+                                        success: true,
+                                        outcome: { 
+                                            status: 'cancelled', 
+                                            reason: `Match exceeded too much time (${timeSinceStart.toFixed(1)} min > ${MAX_TOTAL_TIME} min limit) AND confirmed NOT finished after final status check` 
+                                        },
+                                        cancelled: true,
+                                        reason: 'Match exceeded maximum retry time AND confirmed not finished - bet cancelled'
+                                    };
+                                }
+                            } else {
+                                console.log(`   ⚠️ Match not found in refreshed FotMob data - cancelling bet`);
+                                // Match not found in refreshed data - cancel
+                                const cancelResult = await this.cancelBet(bet, 'MATCH_EXCEEDED_MAX_TIME', 
+                                    `Match exceeded maximum processing time (${MAX_TOTAL_TIME} minutes / ${(MAX_TOTAL_TIME/60).toFixed(1)} hours). Match not found in refreshed FotMob data after ${timeSinceStart.toFixed(1)} minutes from start.`,
+                                    { 
+                                        timeSinceStart: timeSinceStart.toFixed(1),
+                                        maxTotalTime: MAX_TOTAL_TIME,
+                                        retryCount: bet.fotmobRetryCount || 0,
+                                        maxRetries: MAX_RETRIES,
+                                        finalStatusCheck: {
+                                            matchFound: false,
+                                            error: refreshedMatchResult.error || 'Match not found'
+                                        }
+                                    }
+                                );
+                                
+                                return {
+                                    success: true,
+                                    outcome: { 
+                                        status: 'cancelled', 
+                                        reason: `Match exceeded too much time (${timeSinceStart.toFixed(1)} min > ${MAX_TOTAL_TIME} min limit) AND match not found in refreshed data` 
+                                    },
+                                    cancelled: true,
+                                    reason: 'Match exceeded maximum retry time AND match not found - bet cancelled'
+                                };
+                            }
+                        } else {
+                            console.log(`   ⚠️ Failed to refresh FotMob data - cancelling bet`);
+                            // Failed to refresh data - cancel
+                            const cancelResult = await this.cancelBet(bet, 'MATCH_EXCEEDED_MAX_TIME', 
+                                `Match exceeded maximum processing time (${MAX_TOTAL_TIME} minutes / ${(MAX_TOTAL_TIME/60).toFixed(1)} hours). Failed to refresh FotMob data for final status check after ${timeSinceStart.toFixed(1)} minutes from start.`,
+                                { 
+                                    timeSinceStart: timeSinceStart.toFixed(1),
+                                    maxTotalTime: MAX_TOTAL_TIME,
+                                    retryCount: bet.fotmobRetryCount || 0,
+                                    maxRetries: MAX_RETRIES,
+                                    finalStatusCheck: {
+                                        error: 'Failed to refresh FotMob data'
+                                    }
+                                }
+                            );
+                            
+                            return {
+                                success: true,
+                                outcome: { 
+                                    status: 'cancelled', 
+                                    reason: `Match exceeded too much time (${timeSinceStart.toFixed(1)} min > ${MAX_TOTAL_TIME} min limit) AND failed to refresh FotMob data` 
+                                },
+                                cancelled: true,
+                                reason: 'Match exceeded maximum retry time AND failed to refresh data - bet cancelled'
+                            };
+                        }
+                    } catch (refreshError) {
+                        console.error(`   ❌ Error refreshing FotMob data: ${refreshError.message}`);
+                        console.log(`   - Cancelling bet due to error refreshing data`);
+                        // Error refreshing - cancel
+                        const cancelResult = await this.cancelBet(bet, 'MATCH_EXCEEDED_MAX_TIME', 
+                            `Match exceeded maximum processing time (${MAX_TOTAL_TIME} minutes / ${(MAX_TOTAL_TIME/60).toFixed(1)} hours). Error refreshing FotMob data for final status check: ${refreshError.message}`,
                             { 
                                 timeSinceStart: timeSinceStart.toFixed(1),
-                                retryCount: newRetryCount,
+                                maxTotalTime: MAX_TOTAL_TIME,
+                                retryCount: bet.fotmobRetryCount || 0,
                                 maxRetries: MAX_RETRIES,
-                                totalRetryTime: MAX_RETRIES * 5
+                                finalStatusCheck: {
+                                    error: refreshError.message
+                                }
                             }
                         );
                         
@@ -8391,11 +8949,119 @@ class BetOutcomeCalculator {
                             success: true,
                             outcome: { 
                                 status: 'cancelled', 
-                                reason: `Match exceeded too much time - maximum retries (${MAX_RETRIES}) exceeded` 
+                                reason: `Match exceeded too much time (${timeSinceStart.toFixed(1)} min > ${MAX_TOTAL_TIME} min limit) AND error refreshing data: ${refreshError.message}` 
                             },
                             cancelled: true,
-                            reason: 'Maximum retry count exceeded - bet cancelled'
+                            reason: 'Match exceeded maximum retry time AND error refreshing data - bet cancelled'
                         };
+                    }
+                    
+                    // If we reach here and isMatchFinishedFromStatus is still false, something went wrong
+                    if (!isMatchFinishedFromStatus) {
+                        console.log(`   ⚠️ Unexpected state - match status check incomplete, cancelling bet`);
+                        const cancelResult = await this.cancelBet(bet, 'MATCH_EXCEEDED_MAX_TIME', 
+                            `Match exceeded maximum processing time (${MAX_TOTAL_TIME} minutes / ${(MAX_TOTAL_TIME/60).toFixed(1)} hours). Unexpected state after final status check.`,
+                            { 
+                                timeSinceStart: timeSinceStart.toFixed(1),
+                                maxTotalTime: MAX_TOTAL_TIME,
+                                retryCount: bet.fotmobRetryCount || 0,
+                                maxRetries: MAX_RETRIES
+                            }
+                        );
+                        
+                        return {
+                            success: true,
+                            outcome: { 
+                                status: 'cancelled', 
+                                reason: `Match exceeded too much time (${timeSinceStart.toFixed(1)} min > ${MAX_TOTAL_TIME} min limit) - unexpected state` 
+                            },
+                            cancelled: true,
+                            reason: 'Match exceeded maximum retry time - unexpected state - bet cancelled'
+                        };
+                    }
+                }
+                
+                // ✅ FIX: Skip retry logic if match is finished (e.g., after 500-minute refresh confirmed it's finished)
+                if (isMatchFinishedFromStatus) {
+                    console.log(`✅ Match is finished - skipping retry logic and proceeding to detailed match fetch`);
+                    // Continue to detailed match fetch below
+                } else {
+                    // Check last FotMob check time to implement 5-minute retry
+                    const lastFotmobCheckTime = bet.lastFotmobCheckTime ? new Date(bet.lastFotmobCheckTime) : betStartTime;
+                    const timeSinceLastCheck = (currentTime.getTime() - lastFotmobCheckTime.getTime()) / (1000 * 60); // minutes
+                    const RETRY_INTERVAL = 5; // 5 minutes between retries
+                    const currentRetryCount = bet.fotmobRetryCount || 0;
+                    
+                    if (timeSinceLastCheck < RETRY_INTERVAL) {
+                        const remainingWait = RETRY_INTERVAL - timeSinceLastCheck;
+                        console.log(`⏳ Match not finished yet from FotMob (${timeSinceStart.toFixed(1)} min since start)`);
+                        console.log(`   - Last FotMob check: ${timeSinceLastCheck.toFixed(1)} minutes ago`);
+                        console.log(`   - Retry count: ${currentRetryCount}/${MAX_RETRIES}`);
+                        console.log(`   - Waiting ${remainingWait.toFixed(1)} more minutes before next FotMob retry`);
+                        
+                        // Update last check time in database (don't increment retry count yet - wait for actual retry)
+                        try {
+                            await this.db.collection('bets').updateOne(
+                                { _id: bet._id },
+                                { $set: { lastFotmobCheckTime: currentTime } }
+                            );
+                        } catch (updateError) {
+                            console.warn(`⚠️ Failed to update lastFotmobCheckTime: ${updateError.message}`);
+                        }
+                        
+                        return {
+                            success: true,
+                            outcome: { status: 'pending', reason: `Match not finished yet - will retry in ${remainingWait.toFixed(1)} minutes (retry ${currentRetryCount + 1}/${MAX_RETRIES})` },
+                            skipped: true,
+                            reason: 'Match not finished - waiting 5 minutes before next FotMob retry'
+                        };
+                    } else {
+                        // Enough time passed - this is a new retry attempt
+                        const newRetryCount = currentRetryCount + 1;
+                        console.log(`✅ Enough time passed since last FotMob check (${timeSinceLastCheck.toFixed(1)} min) - proceeding with retry ${newRetryCount}/${MAX_RETRIES}`);
+                        
+                        // Update retry count and last check time
+                        try {
+                            await this.db.collection('bets').updateOne(
+                                { _id: bet._id },
+                                { 
+                                    $set: { 
+                                        lastFotmobCheckTime: currentTime,
+                                        fotmobRetryCount: newRetryCount
+                                    } 
+                                }
+                            );
+                        } catch (updateError) {
+                            console.warn(`⚠️ Failed to update retry count: ${updateError.message}`);
+                        }
+                        
+                        // Check if we've reached max retries
+                        if (newRetryCount >= MAX_RETRIES) {
+                            console.log(`🚫 Maximum retry count reached (${newRetryCount}/${MAX_RETRIES})`);
+                            console.log(`   - Time since start: ${timeSinceStart.toFixed(1)} minutes`);
+                            console.log(`   - Cancelling bet due to maximum retries exceeded`);
+                            
+                            // Cancel the bet with reason
+                            const cancelResult = await this.cancelBet(bet, 'MAX_RETRIES_EXCEEDED', 
+                                `Match did not finish after ${MAX_RETRIES} retry attempts (${MAX_RETRIES * 5} minutes) following the initial ${ESTIMATED_MATCH_DURATION} minute wait. Total time: ${timeSinceStart.toFixed(1)} minutes.`,
+                                { 
+                                    timeSinceStart: timeSinceStart.toFixed(1),
+                                    retryCount: newRetryCount,
+                                    maxRetries: MAX_RETRIES,
+                                    totalRetryTime: MAX_RETRIES * 5
+                                }
+                            );
+                            
+                            return {
+                                success: true,
+                                outcome: { 
+                                    status: 'cancelled', 
+                                    reason: `Match exceeded too much time - maximum retries (${MAX_RETRIES}) exceeded` 
+                                },
+                                cancelled: true,
+                                reason: 'Maximum retry count exceeded - bet cancelled'
+                            };
+                        }
                     }
                 }
             }

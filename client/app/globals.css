@@ -490,3 +490,30 @@ body {
     color: #bfdbfe;
   }
 }
+
+/* iPhone 13 mini specific padding for content areas (HOME, IN-PLAY, UPCOMING, BET HISTORY tabs) */
+/* iPhone 13 mini: 375px × 812px (logical pixels) */
+@media only screen 
+  and (min-width: 375px) 
+  and (max-width: 375px) 
+  and (min-height: 812px) 
+  and (max-height: 812px) {
+  
+  /* Add extra padding from top and bottom for content areas */
+  .iphone-13-mini-content-padding {
+    padding-top: 1.5rem !important; /* 24px from top */
+    padding-bottom: 1.5rem !important; /* 24px from bottom */
+  }
+}
+
+/* Alternative media query using device-width for better compatibility */
+@media only screen 
+  and (device-width: 375px) 
+  and (device-height: 812px) 
+  and (-webkit-min-device-pixel-ratio: 3) {
+  
+  .iphone-13-mini-content-padding {
+    padding-top: 1.5rem !important; /* 24px from top */
+    padding-bottom: 1.5rem !important; /* 24px from bottom */
+  }
+}
