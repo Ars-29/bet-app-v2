@@ -6595,11 +6595,11 @@ class BetOutcomeCalculator {
                 } else {
                     // Fallback to name matching
                     playerRedCards = redCardEvents.filter(card => {
-                        const playerName = card.player?.toLowerCase() || '';
-                        const cardPlayerName = card.playerName?.toLowerCase() || '';
-                        return playerName.includes(selection) || cardPlayerName.includes(selection) ||
-                               selection.includes(playerName) || selection.includes(cardPlayerName);
-                    });
+                    const playerName = card.player?.toLowerCase() || '';
+                    const cardPlayerName = card.playerName?.toLowerCase() || '';
+                    return playerName.includes(selection) || cardPlayerName.includes(selection) ||
+                           selection.includes(playerName) || selection.includes(cardPlayerName);
+                });
                     console.log(`   - Red cards for ${selection} (name match): ${playerRedCards.length}`);
                 }
                 
@@ -8847,9 +8847,9 @@ class BetOutcomeCalculator {
                                 } else {
                                     console.log(`   ❌ Match is still NOT finished after ${timeSinceStart.toFixed(1)} minutes - cancelling bet`);
                                     console.log(`   - Cancelling bet due to match exceeding too much time AND confirmed not finished`);
-                                    
-                                    // Cancel the bet with reason
-                                    const cancelResult = await this.cancelBet(bet, 'MATCH_EXCEEDED_MAX_TIME', 
+                    
+                    // Cancel the bet with reason
+                    const cancelResult = await this.cancelBet(bet, 'MATCH_EXCEEDED_MAX_TIME', 
                                         `Match exceeded maximum processing time (${MAX_TOTAL_TIME} minutes / ${(MAX_TOTAL_TIME/60).toFixed(1)} hours). Match confirmed NOT finished after ${timeSinceStart.toFixed(1)} minutes from start (checked with refreshed FotMob data).`,
                                         { 
                                             timeSinceStart: timeSinceStart.toFixed(1),
@@ -8961,23 +8961,23 @@ class BetOutcomeCalculator {
                         console.log(`   ⚠️ Unexpected state - match status check incomplete, cancelling bet`);
                         const cancelResult = await this.cancelBet(bet, 'MATCH_EXCEEDED_MAX_TIME', 
                             `Match exceeded maximum processing time (${MAX_TOTAL_TIME} minutes / ${(MAX_TOTAL_TIME/60).toFixed(1)} hours). Unexpected state after final status check.`,
-                            { 
-                                timeSinceStart: timeSinceStart.toFixed(1),
-                                maxTotalTime: MAX_TOTAL_TIME,
-                                retryCount: bet.fotmobRetryCount || 0,
-                                maxRetries: MAX_RETRIES
-                            }
-                        );
-                        
-                        return {
-                            success: true,
-                            outcome: { 
-                                status: 'cancelled', 
+                        { 
+                            timeSinceStart: timeSinceStart.toFixed(1),
+                            maxTotalTime: MAX_TOTAL_TIME,
+                            retryCount: bet.fotmobRetryCount || 0,
+                            maxRetries: MAX_RETRIES
+                        }
+                    );
+                    
+                    return {
+                        success: true,
+                        outcome: { 
+                            status: 'cancelled', 
                                 reason: `Match exceeded too much time (${timeSinceStart.toFixed(1)} min > ${MAX_TOTAL_TIME} min limit) - unexpected state` 
-                            },
-                            cancelled: true,
+                        },
+                        cancelled: true,
                             reason: 'Match exceeded maximum retry time - unexpected state - bet cancelled'
-                        };
+                    };
                     }
                 }
                 
@@ -8986,81 +8986,81 @@ class BetOutcomeCalculator {
                     console.log(`✅ Match is finished - skipping retry logic and proceeding to detailed match fetch`);
                     // Continue to detailed match fetch below
                 } else {
-                    // Check last FotMob check time to implement 5-minute retry
-                    const lastFotmobCheckTime = bet.lastFotmobCheckTime ? new Date(bet.lastFotmobCheckTime) : betStartTime;
-                    const timeSinceLastCheck = (currentTime.getTime() - lastFotmobCheckTime.getTime()) / (1000 * 60); // minutes
-                    const RETRY_INTERVAL = 5; // 5 minutes between retries
-                    const currentRetryCount = bet.fotmobRetryCount || 0;
+                // Check last FotMob check time to implement 5-minute retry
+                const lastFotmobCheckTime = bet.lastFotmobCheckTime ? new Date(bet.lastFotmobCheckTime) : betStartTime;
+                const timeSinceLastCheck = (currentTime.getTime() - lastFotmobCheckTime.getTime()) / (1000 * 60); // minutes
+                const RETRY_INTERVAL = 5; // 5 minutes between retries
+                const currentRetryCount = bet.fotmobRetryCount || 0;
+                
+                if (timeSinceLastCheck < RETRY_INTERVAL) {
+                    const remainingWait = RETRY_INTERVAL - timeSinceLastCheck;
+                    console.log(`⏳ Match not finished yet from FotMob (${timeSinceStart.toFixed(1)} min since start)`);
+                    console.log(`   - Last FotMob check: ${timeSinceLastCheck.toFixed(1)} minutes ago`);
+                    console.log(`   - Retry count: ${currentRetryCount}/${MAX_RETRIES}`);
+                    console.log(`   - Waiting ${remainingWait.toFixed(1)} more minutes before next FotMob retry`);
                     
-                    if (timeSinceLastCheck < RETRY_INTERVAL) {
-                        const remainingWait = RETRY_INTERVAL - timeSinceLastCheck;
-                        console.log(`⏳ Match not finished yet from FotMob (${timeSinceStart.toFixed(1)} min since start)`);
-                        console.log(`   - Last FotMob check: ${timeSinceLastCheck.toFixed(1)} minutes ago`);
-                        console.log(`   - Retry count: ${currentRetryCount}/${MAX_RETRIES}`);
-                        console.log(`   - Waiting ${remainingWait.toFixed(1)} more minutes before next FotMob retry`);
+                    // Update last check time in database (don't increment retry count yet - wait for actual retry)
+                    try {
+                        await Bet.findByIdAndUpdate(
+                            bet._id,
+                            { $set: { lastFotmobCheckTime: currentTime } }
+                        );
+                    } catch (updateError) {
+                        console.warn(`⚠️ Failed to update lastFotmobCheckTime: ${updateError.message}`);
+                    }
+                    
+                    return {
+                        success: true,
+                        outcome: { status: 'pending', reason: `Match not finished yet - will retry in ${remainingWait.toFixed(1)} minutes (retry ${currentRetryCount + 1}/${MAX_RETRIES})` },
+                        skipped: true,
+                        reason: 'Match not finished - waiting 5 minutes before next FotMob retry'
+                    };
+                } else {
+                    // Enough time passed - this is a new retry attempt
+                    const newRetryCount = currentRetryCount + 1;
+                    console.log(`✅ Enough time passed since last FotMob check (${timeSinceLastCheck.toFixed(1)} min) - proceeding with retry ${newRetryCount}/${MAX_RETRIES}`);
+                    
+                    // Update retry count and last check time
+                    try {
+                        await Bet.findByIdAndUpdate(
+                            bet._id,
+                            { 
+                                $set: { 
+                                    lastFotmobCheckTime: currentTime,
+                                    fotmobRetryCount: newRetryCount
+                                } 
+                            }
+                        );
+                    } catch (updateError) {
+                        console.warn(`⚠️ Failed to update retry count: ${updateError.message}`);
+                    }
+                    
+                    // Check if we've reached max retries
+                    if (newRetryCount >= MAX_RETRIES) {
+                        console.log(`🚫 Maximum retry count reached (${newRetryCount}/${MAX_RETRIES})`);
+                        console.log(`   - Time since start: ${timeSinceStart.toFixed(1)} minutes`);
+                        console.log(`   - Cancelling bet due to maximum retries exceeded`);
                         
-                        // Update last check time in database (don't increment retry count yet - wait for actual retry)
-                        try {
-                            await this.db.collection('bets').updateOne(
-                                { _id: bet._id },
-                                { $set: { lastFotmobCheckTime: currentTime } }
-                            );
-                        } catch (updateError) {
-                            console.warn(`⚠️ Failed to update lastFotmobCheckTime: ${updateError.message}`);
-                        }
+                        // Cancel the bet with reason
+                        const cancelResult = await this.cancelBet(bet, 'MAX_RETRIES_EXCEEDED', 
+                            `Match did not finish after ${MAX_RETRIES} retry attempts (${MAX_RETRIES * 5} minutes) following the initial ${ESTIMATED_MATCH_DURATION} minute wait. Total time: ${timeSinceStart.toFixed(1)} minutes.`,
+                            { 
+                                timeSinceStart: timeSinceStart.toFixed(1),
+                                retryCount: newRetryCount,
+                                maxRetries: MAX_RETRIES,
+                                totalRetryTime: MAX_RETRIES * 5
+                            }
+                        );
                         
                         return {
                             success: true,
-                            outcome: { status: 'pending', reason: `Match not finished yet - will retry in ${remainingWait.toFixed(1)} minutes (retry ${currentRetryCount + 1}/${MAX_RETRIES})` },
-                            skipped: true,
-                            reason: 'Match not finished - waiting 5 minutes before next FotMob retry'
+                            outcome: { 
+                                status: 'cancelled', 
+                                reason: `Match exceeded too much time - maximum retries (${MAX_RETRIES}) exceeded` 
+                            },
+                            cancelled: true,
+                            reason: 'Maximum retry count exceeded - bet cancelled'
                         };
-                    } else {
-                        // Enough time passed - this is a new retry attempt
-                        const newRetryCount = currentRetryCount + 1;
-                        console.log(`✅ Enough time passed since last FotMob check (${timeSinceLastCheck.toFixed(1)} min) - proceeding with retry ${newRetryCount}/${MAX_RETRIES}`);
-                        
-                        // Update retry count and last check time
-                        try {
-                            await this.db.collection('bets').updateOne(
-                                { _id: bet._id },
-                                { 
-                                    $set: { 
-                                        lastFotmobCheckTime: currentTime,
-                                        fotmobRetryCount: newRetryCount
-                                    } 
-                                }
-                            );
-                        } catch (updateError) {
-                            console.warn(`⚠️ Failed to update retry count: ${updateError.message}`);
-                        }
-                        
-                        // Check if we've reached max retries
-                        if (newRetryCount >= MAX_RETRIES) {
-                            console.log(`🚫 Maximum retry count reached (${newRetryCount}/${MAX_RETRIES})`);
-                            console.log(`   - Time since start: ${timeSinceStart.toFixed(1)} minutes`);
-                            console.log(`   - Cancelling bet due to maximum retries exceeded`);
-                            
-                            // Cancel the bet with reason
-                            const cancelResult = await this.cancelBet(bet, 'MAX_RETRIES_EXCEEDED', 
-                                `Match did not finish after ${MAX_RETRIES} retry attempts (${MAX_RETRIES * 5} minutes) following the initial ${ESTIMATED_MATCH_DURATION} minute wait. Total time: ${timeSinceStart.toFixed(1)} minutes.`,
-                                { 
-                                    timeSinceStart: timeSinceStart.toFixed(1),
-                                    retryCount: newRetryCount,
-                                    maxRetries: MAX_RETRIES,
-                                    totalRetryTime: MAX_RETRIES * 5
-                                }
-                            );
-                            
-                            return {
-                                success: true,
-                                outcome: { 
-                                    status: 'cancelled', 
-                                    reason: `Match exceeded too much time - maximum retries (${MAX_RETRIES}) exceeded` 
-                                },
-                                cancelled: true,
-                                reason: 'Maximum retry count exceeded - bet cancelled'
-                            };
                         }
                     }
                 }
@@ -9119,8 +9119,8 @@ class BetOutcomeCalculator {
                 
                 // Mark bet as needs attention
                 console.log(`\n🔍 STEP 4C: Marking bet as needs attention...`);
-                const updateResult = await this.db.collection('bets').updateOne(
-                    { _id: bet._id },
+                const updateResult = await Bet.findByIdAndUpdate(
+                    bet._id,
                     { 
                         $set: { 
                             status: 'needs_attention',
@@ -9140,7 +9140,7 @@ class BetOutcomeCalculator {
                     }
                 );
                 
-                console.log(`✅ STEP 4C SUCCESS: Bet marked as needs attention (${updateResult.modifiedCount} document modified)`);
+                console.log(`✅ STEP 4C SUCCESS: Bet marked as needs attention`);
                 
                 return {
                     success: true,
@@ -9200,8 +9200,8 @@ class BetOutcomeCalculator {
                 
                 // Update last check time
                 try {
-                    await this.db.collection('bets').updateOne(
-                        { _id: bet._id },
+                    await Bet.findByIdAndUpdate(
+                        bet._id,
                         { $set: { lastFotmobCheckTime: new Date() } }
                     );
                 } catch (updateError) {
