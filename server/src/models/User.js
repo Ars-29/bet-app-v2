@@ -51,6 +51,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    lastLogin: {
+      type: Date,
+      default: null,
+      // ✅ ADDED: Track last login time for automatic deactivation
+    },
     role: {
       type: String,
       enum: ["user", "admin"],

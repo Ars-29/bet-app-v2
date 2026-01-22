@@ -33,6 +33,14 @@ export const login = async (req, res) => {
     // Use UserService to authenticate user
     const user = await UserService.authenticateUser(email, password);
 
+    // ✅ FIX: Update lastLogin timestamp on successful login (without triggering password validation)
+    // Use findByIdAndUpdate to update only lastLogin field, avoiding full document validation
+    await User.findByIdAndUpdate(
+      user._id,
+      { lastLogin: new Date() },
+      { runValidators: false } // Skip validators to avoid password validation
+    );
+
     // Generate tokens
     const accessToken = generateToken({ userId: user._id });
     const refreshToken = generateRefreshToken({ userId: user._id });

@@ -72,7 +72,7 @@ export async function GET(request) {
         'accept': 'application/json',
         'cache-control': 'no-cache'
       },
-      signal: AbortSignal.timeout(10000) // ✅ FIX: Increased to 10 seconds for Render
+      signal: AbortSignal.timeout(60000) // ✅ INCREASED: 60 seconds (was 10s) - for slow VPN connections
     });
     
     console.log(`📡 [NEXT API] Backend response status: ${response.status} ${response.statusText}`);

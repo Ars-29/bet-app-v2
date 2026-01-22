@@ -10,7 +10,8 @@ const ContentWrapper = ({ children }) => {
             !isMobile && !isCollapsed ? 'ml-6' : ''
         }`}>
             {/* SecondaryNavigation removed - now in Header */}
-            <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:pb-0 pt-0 md:pt-0">
+            {/* ✅ FIX: Add iPhone 13 mini padding to scroll container to prevent cut-off when content expands */}
+            <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:pb-0 pt-0 md:pt-0 max-[390px]:pt-[100px] max-[390px]:pb-[100px]">
                 {children}
             </main>
         </div>

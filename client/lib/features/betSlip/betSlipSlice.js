@@ -459,7 +459,7 @@ const betSlipSlice = createSlice({
       // Only re-enable if no bets are suspended
       const hasSuspendedBets = state.bets.some(bet => bet.suspended);
       if (!hasSuspendedBets) {
-        state.placeBetDisabled = false;
+      state.placeBetDisabled = false;
       }
     },
 

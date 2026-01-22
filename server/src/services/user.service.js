@@ -112,8 +112,8 @@ class UserService {
         );
       }
 
-      // Check if user is active
-      if (!user.isActive) {
+      // ✅ FIX: Only check isActive for non-admin users (admins can login even if inactive)
+      if (!user.isActive && user.role !== "admin") {
         throw new CustomError(
           "User Authentication: Account is deactivated. Please contact support.",
           401,

@@ -34,7 +34,7 @@ export class UnibetCalcController {
                 // ✅ FIX: Process pending bets AND combination bets with any pending leg
                 // For single bets: status must be 'pending'
                 // For combination bets: status is 'pending' OR any leg has status 'pending'
-                const query = {
+                const query = { 
                     $or: [
                         // Single bets: status is pending AND (combination doesn't exist OR is empty array)
                         { 

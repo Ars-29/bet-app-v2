@@ -12,12 +12,16 @@ const connectDB = async () => {
     // Configure mongoose for better connection handling
     mongoose.set('strictQuery', false);
     
-    // Connection options for better reliability
+    // Connection options for better reliability (optimized for slow VPN connections)
     const options = {
       maxPoolSize: 10, // Maintain up to 10 socket connections
-      serverSelectionTimeoutMS: 30000, // Keep trying to send operations for 30 seconds (increased from 5s)
-      socketTimeoutMS: 60000, // Close sockets after 60 seconds of inactivity (increased from 45s)
-      bufferTimeoutMS: 30000, // Buffer operations for up to 30 seconds before timing out (increased from default 10s)
+      serverSelectionTimeoutMS: 60000, // ✅ INCREASED: 60 seconds (was 30s) - for slow VPN connections
+      socketTimeoutMS: 120000, // ✅ INCREASED: 120 seconds (was 60s) - for slow VPN connections
+      connectTimeoutMS: 60000, // ✅ ADDED: 60 seconds to establish initial connection
+      bufferTimeoutMS: 60000, // ✅ INCREASED: 60 seconds (was 30s) - for slow VPN connections
+      heartbeatFrequencyMS: 10000, // ✅ ADDED: Check connection every 10 seconds
+      retryWrites: true, // ✅ ADDED: Retry writes on network errors
+      retryReads: true, // ✅ ADDED: Retry reads on network errors
     };
 
     await mongoose.connect(mongoURI, options);
@@ -77,9 +81,13 @@ const attemptReconnect = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 30000, // Increased from 5s to 30s
-      socketTimeoutMS: 60000, // Increased from 45s to 60s
-      bufferTimeoutMS: 30000, // Increased from default 10s to 30s
+      serverSelectionTimeoutMS: 60000, // ✅ INCREASED: 60 seconds (was 30s) - for slow VPN connections
+      socketTimeoutMS: 120000, // ✅ INCREASED: 120 seconds (was 60s) - for slow VPN connections
+      connectTimeoutMS: 60000, // ✅ ADDED: 60 seconds to establish initial connection
+      bufferTimeoutMS: 60000, // ✅ INCREASED: 60 seconds (was 30s) - for slow VPN connections
+      heartbeatFrequencyMS: 10000, // ✅ ADDED: Check connection every 10 seconds
+      retryWrites: true, // ✅ ADDED: Retry writes on network errors
+      retryReads: true, // ✅ ADDED: Retry reads on network errors
     });
     console.log('✅ MongoDB reconnected successfully');
     isConnected = true;

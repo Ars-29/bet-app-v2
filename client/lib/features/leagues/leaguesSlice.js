@@ -51,18 +51,26 @@ export const fetchPopularLeagues = createAsyncThunk(
   "leagues/fetchPopularLeagues",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("🔄 Fetching leagues from CSV file...");
+      console.log("🔄 Fetching leagues from backend API...");
 
-      // Use new admin endpoint that serves leagues from CSV
-      const response = await apiClient.get("/admin/leagues");
+      // ✅ FIX: Add timeout and better error handling for slow VPN connections
+      const response = await Promise.race([
+        apiClient.get("/admin/leagues", {
+          timeout: 60000 // ✅ INCREASED: 60 seconds (was default 45s) - for slow VPN connections
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout after 60 seconds')), 60000) // ✅ INCREASED: 60 seconds
+        )
+      ]);
+      
       console.log("📡 API Response:", response.data);
 
       const leagues = response.data.data;
-      console.log(`✅ Loaded ${leagues.length} leagues from CSV`);
+      console.log(`✅ Loaded ${leagues.length} leagues from backend`);
       return leagues;
     } catch (error) {
       // Return fallback data if API fails
-      console.error("❌ Failed to fetch leagues from CSV:", error);
+      console.error("❌ Failed to fetch leagues from backend:", error.message);
       console.warn("🔄 Using fallback data instead");
       return fallbackLeagues;
     }

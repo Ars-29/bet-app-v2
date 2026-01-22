@@ -419,6 +419,39 @@ const scheduleLeagueMappingJob = async () => {
   }
 };
 
+// Function to schedule automatic user deactivation job
+const scheduleUserDeactivationJob = async () => {
+  try {
+    console.log('[Agenda] ⚙️ Scheduling automatic user deactivation job...');
+    console.log('[Agenda] ⚙️ Job will run daily at 2:00 AM to deactivate inactive users (2+ days)');
+    
+    // Schedule daily at 2:00 AM (server timezone)
+    const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const isUTC = serverTimezone === 'UTC' || process.env.TZ === 'UTC';
+    // 2:00 AM local time = 21:00 UTC (previous day) for PKT
+    const cronExpression = isUTC ? "0 21 * * *" : "0 2 * * *";
+    
+    console.log(`[Agenda] Server Timezone: ${serverTimezone} (isUTC: ${isUTC})`);
+    console.log(`[Agenda] Cron Expression: "${cronExpression}"`);
+    if (isUTC) {
+      console.log('[Agenda] Using UTC cron: "0 21 * * *" = 21:00 UTC = 2:00 AM PKT');
+    } else {
+      console.log('[Agenda] Using local cron: "0 2 * * *" = 2:00 AM local time');
+    }
+    
+    const jobPromise = agenda.every(cronExpression, "deactivateInactiveUsers");
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout: agenda.every() took too long (10s)')), 10000)
+    );
+    const job = await Promise.race([jobPromise, timeoutPromise]);
+    
+    console.log('[Agenda] ✅ Automatic user deactivation job scheduled successfully');
+    console.log(`[Agenda] Job will run daily at 2:00 AM (${isUTC ? '21:00 UTC' : '2:00 AM local'})`);
+  } catch (error) {
+    console.error('[Agenda] ❌ Failed to schedule user deactivation job:', error.message);
+  }
+};
+
 // Function to check fixture cache and manage jobs accordingly
 export const checkFixtureCacheAndManageJobs = async () => {
   const liveFixturesService = getLiveFixturesService();
@@ -478,6 +511,13 @@ export const checkFixtureCacheAndManageJobs = async () => {
     await scheduleLeagueMappingJob();
   } catch (error) {
     console.error('[Agenda] ❌ Failed to schedule League Mapping job in checkFixtureCacheAndManageJobs:', error.message);
+  }
+  
+  console.log('[Agenda] Scheduling automatic user deactivation job...');
+  try {
+    await scheduleUserDeactivationJob();
+  } catch (error) {
+    console.error('[Agenda] ❌ Failed to schedule user deactivation job in checkFixtureCacheAndManageJobs:', error.message);
   }
   
   console.log('[Agenda] ✅ All job scheduling attempts completed');
@@ -903,6 +943,61 @@ agenda.define("refreshFotmobMultidayCache", async (job) => {
   }
 });
 
+// Define automatic user deactivation job
+agenda.define("deactivateInactiveUsers", async (job) => {
+  try {
+    console.log('[Agenda] 🔄 Starting automatic user deactivation job...');
+    const startTime = Date.now();
+    
+    const User = (await import('../models/User.js')).default;
+    
+    // Calculate date 2 days ago
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    twoDaysAgo.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+    
+    console.log(`[Agenda] 📅 Checking for users inactive since: ${twoDaysAgo.toISOString()}`);
+    
+    // Find users who:
+    // 1. Are currently active (isActive: true)
+    // 2. Are not admin users (only deactivate regular users)
+    // 3. Have lastLogin older than 2 days OR never logged in (lastLogin is null and account is older than 2 days)
+    const inactiveUsers = await User.find({
+      isActive: true,
+      role: { $ne: 'admin' },
+      $or: [
+        { lastLogin: { $lt: twoDaysAgo } }, // Last login was more than 2 days ago
+        { 
+          lastLogin: null,
+          createdAt: { $lt: twoDaysAgo } // Never logged in and account created more than 2 days ago
+        }
+      ]
+    });
+    
+    if (inactiveUsers.length === 0) {
+      console.log('[Agenda] ✅ No inactive users found to deactivate');
+      return;
+    }
+    
+    console.log(`[Agenda] 📊 Found ${inactiveUsers.length} inactive users to deactivate`);
+    
+    // Deactivate all inactive users
+    const userIds = inactiveUsers.map(user => user._id);
+    const result = await User.updateMany(
+      { _id: { $in: userIds } },
+      { $set: { isActive: false } }
+    );
+    
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.log(`[Agenda] ✅ Deactivated ${result.modifiedCount} inactive users in ${duration}s`);
+    console.log(`[Agenda] 📋 Deactivated user emails:`, inactiveUsers.map(u => u.email).join(', '));
+    
+  } catch (error) {
+    console.error('[Agenda] ❌ Error in deactivateInactiveUsers job:', error);
+    throw error;
+  }
+});
+
 // Track if jobs have been initialized to prevent duplicate initialization
 let agendaJobsInitialized = false;
 
@@ -987,6 +1082,7 @@ export const initializeAgendaJobs = async () => {
       { name: 'processCancelledBets' }, // ✅ NEW: Cancel cancelled bets job
       { name: 'refreshFotmobMultidayCache' },
       { name: 'updateLeagueMapping' },
+      { name: 'deactivateInactiveUsers' }, // ✅ NEW: Cancel user deactivation job
       { name: 'checkBetOutcome' }
     ];
 

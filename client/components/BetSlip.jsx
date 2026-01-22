@@ -295,7 +295,7 @@ const BetSlip = () => {
     }, [bets.length, betSlip.isOpen, dispatch]);
 
     // If bet slip is closed, render nothing
-    if (!betSlip.isOpen) {
+        if (!betSlip.isOpen) {
         return null;
     }
 

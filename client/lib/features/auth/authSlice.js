@@ -12,11 +12,19 @@ export const login = createAsyncThunk(
       console.log("🔑 Access token in response:", !!response.data.accessToken);
       return response.data;
     } catch (error) {
-      console.error("❌ Login API error:", error.response?.data || error.message);
+      // ✅ FIX: Better error logging
+      const errorData = error.response?.data || {};
+      const errorMessage = errorData.message || error.message || "Network error occurred";
+      console.error("❌ Login API error:", {
+        message: errorMessage,
+        status: error.response?.status,
+        data: errorData,
+        fullError: error
+      });
       return rejectWithValue(
-        error.response?.data || {
+        errorData || {
           success: false,
-          message: "Network error occurred",
+          message: errorMessage,
           error: error.message,
         }
       );

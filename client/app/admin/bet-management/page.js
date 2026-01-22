@@ -116,17 +116,24 @@ export default function BetManagement() {
   };
 
   // Helper function to get the correct value for display
-  const getBetValue = (betDetails) => {
-    if (!betDetails) return "-";
+  const getBetValue = (betDetails, bet) => {
+    // ✅ FIX: If betDetails.total exists and is not empty, use it
+    if (betDetails && betDetails.total !== null && betDetails.total !== undefined && betDetails.total !== "") {
+      return betDetails.total;
+    }
     
-    // If total is null/missing but handicap is present, use handicap
-    if ((betDetails.total === null || betDetails.total === undefined || betDetails.total === "") && 
-        betDetails.handicap !== null && betDetails.handicap !== undefined && betDetails.handicap !== "") {
+    // ✅ FIX: If total is missing but handicap is present, use handicap
+    if (betDetails && betDetails.handicap !== null && betDetails.handicap !== undefined && betDetails.handicap !== "") {
       return betDetails.handicap;
     }
     
-    // Otherwise use total
-    return betDetails.total || "-";
+    // ✅ FIX: Otherwise, show stake (like bet history) - for ALL bets, not just pending
+    if (bet && bet.stake) {
+      return `$${bet.stake.toFixed(2)}`;
+    }
+    
+    // Last resort fallback
+    return "-";
   };
 
   // Helper function to get match display for single bets
@@ -498,7 +505,7 @@ export default function BetManagement() {
               <div className="flex justify-between">
                 <span className="text-gray-500">Value:</span>
                 <span className="text-gray-900">
-                  {getBetValue(bet.betDetails)}
+                  {getBetValue(bet.betDetails, bet)}
                 </span>
               </div>
             )}
@@ -528,6 +535,10 @@ export default function BetManagement() {
                     } else if (profit < 0) {
                       return `-$${Math.abs(profit).toFixed(2)}`;
                     } else {
+                      // If profit is 0, check status - lost bets should show negative stake
+                      if (status === "lost") {
+                        return `-$${bet.stake.toFixed(2)}`;
+                      }
                       return "$0.00";
                     }
                   }
@@ -644,15 +655,6 @@ export default function BetManagement() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Value:</span>
-                    <span className="text-gray-900">
-                      {leg.betDetails?.market_id === "37" 
-                        ? (leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-"))
-                        : (leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-"))
-                      }
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-gray-500">Reason:</span>
                     <span className="text-gray-900 text-right max-w-[60%] truncate" title={leg.result?.reason || "-"}>
                       {leg.result?.reason || "-"}
@@ -701,7 +703,6 @@ export default function BetManagement() {
                   <TableHead>Match</TableHead>
                   <TableHead>Market</TableHead>
                   <TableHead>Selection</TableHead>
-                  <TableHead className="w-20">Value</TableHead>
                   <TableHead className="w-32">Reason</TableHead>
                 </TableRow>
               </TableHeader>
@@ -748,11 +749,6 @@ export default function BetManagement() {
                       <TableCell className="max-w-32">
                         <div className="truncate" title={leg.selection}>
                           {getBetSelection(leg.betDetails, leg.selection)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-20">
-                        <div className="truncate" title={leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-")}>
-                          {leg.betDetails?.total || (leg.unibetMeta?.handicapLine ? (leg.unibetMeta.handicapLine / 1000).toFixed(1) : "-")}
                         </div>
                       </TableCell>
                       <TableCell className="max-w-32">
@@ -1760,8 +1756,8 @@ export default function BetManagement() {
                                 </div>
                               </TableCell>
                               <TableCell className="max-w-32">
-                                <div className="truncate" title={isCombo ? "N/A" : getBetValue(bet.betDetails)}>
-                                  {isCombo ? "N/A" : getBetValue(bet.betDetails)}
+                                <div className="truncate" title={isCombo ? `$${bet.stake?.toFixed(2) || "0.00"}` : getBetValue(bet.betDetails, bet)}>
+                                  {isCombo ? `$${bet.stake?.toFixed(2) || "0.00"}` : getBetValue(bet.betDetails, bet)}
                                 </div>
                               </TableCell>
                               <TableCell>
@@ -1784,6 +1780,14 @@ export default function BetManagement() {
                                         </span>
                                       );
                                     } else {
+                                      // If profit is 0, check status - lost bets should show negative stake
+                                      if (status === "lost") {
+                                        return (
+                                          <span className="font-medium text-red-600">
+                                            -${bet.stake.toFixed(2)}
+                                          </span>
+                                        );
+                                      }
                                       return <span className="text-gray-500">$0.00</span>;
                                     }
                                   }

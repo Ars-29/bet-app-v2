@@ -1255,18 +1255,41 @@ class BetOutcomeCalculator {
     }
 
     /**
-     * Fetch detailed match information using Fotmob API
+     * Fetch detailed match information using Fotmob API (Direct API call)
      */
     async fetchMatchDetails(matchId) {
         try {
             console.log(`🔍 Fetching detailed match information for ID: ${matchId}`);
             
-            // Create a fresh Fotmob instance to avoid state corruption
-            const fotmob = new Fotmob();
+            // Use direct API call instead of Fotmob library
+            const apiUrl = `https://www.fotmob.com/api/data/matchDetails?matchId=${matchId}`;
             
-            console.log(`🔍 Fetching detailed match information for ID: ${matchId}`);
+            // Get x-mas token (required for authentication)
+            let xmasToken = null;
+            try {
+                const xmasResponse = await axios.get('http://46.101.91.154:6006/');
+                xmasToken = xmasResponse.data?.['x-mas'];
+                if (xmasToken) {
+                    console.log(`✅ Got x-mas token`);
+                }
+            } catch (xmasError) {
+                console.warn(`⚠️ Could not get x-mas token, trying without it...`);
+            }
             
-            const matchDetails = await fotmob.getMatchDetails(matchId);
+            const headers = {
+                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+                'Accept': 'application/json',
+                'Referer': 'https://www.fotmob.com/',
+                'Accept-Encoding': 'gzip, deflate, br'
+            };
+            
+            if (xmasToken) {
+                headers['x-mas'] = xmasToken;
+            }
+            
+            console.log(`🔍 Calling direct FotMob API: ${apiUrl}`);
+            const response = await axios.get(apiUrl, { headers, timeout: 30000 });
+            const matchDetails = response.data;
             
             console.log(`🐛 [BREAKPOINT] FotMob API response received for match ${matchId}`);
             console.log(`🐛 [BREAKPOINT] Response data available: ${!!matchDetails}`);
@@ -1338,6 +1361,21 @@ class BetOutcomeCalculator {
             
         } catch (error) {
             console.error(`❌ Error fetching match details for ID ${matchId}:`, error.message);
+            
+            // Log more details about the error
+            if (error.response) {
+                console.error(`   - Status: ${error.response.status}`);
+                console.error(`   - Status Text: ${error.response.statusText}`);
+                console.error(`   - URL: ${error.config?.url || 'N/A'}`);
+                if (error.response.status === 404) {
+                    console.error(`   ⚠️ HTTP 404: Match details not found for ID ${matchId}`);
+                }
+            } else if (error.request) {
+                console.error(`   - Request made but no response received`);
+                console.error(`   - URL: ${error.config?.url || 'N/A'}`);
+            } else {
+                console.error(`   - Error setting up request: ${error.message}`);
+            }
             
             // Check if this is a data corruption/validation error
             if (error.message.includes('Invalid value for key') || 
